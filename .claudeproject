@@ -1,0 +1,17 @@
+{
+  "name": "Festival Tap Logger",
+  "description": "NFC tap logging system for festival drug checking wait time analysis",
+  "context": [
+    "docs/CONTEXT.md",
+    "docs/REQUIREMENTS.md",
+    "docs/HARDWARE.md",
+    "docs/USER_WORKFLOWS.md"
+  ],
+  "ignore": [
+    "*.db",
+    "*.log",
+    "backups/",
+    "exports/",
+    "__pycache__/"
+  ]
+}
