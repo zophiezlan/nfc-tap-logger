@@ -5,7 +5,7 @@
     "docs/CONTEXT.md",
     "docs/REQUIREMENTS.md",
     "docs/HARDWARE.md",
-    "docs/USER_WORKFLOWS.md"
+    "docs/WORKFLOWS.md"
   ],
   "ignore": [
     "*.db",
