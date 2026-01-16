@@ -348,7 +348,9 @@ class NFCReader:
         page = start_page
         for offset in range(0, len(padded), 4):
             chunk = padded[offset : offset + 4]
-            result = write_page(page, chunk)
+            # Convert bytes to list of integers for PN532 library
+            chunk_list = list(chunk)
+            result = write_page(page, chunk_list)
             if result is False:
                 logger.error(f"Failed to write page {page}")
                 return False
