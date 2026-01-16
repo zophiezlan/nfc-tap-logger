@@ -20,7 +20,7 @@ from tap_station.nfc_reader import NFCReader, MockNFCReader
 class CardInitializer:
     """Initialize NFC cards with sequential token IDs"""
 
-    def __init__(self, start_id: int = 1, end_id: int = 100, mock: bool = False):
+    def __init__(self, start_id: int = 1, end_id: int = 100, mock: bool = False, auto_mode: bool = False):
         """
         Initialize card initializer
 
@@ -28,10 +28,12 @@ class CardInitializer:
             start_id: Starting token ID
             end_id: Ending token ID
             mock: Use mock NFC reader
+            auto_mode: If True, automatically proceed between cards (no user confirmation)
         """
         self.start_id = start_id
         self.end_id = end_id
         self.current_id = start_id
+        self.auto_mode = auto_mode
 
         # Initialize NFC reader
         if mock:
@@ -52,10 +54,22 @@ class CardInitializer:
         print(f"Card Initialization")
         print(f"{'=' * 60}")
         print(f"Will initialize {total_cards} cards (ID {self.start_id:03d} to {self.end_id:03d})")
-        print(f"\nInstructions:")
-        print(f"  1. Tap each card on the NFC reader")
-        print(f"  2. Wait for confirmation beep/message")
-        print(f"  3. Remove card and tap next one")
+
+        if self.auto_mode:
+            print(f"\nMode: AUTOMATIC (will proceed between cards automatically)")
+            print(f"\nInstructions:")
+            print(f"  1. Tap card on the NFC reader")
+            print(f"  2. Wait for confirmation message")
+            print(f"  3. Remove card when prompted")
+            print(f"  4. System will wait 3 seconds before next card")
+        else:
+            print(f"\nMode: MANUAL (will wait for confirmation between cards)")
+            print(f"\nInstructions:")
+            print(f"  1. Tap card on the NFC reader")
+            print(f"  2. Wait for confirmation message")
+            print(f"  3. Remove card when prompted")
+            print(f"  4. Press Enter when ready with next card")
+
         print(f"\nPress Ctrl+C to stop at any time\n")
 
         input("Press Enter to start...")
@@ -78,18 +92,18 @@ class CardInitializer:
         Args:
             token_id: Token ID to write (e.g., "001")
         """
-        print(f"\n[{self.current_id}/{self.end_id}] Waiting for card (Token ID: {token_id})...", end='', flush=True)
+        print(f"\n[{self.current_id}/{self.end_id}] Waiting for card (Token ID: {token_id})...")
 
-        # Wait for card
+        # Wait for card with no timeout
         result = self.nfc.wait_for_card(timeout=None)
 
         if not result:
-            print(" TIMEOUT")
+            print("  ✗ TIMEOUT (no card detected)")
             self.failed_cards.append(token_id)
             return
 
         uid, _ = result
-        print(f" Card detected (UID: {uid})")
+        print(f"  ✓ Card detected (UID: {uid})")
 
         # Write token ID to card
         # Note: In current implementation, we use UID as token_id
@@ -108,15 +122,35 @@ class CardInitializer:
                 'uid': uid,
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
             })
-            self.current_id += 1
 
             # Save mapping to file
             self._save_mapping()
 
-            # Wait for card removal
-            print("  Remove card to continue...", end='', flush=True)
-            time.sleep(2)  # Give user time to remove card
-            print(" OK")
+            # Wait for card removal with actual detection
+            print("  Please remove card...", end='', flush=True)
+            removed = self.nfc.wait_for_card_removal(timeout=15.0)
+
+            if removed:
+                print(" OK ✓")
+
+                # Reset reader to clear state
+                self.nfc.reset_reader()
+
+                # Give extra time for physical handling and reader reset
+                if self.auto_mode:
+                    # In auto mode, wait 3 seconds then proceed
+                    print("  Waiting 3 seconds before next card...")
+                    time.sleep(3)
+                else:
+                    # In manual mode, wait for user confirmation
+                    input("  Press Enter when ready with next card...")
+
+                self.current_id += 1
+
+            else:
+                print(" TIMEOUT (card still present)")
+                print("  ⚠ Card was not removed in time, skipping...")
+                self.failed_cards.append(token_id)
 
         else:
             print(" FAILED ✗")
@@ -175,6 +209,11 @@ def main():
         action='store_true',
         help='Use mock NFC reader for testing'
     )
+    parser.add_argument(
+        '--auto',
+        action='store_true',
+        help='Automatic mode: proceed between cards without user confirmation'
+    )
 
     args = parser.parse_args()
 
@@ -187,7 +226,8 @@ def main():
         initializer = CardInitializer(
             start_id=args.start,
             end_id=args.end,
-            mock=args.mock
+            mock=args.mock,
+            auto_mode=args.auto
         )
         initializer.run()
         return 0
