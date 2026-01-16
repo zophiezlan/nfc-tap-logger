@@ -360,9 +360,15 @@ class NFCReader:
         page = start_page
         for offset in range(0, len(padded), 4):
             chunk = padded[offset : offset + 4]
-            # Convert bytes to list of integers for PN532 library
-            chunk_list = list(chunk)
-            result = write_page(page, chunk_list)
+            # Use bytearray to match pn532pi write expectations
+            chunk_bytes = bytearray(chunk)
+            try:
+                result = write_page(page, chunk_bytes)
+            except TypeError as exc:
+                logger.warning(
+                    "WritePage rejected bytearray payload; retrying with list: %s", exc
+                )
+                result = write_page(page, list(chunk))
             if result is False:
                 logger.error(f"Failed to write page {page}")
                 return False
