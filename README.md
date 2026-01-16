@@ -1,257 +1,241 @@
 # NFC Tap Logger
 
-A simple, reliable system for tracking wait times at festival drug checking services using NFC tap stations.
+**A simple, reliable system for tracking wait times at festival harm reduction services using NFC tap stations.**
 
-## Overview
+Two tap stations measure queue flow: participants tap their NFC card when joining the queue and again when exiting. The system logs timestamps to calculate wait times, throughput, and service metrics.
 
-This system logs NFC card taps at two stations (queue join and exit) to measure wait times and throughput at harm reduction events. It's designed to be:
+**Designed for:** Festival peer workers who need a dead-simple, network-free system that runs all day on battery power.
 
-- **Reliable**: Runs for 8+ hours on battery, auto-restarts on failure, crash-resistant database
-- **Simple**: Dead simple peer workflow, no network required, quick setup
-- **Maintainable**: Clean Python code, well-documented, easy to modify
+## Why This Exists
 
-## 🆕 What's New (v1.1)
+Drug checking services at festivals need data to optimize flow, measure impact, and report to funders—but currently rely on manual estimates. This system provides accurate metrics with minimal technical burden on peer workers operating in chaotic, outdoor environments.
 
-Three new features make deployment even easier:
+**Key metrics:**
 
-1. **Visual Setup Guide** (`docs/VISUAL_SETUP_GUIDE.md`) - Detailed wiring diagrams and photo placeholders
-2. **NFC Tools App Integration** - Participants can check status with their phones
-3. **Health Check & Web Status** - Monitor stations remotely, show live status
+- Median & 90th percentile wait times
+- Hourly throughput
+- Abandonment rate (joined but didn't complete)
 
-See `docs/NEW_FEATURES.md` for full details!
+## Quick Links
 
-## Quick Start
+- **🚀 [Setup Guide](docs/SETUP.md)** - Hardware wiring & software installation
+- **📱 [Mobile App Guide](docs/MOBILE.md)** - Use Android phones instead of Raspberry Pis
+- **📋 [Operations Guide](docs/OPERATIONS.md)** - Day-of-event workflow for peers & operators
+- **🔧 [Troubleshooting](docs/TROUBLESHOOTING.md)** - Fix common issues
+- **💻 [Contributing](CONTRIBUTING.md)** - For developers
 
-### Prefer phones over Raspberry Pis?
+## System Overview
 
-You can now run the tap stations entirely on NFC-capable Android phones:
+### Hardware (Raspberry Pi version)
 
-- Launch the PWA in `mobile_app/` with `python -m http.server 8000 --directory mobile_app`
-- Open the URL on an Android phone (Chrome/Edge) and tap **Start NFC scanning**
-- Export JSONL/CSV and ingest with `python scripts/ingest_mobile_batch.py --input mobile-export.jsonl`
+- 2× Raspberry Pi Zero 2 W
+- 2× PN532 NFC readers (I2C)
+- 100× NTAG215 NFC cards
+- 2× USB-C power banks
+- Optional: Buzzers for audio feedback
 
-See `docs/MOBILE_APP_SETUP.md` and `docs/MOBILE_ONLY_VERSION.md` for the full mobile workflow.
+### Hardware (Mobile version)
 
-### 1. Hardware Setup
-
-**You need:**
-- Raspberry Pi Zero 2 WH
-- PN532 NFC module (I2C mode)
+- 2× Android phones with NFC (Chrome/Edge browser)
 - NTAG215 NFC cards
-- USB-C power bank
-- Optional: Piezo buzzer, LEDs
+- Laptop for data export/analysis
 
-**Wiring:**
+### Software Architecture
+
+- Python 3.9+ with `pn532pi` library
+- SQLite database (WAL mode for crash resistance)
+- Flask web server for status/health checks
+- systemd service for auto-start/restart
+
+## Quick Start (Raspberry Pi)
+
+**1. Wire the hardware**
+
 ```
-PN532        Pi GPIO
-VCC    →     3.3V (Pin 1)
-GND    →     GND (Pin 6)
-SDA    →     GPIO 2 (Pin 3)
-SCL    →     GPIO 3 (Pin 5)
-
-Buzzer (optional):
-Buzzer+ →    GPIO 17 (Pin 11)
-Buzzer- →    GND
+PN532 → Pi GPIO
+VCC   → Pin 1 (3.3V)
+GND   → Pin 6 (GND)
+SDA   → Pin 3 (GPIO 2)
+SCL   → Pin 5 (GPIO 3)
 ```
 
-### 2. Installation
-
-Clone this repository on your Raspberry Pi:
+**2. Install software**
 
 ```bash
-git clone https://github.com/yourusername/nfc-tap-logger.git
+git clone https://github.com/zophiezlan/nfc-tap-logger.git
 cd nfc-tap-logger
-```
-
-Run the installation script:
-
-```bash
 bash scripts/install.sh
-```
-
-This will:
-- Install system dependencies (Python, I2C tools, build tools)
-- Enable I2C interface
-- Create virtual environment
-- Install Python packages (pn532pi, PyYAML, RPi.GPIO, Flask, etc.)
-- Configure systemd service
-- Set up directories (data, logs, backups)
-- Create initial configuration
-
-**Important:** Reboot after installation if I2C was just enabled:
-```bash
 sudo reboot
 ```
 
-**After Installation:** Verify your setup:
-```bash
-bash scripts/verify_deployment.sh
-```
-
-**Fresh Deployment?** See the [Fresh Deployment Guide](docs/FRESH_DEPLOYMENT_GUIDE.md) for complete step-by-step instructions.
-
-**Troubleshooting I2C:** If you encounter I2C issues, see [I2C Setup Guide](docs/I2C_SETUP.md) or run:
-```bash
-bash scripts/enable_i2c.sh
-```
-
-### 3. Verify Hardware
-
-After reboot, verify everything is working:
-
-```bash
-source venv/bin/activate
-python scripts/verify_hardware.py
-```
-
-This checks:
-- I2C bus
-- PN532 reader
-- GPIO/buzzer
-- Power/battery
-- Database
-
-### 4. Configure Station
-
-Edit `config.yaml` for each Pi:
+**3. Configure station**
+Edit `config.yaml`:
 
 ```yaml
 station:
-  device_id: "station1"        # Unique per Pi: station1, station2
-  stage: "QUEUE_JOIN"          # QUEUE_JOIN or EXIT
-  session_id: "festival-2025"  # Same for all stations at event
+  device_id: "station1" # station1 or station2
+  stage: "QUEUE_JOIN" # QUEUE_JOIN or EXIT
+  session_id: "festival-2026-01"
 ```
 
-### 5. Initialize Cards
-
-Initialize 100 NFC cards with sequential token IDs:
+**4. Verify & run**
 
 ```bash
-source venv/bin/activate
-python scripts/init_cards.py --start 1 --end 100
-```
-
-Tap each card when prompted. This creates a card mapping file in `data/card_mapping.csv`.
-
-### 6. Deploy
-
-Start the tap station service:
-
-```bash
+python scripts/verify_hardware.py
 sudo systemctl start tap-station
 ```
 
-Monitor logs:
+**Need detailed instructions?** See the [Setup Guide](docs/SETUP.md).
+
+## Quick Start (Mobile App)
+
+**1. Serve the app**
 
 ```bash
-tail -f logs/tap-station.log
+python -m http.server 8000 --directory mobile_app
 ```
 
-The service will:
-- Auto-start on boot
-- Auto-restart if it crashes
-- Log all activity to `logs/tap-station.log`
-- Store events in `data/events.db`
+**2. Open on Android phone**
 
-### 7. Export Data
+- Navigate to `http://<laptop-ip>:8000`
+- Add to home screen for offline use
 
-After the event, export data to CSV:
+**3. Configure & scan**
+
+- Set session ID, stage (QUEUE_JOIN/EXIT), device ID
+- Tap "Start NFC scanning"
+- Present NFC cards to log taps
+
+**4. Export & ingest data**
 
 ```bash
-source venv/bin/activate
-python scripts/export_data.py
+# On phone: Download JSONL
+# On laptop:
+python scripts/ingest_mobile_batch.py --input mobile-export.jsonl
 ```
 
-This creates `export_YYYYMMDD_HHMMSS.csv` with all event data.
+**Need detailed instructions?** See the [Mobile Guide](docs/MOBILE.md).
 
-## Usage
+---
 
-### During Event
+## Project Features
 
-**Peer workflow:**
-1. Hand participant a card: "Tap this at each station"
-2. Person taps at Station 1 (queue join) → **BEEP**
-3. Person waits for service
-4. Person taps at Station 2 (exit) → **BEEP**
-5. Done!
+### Core Functionality
 
-**Feedback signals:**
-- 1 beep = Success
-- 2 quick beeps = Duplicate tap (already logged here)
-- 1 long beep = Error (retry)
+- **Dual-stage logging:** Track entry and exit timestamps
+- **Offline operation:** No network required
+- **Crash-resistant:** SQLite WAL mode, auto-restart service
+- **Debouncing:** Prevents duplicate taps within configurable window
+- **Audio/visual feedback:** Buzzer beeps and LEDs for user confirmation
+
+### Data Management
+
+- **SQLite database:** Reliable storage with automatic backups
+- **CSV export:** Compatible with R, Python, Excel
+- **Card mapping:** Track which physical card corresponds to which participant
+- **Session support:** Multiple events/sessions in same database
 
 ### Monitoring
 
-Check service status:
-```bash
-sudo systemctl status tap-station
-```
+- **Web status server:** HTTP endpoints for health checks
+- **Live statistics:** View tap counts and recent events
+- **Detailed logging:** Rotating log files for troubleshooting
+- **Power monitoring:** Detect under-voltage conditions
 
-View recent events:
+### Mobile Support
+
+- **Progressive Web App:** Run on Android phones with NFC
+- **Offline-first:** Works without network after initial load
+- **JSONL/CSV export:** Same data format as Pi version
+- **Hybrid deployments:** Mix Pi and mobile stations
+
+---
+
+## Usage Examples
+
+### View Station Statistics
+
 ```bash
 python -m tap_station.main --stats
 ```
 
-Check battery:
+### Monitor Service
+
 ```bash
+# Check status
+sudo systemctl status tap-station
+
+# View live logs
+tail -f logs/tap-station.log
+
+# Check power
 vcgencmd get_throttled
-# Should return: throttled=0x0
 ```
 
-### Data Analysis
+### Export & Analyze Data
 
-Load exported CSV in R:
+```bash
+# Export to CSV
+python scripts/export_data.py
 
-```r
-library(tidyverse)
+# Analyze in Python
+import pandas as pd
 
-events <- read_csv("export.csv")
+df = pd.read_csv('export_20260116_143000.csv')
 
 # Calculate wait times
-flow <- events %>%
-  pivot_wider(names_from = stage, values_from = timestamp) %>%
-  mutate(
-    wait_time = difftime(EXIT, QUEUE_JOIN, units = "mins"),
-    total_time = as.numeric(wait_time)
-  )
+pivoted = df.pivot_table(
+    values='timestamp',
+    index='token_id',
+    columns='stage'
+)
+pivoted['wait_time'] = (
+    pd.to_datetime(pivoted['EXIT']) -
+    pd.to_datetime(pivoted['QUEUE_JOIN'])
+)
 
-# Median wait time
-median(flow$total_time, na.rm = TRUE)
-
-# 90th percentile
-quantile(flow$total_time, 0.9, na.rm = TRUE)
-
-# Hourly throughput
-events %>%
-  filter(stage == "EXIT") %>%
-  mutate(hour = floor_date(timestamp, "hour")) %>%
-  count(hour)
+print(f"Median wait: {pivoted['wait_time'].median()}")
+print(f"90th percentile: {pivoted['wait_time'].quantile(0.9)}")
 ```
+
+---
 
 ## Project Structure
 
 ```
 nfc-tap-logger/
-├── tap_station/           # Main service code
-│   ├── __init__.py
-│   ├── main.py           # Entry point
-│   ├── config.py         # Configuration loader
-│   ├── database.py       # SQLite operations
-│   ├── nfc_reader.py     # PN532 wrapper
-│   └── feedback.py       # Buzzer/LED control
-├── scripts/
-│   ├── init_cards.py     # Card initialization
-│   ├── export_data.py    # CSV export
-│   ├── install.sh        # Installation script
-│   └── verify_hardware.py # Hardware verification
-├── tests/                # Unit and integration tests
-├── docs/                 # Documentation
-│   ├── CONTEXT.md        # Project background
-│   ├── REQUIREMENTS.md   # Detailed requirements
-│   ├── HARDWARE.md       # Hardware details
-│   └── WORKFLOWS.md      # User workflows
-├── data/                 # Database and card mapping
-├── logs/                 # Application logs
+├── tap_station/              # Main application
+│   ├── main.py              # Service entry point
+│   ├── config.py            # Configuration management
+│   ├── database.py          # SQLite operations
+│   ├── nfc_reader.py        # PN532 NFC interface
+│   ├── feedback.py          # Buzzer/LED control
+│   ├── web_server.py        # Flask status server
+│   └── ndef_writer.py       # NDEF writing (NFC Tools)
+├── scripts/                  # Utility scripts
+│   ├── install.sh           # Automated installation
+│   ├── verify_hardware.py   # Hardware diagnostics
+│   ├── init_cards.py        # Card initialization
+│   ├── export_data.py       # Data export
+│   ├── ingest_mobile_batch.py  # Mobile data import
+│   └── health_check.py      # Remote health monitoring
+├── mobile_app/              # Progressive Web App
+│   ├── index.html           # App interface
+│   ├── app.js               # NFC scanning logic
+│   ├── service-worker.js    # Offline support
+│   └── manifest.webmanifest # PWA manifest
+├── tests/                   # Test suite
+├── docs/                    # Documentation
+│   ├── SETUP.md            # Installation & setup
+│   ├── OPERATIONS.md       # Day-of-event guide
+│   ├── TROUBLESHOOTING.md  # Problem solving
+│   ├── MOBILE.md           # Mobile app guide
+│   └── CONTRIBUTING.md     # Developer guide
+├── data/                    # Database & mappings
+│   ├── events.db           # Main event database
+│   └── card_mapping.csv    # Card UID → Token ID
+└── logs/                    # Application logs
+    └── tap-station.log     # Rotating logs
 ├── backups/              # Database backups
 ├── config.yaml           # Configuration file
 ├── requirements.txt      # Python dependencies
@@ -265,6 +249,7 @@ nfc-tap-logger/
 Each Pi needs unique `device_id` and appropriate `stage`:
 
 **Station 1 (Queue Join):**
+
 ```yaml
 station:
   device_id: "station1"
@@ -273,6 +258,7 @@ station:
 ```
 
 **Station 2 (Exit):**
+
 ```yaml
 station:
   device_id: "station2"
@@ -300,9 +286,9 @@ Customize beep patterns (on/off times in seconds):
 
 ```yaml
 feedback:
-  beep_success: [0.1]              # Short beep
+  beep_success: [0.1] # Short beep
   beep_duplicate: [0.1, 0.05, 0.1] # Double beep
-  beep_error: [0.3]                # Long beep
+  beep_error: [0.3] # Long beep
 ```
 
 ## Testing
@@ -316,257 +302,74 @@ pytest tests/ -v
 
 Tests use mock NFC reader, so they work on any machine.
 
-Run integration tests:
+---
+
+## Common Issues
+
+**See the [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for comprehensive problem-solving.**
+
+Quick fixes:
+
+**I2C not working:**
 
 ```bash
-pytest tests/test_integration.py -v
-```
-
-## Troubleshooting
-
-### I2C Not Working / /dev/i2c-1 Not Found
-
-If you see errors like `No such file or directory: '/dev/i2c-1'`:
-
-```bash
-# Run the I2C setup script
 bash scripts/enable_i2c.sh
-```
-
-This script will:
-- Check if I2C is enabled
-- Enable I2C if needed
-- Verify the I2C device exists
-- Scan for the PN532 reader
-- Provide detailed troubleshooting if issues are found
-
-**Important:** After enabling I2C, you MUST reboot:
-```bash
 sudo reboot
 ```
 
-### PN532 Not Detected
+**PN532 not detected:**
 
 ```bash
-sudo i2cdetect -y 1
+sudo i2cdetect -y 1  # Should show device at 0x24
 ```
 
-Should show device at `0x24`. If not:
-
-- Check wiring (VCC to 3.3V, NOT 5V)
-- Verify PN532 is in I2C mode (check jumpers)
-- Try `sudo i2cdetect -y 0` (some Pis use bus 0)
-- Run `bash scripts/enable_i2c.sh` for detailed troubleshooting
-
-### Card Read Fails
-
-- Check card is NTAG215 (not other NFC type)
-- Hold card flat against reader for 2-3 seconds
-- Try different card (could be faulty)
-- Check logs: `tail -f logs/tap-station.log`
-
-### Service Won't Start
+**Service won't start:**
 
 ```bash
-sudo systemctl status tap-station
 sudo journalctl -u tap-station -n 50
 ```
 
-Common issues:
-- Config file missing or invalid
-- Database directory doesn't exist
-- py532lib not installed in venv
+**Card read fails:**
 
-### Random Reboots
+- Use NTAG215 cards
+- Hold flat for 2+ seconds
+- Check logs: `tail -f logs/tap-station.log`
 
-```bash
-vcgencmd get_throttled
-```
+---
 
-If not `0x0`:
-- Check power bank capacity
-- Use better USB cable
-- Ensure 5V 2A minimum power supply
+## License & Credits
 
-### Database Locked
+**License:** MIT - See LICENSE file
 
-If you see "database is locked" errors:
+**Built for:** NUAA harm reduction services
 
-```bash
-# Stop service
-sudo systemctl stop tap-station
+**Key dependencies:**
 
-# Check for lingering processes
-ps aux | grep python
+- [pn532pi](https://pypi.org/project/pn532pi/) - PN532 NFC library
+- [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) - GPIO control
+- [Flask](https://flask.palletsprojects.com/) - Web status server
+- [ndeflib](https://ndeflib.readthedocs.io/) - NDEF writing
 
-# Kill if needed
-killall python3
+---
 
-# Restart
-sudo systemctl start tap-station
-```
+## Version History
 
-## Development
+**v1.1 (Current)**
 
-### Running Locally
+- Mobile Progressive Web App support
+- Web status server with health endpoints
+- NDEF writing for NFC Tools integration
+- Improved hardware verification
+- Mobile data ingest script
 
-Test on your laptop without hardware:
+**v1.0**
 
-```bash
-python -m tap_station.main --config config.yaml --mock-nfc
-```
-
-This uses mock NFC reader for testing.
-
-### Adding New Features
-
-The code is modular:
-
-- **New stages**: Just add to `config.yaml`, no code changes needed
-- **New feedback patterns**: Update `config.yaml`
-- **New GPIO pins**: Update `config.yaml`
-- **Custom database schema**: Modify `database.py`
-- **NDEF writing**: Enhance `nfc_reader.py`
-
-### Code Style
-
-```bash
-# Format code
-black tap_station/ tests/ scripts/
-
-# Lint
-flake8 tap_station/ tests/ scripts/
-```
-
-## Advanced Usage
-
-### Multiple Stages
-
-Track more than 2 stages by adding more stations:
-
-```yaml
-# Station 3: Consult start
-station:
-  device_id: "station3"
-  stage: "CONSULT_START"
-
-# Station 4: Sample registered
-station:
-  device_id: "station4"
-  stage: "SAMPLE_REGISTERED"
-```
-
-### Remote Monitoring
-
-If on same WiFi network:
-
-```bash
-ssh pi@raspberrypi.local
-tail -f ~/nfc-tap-logger/logs/tap-station.log
-```
-
-### Database Backup
-
-Automatic backup on shutdown:
-
-```bash
-sudo systemctl stop tap-station
-cp data/events.db backups/events_$(date +%Y%m%d).db
-```
-
-Or set up periodic backups with cron:
-
-```bash
-crontab -e
-
-# Backup every hour
-0 * * * * cp ~/nfc-tap-logger/data/events.db ~/nfc-tap-logger/backups/events_$(date +\%Y\%m\%d_\%H).db
-```
-
-## Hardware Notes
-
-### Power Consumption
-
-- Pi Zero 2 W: ~200-300mA average (~1.5W)
-- 10,000mAh power bank = ~20-30 hours runtime
-- More than enough for 8-hour festival day
-
-### Battery Life Tips
-
-Disable WiFi/Bluetooth to save power:
-
-```bash
-sudo rfkill block wifi
-sudo rfkill block bluetooth
-```
-
-Add to `/etc/rc.local` for auto-disable on boot.
-
-### Weatherproofing
-
-Minimal setup:
-- Ziplock bag over Pi/reader
-- "TAP HERE" label on bag
-
-Better setup:
-- Small weatherproof box
-- Mount PN532 on lid (accessible)
-- Cable gland for power
-
-## Support & Contributing
-
-### Documentation
-
-See `docs/` folder for detailed information:
-
-**Getting Started:**
-- `FRESH_DEPLOYMENT_GUIDE.md`: Complete guide for fresh Raspberry Pi setup
-- `POST_INSTALL_CHECKLIST.md`: Verification checklist after installation
-- `QUICKSTART.md`: 15-minute quick start guide
-- `HARDWARE.md`: Hardware specs and wiring diagrams
-
-**Troubleshooting:**
-- `I2C_SETUP.md`: I2C setup and troubleshooting guide
-- `TROUBLESHOOTING_FLOWCHART.md`: Step-by-step problem solving
-
-**Additional Info:**
-- `CONTEXT.md`: Why this exists
-- `REQUIREMENTS.md`: What it needs to do
-- `WORKFLOWS.md`: How people use it
-
-### Issues
-
-For bugs or feature requests, open an issue on GitHub.
-
-### Contributing
-
-Pull requests welcome! Please:
-- Follow existing code style
-- Add tests for new features
-- Update documentation
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Credits
-
-Built for NUAA drug checking services.
-
-Uses:
-- [py532lib](https://github.com/HubertD/py532lib) - PN532 NFC library
-- [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) - Raspberry Pi GPIO
-
-## Changelog
-
-### v1.0.0 (2025-06-15)
-
-Initial release:
-- Two-station tap logging (queue join + exit)
-- SQLite database with WAL mode
+- Initial release
+- Dual-station tap logging
+- SQLite with WAL mode
 - Buzzer/LED feedback
-- Card initialization script
-- CSV export
-- systemd service
-- Hardware verification
-- Comprehensive tests
+- systemd service with auto-restart
+
+---
+
+**Questions?** Check the docs or open a GitHub issue. Happy logging! 🎉
