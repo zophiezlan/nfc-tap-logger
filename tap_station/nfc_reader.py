@@ -44,14 +44,28 @@ class NFCReader:
     def _setup_reader(self):
         """Initialize PN532 reader"""
         try:
-            from py532lib.i2c import Pn532_i2c
-            from py532lib.mifare import MIFARE
+            from pn532pi import Pn532, Pn532I2c
 
-            self.pn532 = Pn532_i2c(i2c_bus=self.i2c_bus, address=self.address)
+            # Initialize I2C interface
+            i2c = Pn532I2c(self.i2c_bus)
+            self.pn532 = Pn532(i2c)
+
+            # Begin communication
+            self.pn532.begin()
+
+            # Get firmware version to verify communication
+            versiondata = self.pn532.getFirmwareVersion()
+            if not versiondata:
+                raise RuntimeError("Failed to communicate with PN532")
+
             logger.info(f"PN532 reader initialized on I2C bus {self.i2c_bus}, address 0x{self.address:02x}")
+            logger.info(f"Firmware version: {(versiondata >> 24) & 0xFF}.{(versiondata >> 16) & 0xFF}")
+
+            # Configure for reading MiFare cards
+            self.pn532.SAMConfig()
 
         except ImportError as e:
-            logger.error(f"py532lib not installed: {e}")
+            logger.error(f"pn532pi not installed: {e}")
             raise
 
         except Exception as e:
@@ -69,11 +83,13 @@ class NFCReader:
         """
         for attempt in range(self.retries):
             try:
-                # Try to read card
-                uid_bytes = self.pn532.read_mifare().get_data()
+                # Try to read card using PN532 readPassiveTargetID
+                # Returns a list [success, uid] where uid is a bytearray
+                success, uid_bytes = self.pn532.readPassiveTargetID(cardbaudrate=0x00)
 
-                if uid_bytes:
-                    uid_hex = uid_bytes.hex().upper()
+                if success and uid_bytes:
+                    # Convert bytearray to hex string
+                    uid_hex = ''.join(['{:02X}'.format(b) for b in uid_bytes])
 
                     # Check debounce
                     if self._should_debounce(uid_hex):
@@ -160,9 +176,9 @@ class NFCReader:
         """
         try:
             # Read card first to ensure it's present
-            uid_bytes = self.pn532.read_mifare().get_data()
+            success, uid_bytes = self.pn532.readPassiveTargetID(cardbaudrate=0x00)
 
-            if not uid_bytes:
+            if not success or not uid_bytes:
                 logger.error("No card present to write")
                 return False
 

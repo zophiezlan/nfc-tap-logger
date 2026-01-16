@@ -137,7 +137,7 @@ class NFCCardInitializer:
         message = ndef.Message(records)
 
         # Write to card
-        # Note: Requires enhanced py532lib with NDEF support
+        # Note: Requires enhanced pn532pi with NDEF support
         # Or use a different library like nfcpy
 
         print(f"✓ Wrote Token {token_id} with URL")
@@ -338,7 +338,7 @@ def write_ndef_url(self, url: str) -> bool:
     """
     try:
         # This is pseudocode - actual implementation depends on library
-        # py532lib doesn't support NDEF writing out of the box
+        # pn532pi doesn't support NDEF writing out of the box
         # You'd need to use nfcpy or implement NDEF formatting manually
 
         # NDEF URL record format (simplified):
@@ -409,7 +409,7 @@ def write_ndef_url(self, url: str) -> bool:
 
 ## Next Steps If You Decide to Build It
 
-1. Research NDEF libraries (nfcpy vs py532lib)
+1. Research NDEF libraries (nfcpy vs pn532pi)
 2. Test NDEF writing on a few cards
 3. Build simple status web page
 4. Deploy Flask app (Pi or cloud)

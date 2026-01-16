@@ -2,7 +2,7 @@
 # Python 3.9+ required
 
 # NFC Reader
-py532lib==0.3.0
+pn532pi==1.7
 
 # Configuration
 PyYAML==6.0.1

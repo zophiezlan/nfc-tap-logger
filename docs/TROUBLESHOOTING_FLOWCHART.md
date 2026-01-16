@@ -60,7 +60,7 @@ START: sudo systemctl start tap-station fails
     │   └─ FIX: cp config.yaml.example config.yaml
     │           Edit with your station info
     │
-    ├─ "No module named 'py532lib'"
+    ├─ "No module named 'pn532pi'"
     │   └─ FIX: source venv/bin/activate
     │           pip install -r requirements.txt
     │

@@ -33,7 +33,7 @@ sudo i2cdetect -y 1
 # Should show device at 0x24
 ```
 
-**Library:** Use `py532lib` (works well with I2C mode)
+**Library:** Use `pn532pi` (works well with I2C mode)
 
 ## NTAG215 Cards
 
@@ -116,10 +116,14 @@ Before each deployment:
 2. **Card Read Test:**
 ```python
    # Quick test script
-   from py532lib.i2c import Pn532_i2c
-   pn532 = Pn532_i2c(address=0x24)
-   uid = pn532.read_mifare().get_data()
-   print(f"UID: {uid.hex()}")
+   from pn532pi import Pn532, Pn532I2c
+   i2c = Pn532I2c(1)
+   pn532 = Pn532(i2c)
+   pn532.begin()
+   pn532.SAMConfig()
+   success, uid = pn532.readPassiveTargetID(cardbaudrate=0x00)
+   if success:
+       print(f"UID: {''.join(['{:02X}'.format(b) for b in uid])}")
 ```
 
 3. **Battery Check:**
