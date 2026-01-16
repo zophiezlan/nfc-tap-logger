@@ -81,8 +81,20 @@ station:
 **4. Verify & run**
 
 ```bash
-python scripts/verify_hardware.py
+bash scripts/verify_deployment.sh
 sudo systemctl start tap-station
+```
+
+**5. Dev/Testing reset**
+
+If scripts hang or freeze (common during development):
+
+```bash
+# Quick reset (no sudo)
+python3 scripts/dev_reset.py
+
+# Full reset with I2C bus reset (needs sudo)
+sudo bash scripts/dev_reset.sh
 ```
 
 **Need detailed instructions?** See the [Setup Guide](docs/SETUP.md).

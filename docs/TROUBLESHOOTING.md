@@ -23,6 +23,57 @@ Problem: Station not working
 
 ---
 
+## Development / Testing Issues
+
+### Problem: Scripts Hang or Freeze
+
+**Symptoms:**
+
+- `verify_deployment.sh` hangs at I2C check
+- `init_cards.py` freezes when waiting for card
+- Can't run multiple scripts simultaneously
+
+**Cause:**
+Service or another process is holding the NFC reader
+
+**Quick Fix - Use Dev Reset:**
+
+```bash
+# Option 1: Quick Python reset (no sudo)
+python3 scripts/dev_reset.py
+
+# Option 2: Full reset with I2C bus reset (needs sudo)
+sudo bash scripts/dev_reset.sh
+```
+
+**Manual Fix:**
+
+```bash
+# Stop the service
+sudo systemctl stop tap-station
+
+# Kill any hanging processes
+pkill -f "tap_station/main.py"
+pkill -f "scripts/init_cards"
+
+# Reset I2C bus (needs sudo)
+sudo modprobe -r i2c_dev
+sudo modprobe i2c_dev
+
+# Verify PN532 is detected
+i2cdetect -y 1
+```
+
+**What dev_reset.sh does:**
+
+- Stops tap-station service
+- Kills all Python processes using NFC reader
+- Clears lock/PID files
+- Resets I2C bus
+- Optionally clears logs and test data
+
+---
+
 ## I2C / NFC Reader Issues
 
 ### Problem: "PN532 not detected at 0x24"
