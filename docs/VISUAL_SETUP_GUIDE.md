@@ -1,4 +1,5 @@
 # Visual Setup Guide
+
 ## Hardware Assembly with Diagrams
 
 > **Note:** This guide includes detailed diagrams. For best results, add photos of your actual hardware setup where indicated with `[PHOTO NEEDED]`.
@@ -86,6 +87,7 @@ Buzzer                         Raspberry Pi Zero 2 W
 ```
 
 **Notes:**
+
 - Buzzer polarity matters: + to GPIO17, - to GND
 - If buzzer is too quiet, use a transistor circuit
 - Can use any GPIO pin, just update config.yaml
@@ -119,6 +121,7 @@ Red LED (Error)
 ```
 
 **Notes:**
+
 - Always use resistors with LEDs (220Ω or 330Ω)
 - Longer LED leg is + (anode)
 - Shorter LED leg is - (cathode)
@@ -132,6 +135,7 @@ Red LED (Error)
 ### Step 1: Prepare the Pi (5 min)
 
 1. **Insert MicroSD card** with Raspberry Pi OS
+
    - Already flashed and ready to boot
    - Should have SSH enabled
 
@@ -158,12 +162,15 @@ This sets I2C mode. SPI mode is different!
 **Now connect wires in this order:**
 
 1. **GND (Black wire):** PN532 GND → Pi Pin 6
+
    - Connect ground first (safety)
 
 2. **VCC (Red wire):** PN532 VCC → Pi Pin 1 (3.3V)
+
    - NOT 5V! Use pin 1 (3.3V)
 
 3. **SDA (Blue wire):** PN532 SDA → Pi Pin 3 (GPIO2)
+
    - Data line
 
 4. **SCL (Yellow wire):** PN532 SCL → Pi Pin 5 (GPIO3)
@@ -172,6 +179,7 @@ This sets I2C mode. SPI mode is different!
 `[PHOTO NEEDED: Each wire being connected, shown in sequence]`
 
 **Final check before power:**
+
 - [ ] VCC → 3.3V (Pin 1) ✓
 - [ ] GND → GND (Pin 6) ✓
 - [ ] SDA → GPIO2 (Pin 3) ✓
@@ -188,14 +196,16 @@ This sets I2C mode. SPI mode is different!
 
 ### Step 4: Physical Mounting (5 min)
 
-**Option A: Desktop Setup (Quick)**
+#### Option A: Desktop Setup (Quick)
+
 - Tape PN532 to clipboard or cardboard
 - Label "TAP HERE" clearly
 - Pi sits underneath or beside
 
 `[PHOTO NEEDED: Desktop setup with tape mounting]`
 
-**Option B: Weatherproof Box (Better)**
+#### Option B: Weatherproof Box (Better)
+
 - Small plastic box (tupperware works)
 - PN532 mounted on lid (accessible from outside)
 - Pi inside box
@@ -204,7 +214,8 @@ This sets I2C mode. SPI mode is different!
 
 `[PHOTO NEEDED: Weatherproof box assembly]`
 
-**Option C: Minimal (Festival Tested)**
+#### Option C: Minimal (Festival Tested)
+
 - Ziplock bag over entire setup
 - "TAP HERE" label on bag
 - Surprisingly effective!
@@ -228,6 +239,7 @@ This sets I2C mode. SPI mode is different!
 ### 1. Check Pi is Booting
 
 **Look for:**
+
 - Green LED on Pi flashing (disk activity)
 - After 30 seconds, LED should settle to occasional flashes
 - If red LED only (no green), check SD card
@@ -249,6 +261,7 @@ sudo i2cdetect -y 1
 ```
 
 **Expected output:**
+
 ```
      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 00:          -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -274,6 +287,7 @@ python scripts/verify_hardware.py
 ```
 
 When prompted, tap an NFC card. Should see:
+
 ```
 ✓ Card read: UID=04A32FB2C15080, Token=04A32FB2
 ```
@@ -381,6 +395,7 @@ NTAG215 cards typically say "NTAG215" or "504 bytes" on packaging.
 ```
 
 **Hold card:**
+
 - Flat against PN532 antenna
 - Centered over sweet spot
 - 1-2 seconds for read
@@ -406,6 +421,7 @@ NTAG215 cards typically say "NTAG215" or "504 bytes" on packaging.
 ### Good Power Bank Choice
 
 **Look for:**
+
 - ✓ 10,000mAh or higher
 - ✓ 5V 2A output minimum
 - ✓ Quality brand (Anker, RAVPower, etc.)
@@ -416,6 +432,7 @@ NTAG215 cards typically say "NTAG215" or "504 bytes" on packaging.
 ### Poor Power Setup
 
 **Avoid:**
+
 - ❌ Cheap, thin USB cables (causes voltage drop)
 - ❌ Long USB cables (>1 meter)
 - ❌ Old/worn power banks
@@ -431,6 +448,7 @@ vcgencmd get_throttled
 **Bad:** `throttled=0x50000` (under-voltage detected!)
 
 If under-voltage:
+
 1. Try different USB cable (thicker)
 2. Try different power bank
 3. Check power bank is fully charged
@@ -464,6 +482,7 @@ If under-voltage:
 ### Cable Labels
 
 Use tape and sharpie to label:
+
 - "Station 1 - PN532"
 - "Station 1 - Power"
 - "Station 2 - PN532"
@@ -476,6 +495,7 @@ Prevents mix-ups during setup!
 ### Station Labels
 
 Print and laminate:
+
 - "STATION 1 - QUEUE JOIN - TAP HERE"
 - "STATION 2 - EXIT - TAP HERE"
 
@@ -488,15 +508,18 @@ Make it obvious where to tap!
 ## ⏱️ Setup Time Expectations
 
 **First time:** 30-45 minutes
+
 - Learning where everything goes
 - Double-checking connections
 - Verifying it works
 
 **Second time:** 15-20 minutes
+
 - Familiar with layout
 - Labeled cables help
 
 **Experienced:** 10 minutes
+
 - Muscle memory
 - Quick verification
 
@@ -511,13 +534,13 @@ Make it obvious where to tap!
 3. **Test card tap** (1 min each)
 4. **Check database logs** (1 min)
 
-```bash
-# After testing both stations
-python -m tap_station.main --stats
+   ```bash
+   # After testing both stations
+   python -m tap_station.main --stats
 
-Expected:
-  Total Events: 2 (one from each station)
-```
+   Expected:
+   Total Events: 2 (one from each station)
+   ```
 
 5. **Let run for 1 hour** (verify stability)
    - Check for crashes
@@ -552,6 +575,7 @@ After building one station, they can build the second in 10 min!
 ## 📞 Quick Reference
 
 **PN532 Wiring:**
+
 ```
 VCC → Pin 1 (3.3V)   RED
 GND → Pin 6 (GND)    BLACK
@@ -560,20 +584,23 @@ SCL → Pin 5 (GPIO3)  YELLOW
 ```
 
 **Verify I2C:**
+
 ```bash
 sudo i2cdetect -y 1  # Should show 24
 ```
 
 **Test Tap:**
+
 ```bash
 python scripts/verify_hardware.py
 ```
 
 ---
 
-## 🎉 Success!
+## 🎉 Success
 
 If you've followed this guide, you should now have:
+
 - ✅ Properly wired PN532 to Pi
 - ✅ I2C detection working
 - ✅ Cards reading successfully

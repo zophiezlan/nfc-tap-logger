@@ -11,6 +11,7 @@ bash scripts/enable_i2c.sh
 ```
 
 This script will:
+
 - Check if I2C is enabled in the config
 - Enable I2C if needed
 - Verify the I2C device exists
@@ -22,12 +23,14 @@ This script will:
 ### What is I2C?
 
 I2C (Inter-Integrated Circuit) is a communication protocol that allows the Raspberry Pi to talk to the PN532 NFC reader. It uses two wires:
+
 - **SDA** (Serial Data) - for data transfer
 - **SCL** (Serial Clock) - for timing
 
 ### I2C Device Files
 
 When I2C is enabled, Linux creates a device file:
+
 - `/dev/i2c-1` on most Raspberry Pi models (Pi Zero 2, Pi 3, Pi 4)
 - `/dev/i2c-0` on some older models (original Pi, Pi Zero)
 
@@ -40,6 +43,7 @@ If these files don't exist, I2C is not enabled.
 I2C must be enabled in the Raspberry Pi boot configuration:
 
 1. Find your config file:
+
    ```bash
    # On newer Raspberry Pi OS (Bookworm and later)
    ls /boot/firmware/config.txt
@@ -49,6 +53,7 @@ I2C must be enabled in the Raspberry Pi boot configuration:
    ```
 
 2. Edit the config file:
+
    ```bash
    # For newer OS
    sudo nano /boot/firmware/config.txt
@@ -58,6 +63,7 @@ I2C must be enabled in the Raspberry Pi boot configuration:
    ```
 
 3. Add this line (if not already present):
+
    ```
    dtparam=i2c_arm=on
    ```
@@ -67,11 +73,13 @@ I2C must be enabled in the Raspberry Pi boot configuration:
 ### Step 2: Load I2C Kernel Module
 
 1. Load the module immediately:
+
    ```bash
    sudo modprobe i2c_dev
    ```
 
 2. Make it load automatically on boot:
+
    ```bash
    echo "i2c-dev" | sudo tee -a /etc/modules
    ```
@@ -105,6 +113,7 @@ ls -la /dev/i2c*
 ```
 
 Should show:
+
 ```
 crw-rw---- 1 root i2c 89, 1 Jan 16 10:00 /dev/i2c-1
 ```
@@ -118,6 +127,7 @@ groups
 ```
 
 Should include `i2c` in the list. If not:
+
 - Run: `sudo usermod -a -G i2c $USER`
 - Log out and back in
 - Check again
@@ -135,6 +145,7 @@ sudo i2cdetect -y 1
 ```
 
 Should show output like:
+
 ```
      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 00:          -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -163,11 +174,13 @@ All I2C checks should pass.
 ### Problem: /dev/i2c-1 doesn't exist after reboot
 
 **Possible causes:**
+
 1. I2C not enabled in config.txt
 2. Wrong config file edited
 3. Typo in config file
 
 **Solutions:**
+
 1. Run `bash scripts/enable_i2c.sh` - it will check and fix
 2. Verify the config line exactly: `dtparam=i2c_arm=on` (no spaces around =)
 3. Check you edited the correct config file for your OS version
@@ -177,12 +190,14 @@ All I2C checks should pass.
 **Cause:** User not in i2c group
 
 **Solution:**
+
 ```bash
 sudo usermod -a -G i2c $USER
 # Then log out and back in (required!)
 ```
 
 Verify:
+
 ```bash
 groups | grep i2c
 ```
@@ -190,6 +205,7 @@ groups | grep i2c
 ### Problem: PN532 not detected (no 24 in i2cdetect)
 
 **Possible causes:**
+
 1. Wiring incorrect
 2. PN532 not in I2C mode
 3. Loose connections
@@ -198,6 +214,7 @@ groups | grep i2c
 **Solutions:**
 
 1. **Check wiring:**
+
    ```
    PN532 Pin    →    Raspberry Pi Pin
    VCC          →    Pin 1 (3.3V) - NOT 5V!
@@ -207,16 +224,19 @@ groups | grep i2c
    ```
 
 2. **Check PN532 mode:**
+
    - Look for jumpers or switches on the PN532 board
    - Must be set to I2C mode (not SPI or UART)
    - Consult your PN532 module documentation
 
 3. **Try alternate I2C bus:**
+
    ```bash
    sudo i2cdetect -y 0
    ```
 
    If you see `24` on bus 0, update your configuration:
+
    - Edit `config.yaml`: set `i2c_bus: 0`
    - Or update code to use bus 0
 
@@ -230,6 +250,7 @@ groups | grep i2c
 **Error:** "Failed to communicate with PN532"
 
 **Possible causes:**
+
 1. PN532 detected but not responding
 2. Faulty PN532 module
 3. Power issues
@@ -237,6 +258,7 @@ groups | grep i2c
 **Solutions:**
 
 1. **Check power:**
+
    ```bash
    vcgencmd get_throttled
    ```
@@ -244,6 +266,7 @@ groups | grep i2c
    Should return `throttled=0x0`. If not, power supply issue.
 
 2. **Check PN532 power LED:**
+
    - Most PN532 modules have a power indicator LED
    - If not lit, check VCC/GND connections
 
@@ -254,6 +277,7 @@ groups | grep i2c
 **Cause:** I2C enabled but no devices connected or wrong bus
 
 **Solutions:**
+
 1. Try the other bus: `sudo i2cdetect -y 0`
 2. Check all wiring connections
 3. Verify PN532 is powered (check LED if present)
@@ -323,6 +347,7 @@ dtparam=i2c_arm=on
 ### Debugging Connection Issues
 
 1. **Physical Layer:** Wiring and power
+
    ```bash
    # Check device exists
    ls /dev/i2c*
@@ -332,6 +357,7 @@ dtparam=i2c_arm=on
    ```
 
 2. **Bus Layer:** I2C communication
+
    ```bash
    # Scan for devices
    sudo i2cdetect -y 1
@@ -340,6 +366,7 @@ dtparam=i2c_arm=on
    ```
 
 3. **Device Layer:** PN532 firmware
+
    ```bash
    # Test with Python
    source venv/bin/activate
@@ -351,16 +378,19 @@ Work through each layer systematically.
 ## Need More Help?
 
 1. **Run the troubleshooting script:**
+
    ```bash
    bash scripts/enable_i2c.sh
    ```
 
 2. **Check other documentation:**
+
    - [Hardware Guide](HARDWARE.md) - Wiring details
    - [Troubleshooting Flowchart](TROUBLESHOOTING_FLOWCHART.md) - Step-by-step debugging
    - [README](../README.md) - General setup
 
 3. **Collect diagnostic information:**
+
    ```bash
    # System info
    cat /proc/device-tree/model
@@ -379,16 +409,16 @@ Work through each layer systematically.
 
 ## Quick Reference
 
-| Command | Purpose |
-|---------|---------|
-| `bash scripts/enable_i2c.sh` | Automated I2C setup and troubleshooting |
-| `ls /dev/i2c*` | Check if I2C device exists |
-| `lsmod \| grep i2c` | Check if I2C kernel module loaded |
-| `groups` | Check if user is in i2c group |
-| `sudo i2cdetect -y 1` | Scan I2C bus 1 for devices |
-| `sudo i2cdetect -y 0` | Scan I2C bus 0 for devices |
-| `vcgencmd get_throttled` | Check for power issues |
-| `python scripts/verify_hardware.py` | Full hardware verification |
+| Command                             | Purpose                                 |
+| ----------------------------------- | --------------------------------------- |
+| `bash scripts/enable_i2c.sh`        | Automated I2C setup and troubleshooting |
+| `ls /dev/i2c*`                      | Check if I2C device exists              |
+| `lsmod \| grep i2c`                 | Check if I2C kernel module loaded       |
+| `groups`                            | Check if user is in i2c group           |
+| `sudo i2cdetect -y 1`               | Scan I2C bus 1 for devices              |
+| `sudo i2cdetect -y 0`               | Scan I2C bus 0 for devices              |
+| `vcgencmd get_throttled`            | Check for power issues                  |
+| `python scripts/verify_hardware.py` | Full hardware verification              |
 
 ---
 

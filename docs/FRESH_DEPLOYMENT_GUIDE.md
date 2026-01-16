@@ -7,6 +7,7 @@ Complete guide for deploying NFC Tap Logger on a brand new Raspberry Pi.
 ## 📋 Pre-Deployment Checklist
 
 ### Hardware Requirements
+
 - [ ] Raspberry Pi Zero 2 W (or Pi 4)
 - [ ] MicroSD card (8GB minimum, 16GB recommended)
 - [ ] PN532 NFC module (I2C mode)
@@ -17,6 +18,7 @@ Complete guide for deploying NFC Tap Logger on a brand new Raspberry Pi.
 - [ ] Optional: LEDs (green/red) and 220Ω resistors
 
 ### Pre-Installation Preparation
+
 - [ ] Raspberry Pi OS installed on SD card (use Raspberry Pi Imager)
 - [ ] SSH enabled on Pi (enable in imager or add `ssh` file to boot partition)
 - [ ] WiFi configured (if needed for setup)
@@ -93,6 +95,7 @@ bash scripts/install.sh
 ```
 
 The script will:
+
 - ✅ Install Python 3, pip, venv, i2c-tools, git
 - ✅ Enable I2C interface
 - ✅ Load I2C kernel modules
@@ -139,6 +142,7 @@ sudo i2cdetect -y 1
 ```
 
 Expected output:
+
 ```
      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 00:          -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -164,6 +168,7 @@ python scripts/verify_hardware.py
 ```
 
 This will check:
+
 - ✅ I2C bus exists
 - ✅ I2C kernel module loaded
 - ✅ i2c-tools installed
@@ -184,6 +189,7 @@ nano config.yaml
 ```
 
 **For Station 1 (Queue Join):**
+
 ```yaml
 station:
   device_id: "station1"
@@ -192,6 +198,7 @@ station:
 ```
 
 **For Station 2 (Exit):**
+
 ```yaml
 station:
   device_id: "station2"
@@ -211,11 +218,13 @@ python -m tap_station.main --config config.yaml
 ```
 
 You should see:
+
 ```
 Station ready - waiting for cards...
 ```
 
 Tap an NFC card and verify:
+
 - [ ] You see log output
 - [ ] Buzzer beeps (if connected)
 - [ ] No errors in output
@@ -313,6 +322,7 @@ vcgencmd get_throttled
 ### Test Card Reading
 
 Tap 5-10 different cards and verify each:
+
 - [ ] Produces one beep
 - [ ] Logs to database
 - [ ] Shows in `tail -f logs/tap-station.log`
@@ -339,6 +349,7 @@ This creates `export_YYYYMMDD_HHMMSS.csv` with all events.
 **Problem:** `/dev/i2c-1` doesn't exist
 
 **Solution:**
+
 ```bash
 bash scripts/enable_i2c.sh
 sudo reboot
@@ -347,6 +358,7 @@ sudo reboot
 **Problem:** PN532 not detected at 0x24
 
 **Check:**
+
 1. Wiring (especially VCC to 3.3V)
 2. PN532 mode switches (must be I2C)
 3. Connections are secure
@@ -355,11 +367,13 @@ sudo reboot
 ### Service Won't Start
 
 **Check logs:**
+
 ```bash
 sudo journalctl -u tap-station -n 50 --no-pager
 ```
 
 **Common issues:**
+
 - Config file missing or invalid
 - Python dependencies not installed in venv
 - Database directory doesn't exist
@@ -368,6 +382,7 @@ sudo journalctl -u tap-station -n 50 --no-pager
 ### Cards Won't Read
 
 **Check:**
+
 1. Card type (must be NTAG215)
 2. Hold card flat against reader antenna
 3. Hold for 2-3 seconds
@@ -381,6 +396,7 @@ vcgencmd get_throttled
 ```
 
 If not `0x0`:
+
 - Use better USB cable
 - Ensure power bank is charged
 - Check power bank provides 5V 2A minimum
@@ -403,11 +419,14 @@ For participants to check their status with phones:
 
 1. Uncomment `ndeflib` in `requirements.txt`
 2. Reinstall dependencies:
+
    ```bash
    source venv/bin/activate
    pip install -r requirements.txt
    ```
+
 3. Initialize cards with NDEF URLs:
+
    ```bash
    python scripts/init_cards_with_ndef.py --start 1 --end 100
    ```
@@ -421,11 +440,13 @@ See `docs/NFC_TOOLS_INTEGRATION.md` for details.
 For production deployment:
 
 ### Change Default Password
+
 ```bash
 passwd
 ```
 
 ### Disable SSH Password Login (use keys)
+
 ```bash
 sudo nano /etc/ssh/sshd_config
 # Set: PasswordAuthentication no
@@ -433,6 +454,7 @@ sudo systemctl restart ssh
 ```
 
 ### Enable Firewall
+
 ```bash
 sudo apt-get install ufw
 sudo ufw allow ssh
@@ -440,6 +462,7 @@ sudo ufw enable
 ```
 
 ### Disable Unnecessary Services
+
 ```bash
 sudo systemctl disable bluetooth
 sudo systemctl disable avahi-daemon
@@ -450,6 +473,7 @@ sudo systemctl disable avahi-daemon
 ## 📝 Deployment Day Checklist
 
 ### Before Event
+
 - [ ] Both stations configured (station1 & station2)
 - [ ] All cards initialized
 - [ ] Services enabled and running
@@ -459,12 +483,14 @@ sudo systemctl disable avahi-daemon
 - [ ] Card mapping CSV backed up
 
 ### During Event
+
 - [ ] Monitor logs periodically
 - [ ] Check battery status every 2 hours
 - [ ] Have backup cards available
 - [ ] Note any issues in log file
 
 ### After Event
+
 - [ ] Stop services: `sudo systemctl stop tap-station`
 - [ ] Export data: `python scripts/export_data.py`
 - [ ] Copy data off Pi: `scp pi@raspberrypi.local:~/nfc-tap-logger/export*.csv .`
@@ -477,7 +503,7 @@ sudo systemctl disable avahi-daemon
 
 Keep this information accessible during your event:
 
-- **Project Repository:** https://github.com/yourusername/nfc-tap-logger
+- **Project Repository:** <https://github.com/yourusername/nfc-tap-logger>
 - **Documentation:** `docs/` folder
 - **I2C Troubleshooting:** `docs/I2C_SETUP.md`
 - **Hardware Guide:** `docs/HARDWARE.md`

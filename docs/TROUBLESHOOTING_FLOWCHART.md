@@ -105,14 +105,17 @@ START: Error "No such file or directory: '/dev/i2c-1'"
 **Common I2C Issues:**
 
 1. **Just installed, never rebooted**
+
    - Solution: `sudo reboot` (required after enabling I2C)
 
 2. **/dev/i2c-0 exists but not /dev/i2c-1**
+
    - Some Pi models use bus 0
    - Update config.yaml: `i2c_bus: 0`
    - Or update code to use bus 0
 
 3. **Permission denied errors**
+
    - Add user to i2c group
    - Log out and back in (required!)
 

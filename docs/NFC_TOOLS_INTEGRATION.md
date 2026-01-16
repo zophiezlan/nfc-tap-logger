@@ -18,6 +18,7 @@ Integrate with the [NFC Tools](https://www.wakdev.com/en/apps/nfc-tools.html) ap
 Write a URL to each card that encodes the token ID.
 
 **On card initialization:**
+
 ```python
 def write_static_url(self, token_id: str) -> bool:
     """Write static URL to card"""
@@ -36,16 +37,19 @@ def write_static_url(self, token_id: str) -> bool:
 ```
 
 **When participant taps phone:**
+
 - Phone reads URL
 - Opens browser to `https://your-festival-site.com/check?token=001`
 - Simple web page shows: "Token 001 - Checked in at 2:15pm ✓"
 
 **Pros:**
+
 - Simple
 - Works with any NFC-enabled phone
 - No app required (uses browser)
 
 **Cons:**
+
 - Requires web server
 - Requires internet on participant's phone
 
@@ -56,6 +60,7 @@ def write_static_url(self, token_id: str) -> bool:
 Write status directly to card each time it's tapped.
 
 **On each tap:**
+
 ```python
 def update_card_status(self, token_id: str, stage: str) -> bool:
     """Update card with latest status"""
@@ -75,16 +80,19 @@ def update_card_status(self, token_id: str, stage: str) -> bool:
 ```
 
 **When participant taps phone:**
+
 - Phone reads text
 - NFC Tools app displays: "Token 001 - EXIT at 3:45pm"
 - No internet needed
 
 **Pros:**
+
 - Works offline
 - Instant feedback
 - Simple
 
 **Cons:**
+
 - Slower (write on each tap, not just read)
 - Wears out card faster (NTAG215 good for 100,000 writes though)
 
@@ -93,13 +101,16 @@ def update_card_status(self, token_id: str, stage: str) -> bool:
 ### Option 3: Hybrid (Best of Both)
 
 **During initialization:**
+
 - Write static URL with token ID
 
 **During taps:**
+
 - Only read UID (fast)
 - Optional: Update NDEF if time permits
 
 **When participant checks with phone:**
+
 - Reads URL
 - Web page queries database: "Where is token 001?"
 - Shows journey: "Queue 2:15pm → Exit 3:45pm (wait: 90 min)"
@@ -148,77 +159,85 @@ class NFCCardInitializer:
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Check Your Status</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        body {
-            font-family: Arial;
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 20px;
-            text-align: center;
-        }
-        .status {
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-        }
-        .checked-in { background: #d4edda; color: #155724; }
-        .waiting { background: #fff3cd; color: #856404; }
-        .complete { background: #cce5ff; color: #004085; }
+      body {
+        font-family: Arial;
+        max-width: 400px;
+        margin: 50px auto;
+        padding: 20px;
+        text-align: center;
+      }
+      .status {
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+      }
+      .checked-in {
+        background: #d4edda;
+        color: #155724;
+      }
+      .waiting {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .complete {
+        background: #cce5ff;
+        color: #004085;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>🎪 Festival Check-In</h1>
 
-    <div id="status" class="status">
-        Loading...
-    </div>
+    <div id="status" class="status">Loading...</div>
 
     <script>
-        // Get token from URL
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
+      // Get token from URL
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
 
-        // Fetch status (would query your database)
-        fetch(`/api/status/${token}`)
-            .then(r => r.json())
-            .then(data => {
-                const statusDiv = document.getElementById('status');
+      // Fetch status (would query your database)
+      fetch(`/api/status/${token}`)
+        .then((r) => r.json())
+        .then((data) => {
+          const statusDiv = document.getElementById("status");
 
-                if (data.exit) {
-                    statusDiv.className = 'status complete';
-                    statusDiv.innerHTML = `
+          if (data.exit) {
+            statusDiv.className = "status complete";
+            statusDiv.innerHTML = `
                         <h2>✅ Complete!</h2>
                         <p>Token ${token}</p>
                         <p>Joined: ${data.queue_join}</p>
                         <p>Completed: ${data.exit}</p>
                         <p><strong>Wait time: ${data.wait_time} minutes</strong></p>
                     `;
-                } else if (data.queue_join) {
-                    statusDiv.className = 'status waiting';
-                    statusDiv.innerHTML = `
+          } else if (data.queue_join) {
+            statusDiv.className = "status waiting";
+            statusDiv.innerHTML = `
                         <h2>⏱️ In Queue</h2>
                         <p>Token ${token}</p>
                         <p>Joined: ${data.queue_join}</p>
                         <p>Estimated wait: ~${data.estimated_wait} minutes</p>
                     `;
-                } else {
-                    statusDiv.className = 'status checked-in';
-                    statusDiv.innerHTML = `
+          } else {
+            statusDiv.className = "status checked-in";
+            statusDiv.innerHTML = `
                         <h2>👋 Welcome!</h2>
                         <p>Token ${token}</p>
                         <p>Tap your card at the queue station</p>
                     `;
-                }
-            })
-            .catch(err => {
-                document.getElementById('status').innerHTML =
-                    `<p>Error loading status. Please ask a volunteer.</p>`;
-            });
+          }
+        })
+        .catch((err) => {
+          document.getElementById(
+            "status"
+          ).innerHTML = `<p>Error loading status. Please ask a volunteer.</p>`;
+        });
     </script>
-</body>
+  </body>
 </html>
 ```
 
@@ -281,12 +300,14 @@ if __name__ == '__main__':
 ## Deployment Options
 
 ### Option A: Local Only (No Internet)
+
 - Write NDEF text records to cards
 - Participant taps phone → sees text
 - No server needed
 - Works offline
 
 ### Option B: Pi as Web Server
+
 - Run Flask app on one Pi
 - Creates local WiFi hotspot
 - Participants connect to WiFi
@@ -294,6 +315,7 @@ if __name__ == '__main__':
 - No internet needed
 
 ### Option C: Cloud Server
+
 - Deploy Flask app to Heroku/Vercel/etc
 - Sync data from Pi to cloud (after event or via WiFi)
 - Participant taps → opens cloud URL
@@ -306,12 +328,14 @@ if __name__ == '__main__':
 **For v1.0:** Skip it. Keep it simple.
 
 **For v1.1 (if participants ask):**
+
 1. Write static NDEF URL during card init
 2. URL points to simple status page
 3. Status page shows "Token 001 - tap at stations"
 4. After event, you can update it with results
 
 **For v2.0 (if you want real-time):**
+
 1. Pi runs Flask app
 2. Creates WiFi hotspot
 3. Participant taps → sees live status
@@ -365,12 +389,14 @@ def write_ndef_url(self, url: str) -> bool:
 
 1. **Install NFC Tools** on your phone (free)
 2. **Write a test card:**
+
    ```python
    python scripts/write_ndef_test.py --token 001
    ```
+
 3. **Tap card with phone**
 4. **App should show:**
-   - URL: https://your-site.com/check?token=001
+   - URL: <https://your-site.com/check?token=001>
    - Text: "Token 001"
 5. **Tap URL** → opens browser
 
@@ -379,6 +405,7 @@ def write_ndef_url(self, url: str) -> bool:
 ## Pros & Cons
 
 ### Pros
+
 ✅ Participants get instant feedback
 ✅ Uses existing app (no custom app needed)
 ✅ Backup if Pi fails (peer uses phone)
@@ -386,6 +413,7 @@ def write_ndef_url(self, url: str) -> bool:
 ✅ Professional feel
 
 ### Cons
+
 ❌ Adds complexity to card init
 ❌ Requires web server for best experience
 ❌ Slower if writing on each tap
@@ -398,6 +426,7 @@ def write_ndef_url(self, url: str) -> bool:
 **Start without NFC Tools integration.** Get the basics working first.
 
 **Add it later if:**
+
 - Participants frequently ask "did it work?"
 - You want to offer self-service status checking
 - You have time to build the web interface

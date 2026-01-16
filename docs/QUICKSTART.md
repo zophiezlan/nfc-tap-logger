@@ -1,4 +1,5 @@
 # Quick Start Guide
+
 ## NFC Tap Logger - Get Running in 15 Minutes
 
 ---
@@ -42,10 +43,11 @@ sudo reboot
 ### Step 3: Configure Station (2 min)
 
 Edit `config.yaml`:
+
 ```yaml
 station:
-  device_id: "station1"      # station1 or station2
-  stage: "QUEUE_JOIN"        # QUEUE_JOIN or EXIT
+  device_id: "station1" # station1 or station2
+  stage: "QUEUE_JOIN" # QUEUE_JOIN or EXIT
   session_id: "festival-2025"
 ```
 
@@ -80,7 +82,7 @@ Tap each card when prompted. Takes ~10 minutes for 100 cards.
 
 ---
 
-## 🎉 You're Ready!
+## 🎉 You're Ready
 
 **Test:** Tap a card → should beep
 
@@ -92,12 +94,12 @@ Tap each card when prompted. Takes ~10 minutes for 100 cards.
 
 ## 🆘 Quick Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| No beep on tap | Check `i2cdetect -y 1` shows `24` |
+| Problem             | Fix                                       |
+| ------------------- | ----------------------------------------- |
+| No beep on tap      | Check `i2cdetect -y 1` shows `24`         |
 | Service won't start | Check `sudo systemctl status tap-station` |
-| Card won't read | Hold flat on reader for 2 seconds |
-| Battery low | Check `vcgencmd get_throttled` = `0x0` |
+| Card won't read     | Hold flat on reader for 2 seconds         |
+| Battery low         | Check `vcgencmd get_throttled` = `0x0`    |
 
 ---
 

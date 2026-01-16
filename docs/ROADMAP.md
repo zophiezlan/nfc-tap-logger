@@ -7,13 +7,16 @@ This document outlines potential enhancements to the NFC Tap Logger system. Each
 ## Quick Wins (Low Effort, High Value)
 
 ### 1. NFC Tools App Integration ⭐⭐⭐
+
 **What:** Write NDEF records to cards that can be read by NFC Tools app (iOS/Android)
 **Why:**
+
 - Participants can tap their own phone to check their status
 - Fallback if station is down (peer uses their phone)
 - QR code alternative for older phones
 
 **Implementation:**
+
 ```python
 # Add to nfc_reader.py
 def write_ndef_record(self, token_id: str, url: str):
@@ -28,10 +31,12 @@ def write_ndef_record(self, token_id: str, url: str):
 ---
 
 ### 2. Quick-Start Cards (Laminated Cheat Sheets) ⭐⭐⭐
+
 **What:** One-page visual guides for peers
 **Why:** Faster training, reference during event
 
 **Cards to create:**
+
 - Station Setup (15 min version)
 - Troubleshooting Flowchart
 - Peer Workflow Card
@@ -43,10 +48,12 @@ def write_ndef_record(self, token_id: str, url: str):
 ---
 
 ### 3. Health Check Endpoint ⭐⭐
+
 **What:** Simple HTTP endpoint for monitoring
 **Why:** Check if station is alive without SSH
 
 **Implementation:**
+
 ```python
 # Add to main.py
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -61,6 +68,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 ```
 
 **Usage:**
+
 ```bash
 curl http://station1.local:8080/health
 # Returns "OK" if service running
@@ -74,26 +82,30 @@ curl http://station1.local:8080/health
 ## Medium Enhancements (3-5 days each)
 
 ### 4. Smartphone Fallback Mode ⭐⭐⭐
+
 **What:** Android app that does same job as Pi station
 **Why:**
+
 - Backup if Pi fails
 - Lower cost deployment
 - Easier setup for small events
 
 **Options:**
+
 - **NFC Tools App** (existing app) - just read UID, manual logging
 - **Custom Android app** - full featured, syncs to Pi database
 - **PWA (Progressive Web App)** - works on iOS too, uses Web NFC API
 
 **Recommendation:** Start with PWA
+
 ```javascript
 // Example: Web NFC API
 const ndef = new NDEFReader();
 await ndef.scan();
 ndef.addEventListener("reading", ({ serialNumber }) => {
-  fetch('/api/log-event', {
-    method: 'POST',
-    body: JSON.stringify({ uid: serialNumber })
+  fetch("/api/log-event", {
+    method: "POST",
+    body: JSON.stringify({ uid: serialNumber }),
   });
 });
 ```
@@ -104,10 +116,12 @@ ndef.addEventListener("reading", ({ serialNumber }) => {
 ---
 
 ### 5. Real-Time Dashboard (Flask Web UI) ⭐⭐
+
 **What:** Simple web page showing live stats
 **Why:** Clancy can monitor from laptop/phone
 
 **Features:**
+
 - Current event count
 - Last 10 taps
 - Battery status
@@ -115,6 +129,7 @@ ndef.addEventListener("reading", ({ serialNumber }) => {
 - Live wait time estimate
 
 **Implementation:**
+
 ```python
 # Add to tap_station/
 from flask import Flask, render_template, jsonify
@@ -140,13 +155,16 @@ def stats():
 ---
 
 ### 6. QR Code Alternative ⭐⭐
+
 **What:** Print QR codes on cards, scan with phone camera
 **Why:**
+
 - Backup if NFC fails
 - Works with any smartphone
 - Cheaper than NFC cards
 
 **Implementation:**
+
 - Generate QR codes: `https://yoursite.com/tap?token=001&stage=queue`
 - Peer scans with phone camera
 - Logs to same database
@@ -159,13 +177,16 @@ def stats():
 ## Advanced Features (1-2 weeks each)
 
 ### 7. Multi-Station Network Sync ⭐
+
 **What:** Stations sync data in real-time (if WiFi available)
 **Why:**
+
 - See wait times during event
 - Detect bottlenecks live
 - Dashboard shows all stations
 
 **Implementation:**
+
 - Add Redis/MQTT for pub/sub
 - Stations publish events to central broker
 - Dashboard subscribes to all events
@@ -176,10 +197,12 @@ def stats():
 ---
 
 ### 8. Participant-Facing Features ⭐
+
 **What:** Participants can check their status via web/app
 **Why:** Transparency, reduces questions
 
 **Features:**
+
 - "Where am I in queue?" → scan card/QR
 - Estimated wait time
 - SMS notifications when service ready
@@ -190,13 +213,16 @@ def stats():
 ---
 
 ### 9. Multi-Event Tracking ⭐
+
 **What:** Same card works across multiple festivals
 **Why:**
+
 - Longitudinal data
 - Participant loyalty/tracking
 - Less waste (reuse cards)
 
 **Implementation:**
+
 - Add `event_id` to database schema
 - Card stores participant ID, not token ID
 - Privacy considerations (anonymization)
@@ -207,10 +233,12 @@ def stats():
 ---
 
 ### 10. Docker Deployment 🐳
+
 **What:** Package system as Docker container
 **Why:** Easier deployment, reproducible builds
 
 **Implementation:**
+
 ```dockerfile
 FROM python:3.9-slim
 WORKDIR /app
@@ -227,10 +255,12 @@ CMD ["python", "-m", "tap_station.main"]
 ## Documentation Improvements
 
 ### 11. Visual Setup Guide ⭐⭐⭐
+
 **What:** Photos/diagrams of hardware setup
 **Why:** Easier than text-only instructions
 
 **Content:**
+
 - Wiring diagram (color-coded)
 - Photos of correct PN532 placement
 - LED/buzzer connection photos
@@ -242,10 +272,12 @@ CMD ["python", "-m", "tap_station.main"]
 ---
 
 ### 12. Video Tutorials ⭐⭐
+
 **What:** 5-10 min videos for key tasks
 **Why:** Some people learn better visually
 
 **Videos:**
+
 1. Hardware setup (5 min)
 2. Software installation (3 min)
 3. Card initialization (3 min)
@@ -257,10 +289,12 @@ CMD ["python", "-m", "tap_station.main"]
 ---
 
 ### 13. Troubleshooting Flowchart ⭐⭐⭐
+
 **What:** Decision tree for common problems
 **Why:** Faster problem resolution
 
 **Example:**
+
 ```
 Card won't read?
 ├─ Is PN532 detected? (i2cdetect)
@@ -278,21 +312,25 @@ Card won't read?
 ## Recommended Priorities
 
 ### Phase 1 (Next 2 weeks)
+
 1. ✅ **Quick-Start Cards** - Immediate value for deployment
 2. ✅ **NFC Tools App Integration** - Gives participants visibility
 3. ✅ **Visual Setup Guide** - Prevents setup errors
 
 ### Phase 2 (Month 2)
-4. **Smartphone Fallback (PWA)** - Backup option
-5. **Real-Time Dashboard** - Live monitoring
-6. **Health Check Endpoint** - Easier ops
+
+1. **Smartphone Fallback (PWA)** - Backup option
+2. **Real-Time Dashboard** - Live monitoring
+3. **Health Check Endpoint** - Easier ops
 
 ### Phase 3 (Month 3+)
-7. **QR Code Alternative** - Additional resilience
-8. **Multi-Station Sync** - For larger deployments
-9. **Video Tutorials** - Training materials
+
+1. **QR Code Alternative** - Additional resilience
+2. **Multi-Station Sync** - For larger deployments
+3. **Video Tutorials** - Training materials
 
 ### Maybe Never
+
 - Participant-facing features (privacy concerns, adds complexity)
 - Multi-event tracking (privacy, scope creep)
 - Docker (Pi doesn't need it)
@@ -302,21 +340,25 @@ Card won't read?
 ## Alternative Deployment Options
 
 ### Option A: Pi-Only (Current)
+
 - **Pros:** Reliable, offline, tested
 - **Cons:** Hardware cost, setup complexity
 - **Best for:** Main deployment
 
 ### Option B: Smartphone-Only
+
 - **Pros:** No hardware, instant setup
 - **Cons:** Requires internet, battery drain, less reliable
 - **Best for:** Small events, backup
 
 ### Option C: Hybrid (Pi + Phone Backup)
+
 - **Pros:** Best of both worlds
 - **Cons:** More complexity
 - **Best for:** Critical deployments
 
 ### Option D: Cloud-Based with Phone Readers
+
 - **Pros:** Centralized data, real-time analytics
 - **Cons:** Requires internet, single point of failure
 - **Best for:** Multi-site deployments
@@ -326,19 +368,23 @@ Card won't read?
 ## Tech Stack Alternatives
 
 ### Current: Python + SQLite + PN532
+
 **Good for:** Offline, simple, maintainable
 
 ### Alternative 1: Web-Based
+
 - **Stack:** Flask + PostgreSQL + Web NFC API
 - **Pros:** Web dashboard, phone readers
 - **Cons:** Requires server, internet dependency
 
 ### Alternative 2: Native Mobile
+
 - **Stack:** React Native + Firebase
 - **Pros:** Professional UX, cloud sync
 - **Cons:** Development time, cost
 
 ### Alternative 3: Hybrid
+
 - **Stack:** Current (Pi) + REST API + React dashboard
 - **Pros:** Keeps offline core, adds visibility
 - **Cons:** More moving parts
@@ -347,20 +393,20 @@ Card won't read?
 
 ## Cost-Benefit Analysis
 
-| Enhancement | Effort | Value | Recommendation |
-|------------|--------|-------|----------------|
-| Quick-Start Cards | 1d | High | **Do Now** |
-| NFC Tools App | 2-3d | High | **Do Now** |
-| Visual Setup Guide | 1d | High | **Do Now** |
-| Smartphone Fallback | 5d | High | **Phase 2** |
-| Real-Time Dashboard | 4d | Med | **Phase 2** |
-| Health Check API | 1d | Med | **Phase 2** |
-| QR Code Alternative | 3d | Med | **Phase 3** |
-| Multi-Station Sync | 10d | Med | **Phase 3** |
-| Video Tutorials | 3d | Med | **Later** |
-| Participant Features | 14d | Low | **Skip v1** |
-| Multi-Event Tracking | 7d | Low | **Skip v1** |
-| Docker Packaging | 3d | Low | **Skip** |
+| Enhancement          | Effort | Value | Recommendation |
+| -------------------- | ------ | ----- | -------------- |
+| Quick-Start Cards    | 1d     | High  | **Do Now**     |
+| NFC Tools App        | 2-3d   | High  | **Do Now**     |
+| Visual Setup Guide   | 1d     | High  | **Do Now**     |
+| Smartphone Fallback  | 5d     | High  | **Phase 2**    |
+| Real-Time Dashboard  | 4d     | Med   | **Phase 2**    |
+| Health Check API     | 1d     | Med   | **Phase 2**    |
+| QR Code Alternative  | 3d     | Med   | **Phase 3**    |
+| Multi-Station Sync   | 10d    | Med   | **Phase 3**    |
+| Video Tutorials      | 3d     | Med   | **Later**      |
+| Participant Features | 14d    | Low   | **Skip v1**    |
+| Multi-Event Tracking | 7d     | Low   | **Skip v1**    |
+| Docker Packaging     | 3d     | Low   | **Skip**       |
 
 ---
 
@@ -376,17 +422,20 @@ Card won't read?
 ## Questions to Answer Before Expanding
 
 1. **What's the biggest pain point with current system?**
+
    - Setup complexity?
    - Peer training?
    - Hardware reliability?
    - Data export/analysis?
 
 2. **What's the deployment environment?**
+
    - Always have WiFi?
    - Multiple simultaneous events?
    - Indoor vs outdoor?
 
 3. **What's the scale?**
+
    - 50 people or 500?
    - 2 stations or 10?
    - 1 event/month or 1/week?
@@ -404,16 +453,19 @@ Answer these → guides what to build next.
 ## Conclusion
 
 **For v1.0:** Focus on documentation and ease of use
+
 - Quick-start cards
 - Visual guides
 - Better troubleshooting
 
 **For v1.1:** Add visibility and resilience
+
 - NFC Tools app integration
 - Smartphone fallback
 - Health check API
 
 **For v2.0:** Consider real-time features
+
 - Dashboard
 - Multi-station sync
 - Live wait time estimates
