@@ -118,8 +118,8 @@ def check_nfc_reader():
             return False
 
     except ImportError:
-        print_result("py532lib installed", False, "Missing dependency")
-        print("  Try: pip install py532lib")
+        print_result("pn532pi installed", False, "Missing dependency")
+        print("  Try: pip install pn532pi")
         return False
 
     except Exception as e:
