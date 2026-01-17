@@ -538,7 +538,7 @@ sudo journalctl -u tap-station -n 50
 
 **License:** MIT - See LICENSE file
 
-**Built for:** NUAA harm reduction services
+**Built for:** Festival drug checking services
 
 **Key dependencies:**
 
