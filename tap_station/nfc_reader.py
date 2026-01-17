@@ -360,15 +360,33 @@ class NFCReader:
         page = start_page
         for offset in range(0, len(padded), 4):
             chunk = padded[offset : offset + 4]
-            # Use bytearray to match pn532pi write expectations
-            chunk_bytes = bytearray(chunk)
+            # pn532pi's mifareultralight_WritePage expects individual bytes
+            # as separate parameters: write_page(page, byte0, byte1, byte2, byte3)
             try:
-                result = write_page(page, chunk_bytes)
+                # Try unpacking the chunk as individual arguments
+                result = write_page(page, *chunk)
             except TypeError as exc:
+                # Fallback: try passing as bytearray (for library versions that accept it)
                 logger.warning(
-                    "WritePage rejected bytearray payload; retrying with list: %s", exc
+                    "WritePage rejected unpacked bytes; retrying with bytearray: %s",
+                    exc,
                 )
-                result = write_page(page, list(chunk))
+                try:
+                    result = write_page(page, bytearray(chunk))
+                except TypeError as exc2:
+                    # Second fallback: try as list
+                    logger.warning(
+                        "WritePage rejected bytearray; retrying with list: %s", exc2
+                    )
+                    try:
+                        result = write_page(page, list(chunk))
+                    except TypeError as exc3:
+                        # All methods failed - log detailed error
+                        logger.error(
+                            f"All write methods failed for page {page}. "
+                            f"Unpacked: {exc}, Bytearray: {exc2}, List: {exc3}"
+                        )
+                        return False
             if result is False:
                 logger.error(f"Failed to write page {page}")
                 return False
