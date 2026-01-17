@@ -510,6 +510,79 @@ class StatusWebServer:
                 logger.error(f"Database backup failed: {e}")
                 return jsonify({"error": str(e)}), 500
 
+        @self.app.route("/api/notes", methods=["GET", "POST"])
+        def api_notes():
+            """Add or retrieve event notes"""
+            if request.method == "POST":
+                try:
+                    data = request.get_json()
+                    note_text = data.get("note", "").strip()
+
+                    if not note_text:
+                        return jsonify({"error": "Note text required"}), 400
+
+                    # Store note in database using events table with special stage
+                    from datetime import datetime
+
+                    now = datetime.now(timezone.utc)
+
+                    self.db.log_event(
+                        token_id="NOTE",
+                        uid=note_text[:100],  # Store first 100 chars in uid
+                        stage="NOTE",
+                        device_id=data.get("author", "staff"),
+                        session_id=self.config.session_id,
+                        timestamp=now,
+                    )
+
+                    # Store full note text in a comment field if available
+                    # For now, we'll retrieve from uid
+
+                    return (
+                        jsonify(
+                            {
+                                "success": True,
+                                "message": "Note added",
+                                "timestamp": now.isoformat(),
+                            }
+                        ),
+                        201,
+                    )
+
+                except Exception as e:
+                    logger.error(f"Add note failed: {e}")
+                    return jsonify({"error": str(e)}), 500
+            else:
+                # GET - retrieve notes
+                try:
+                    session_id = self.config.session_id
+                    cursor = self.db.conn.execute(
+                        """
+                        SELECT timestamp, device_id as author, uid as note_text
+                        FROM events
+                        WHERE session_id = ? AND stage = 'NOTE'
+                        ORDER BY timestamp DESC
+                        LIMIT 50
+                    """,
+                        (session_id,),
+                    )
+
+                    notes = []
+                    for row in cursor.fetchall():
+                        notes.append(
+                            {
+                                "timestamp": row["timestamp"],
+                                "author": row["author"],
+                                "note": row["note_text"],
+                            }
+                        )
+
+                    return jsonify({"notes": notes}), 200
+
+                except Exception as e:
+                    logger.error(f"Get notes failed: {e}")
+                    return jsonify({"error": str(e)}), 500
+
         @self.app.route("/public")
         def public_display():
             """Public-facing queue status display"""
@@ -652,6 +725,9 @@ class StatusWebServer:
         # Queue details with time in service
         queue_details = self._get_queue_details()
 
+        # Smart wait estimate
+        smart_estimate = self._calculate_smart_wait_estimate()
+
         return {
             "device_id": self.config.device_id,
             "stage": self.config.stage,
@@ -669,6 +745,7 @@ class StatusWebServer:
                 ),  # Rough estimate
                 "longest_wait_current": operational_metrics["longest_wait_current"],
                 "estimated_wait_new": operational_metrics["estimated_wait_new"],
+                "smart_wait_estimate": smart_estimate,
                 "service_uptime_minutes": operational_metrics["service_uptime_minutes"],
                 "capacity_utilization": operational_metrics["capacity_utilization"],
                 # 3-stage metrics
@@ -2127,6 +2204,138 @@ class StatusWebServer:
                 "token_id": token_id,
                 "error": str(e),
                 "message": "Error retrieving card status",
+            }
+
+    def _calculate_smart_wait_estimate(self) -> dict:
+        """
+        Calculate smart wait time estimate using recent completion rates
+
+        Returns:
+            Dictionary with estimate, confidence, and reasoning
+        """
+        session_id = self.config.session_id
+        now = datetime.now(timezone.utc)
+
+        try:
+            # Get current queue length
+            cursor = self.db.conn.execute(
+                """
+                SELECT COUNT(DISTINCT q.token_id) as count
+                FROM events q
+                LEFT JOIN events e
+                    ON q.token_id = e.token_id
+                    AND q.session_id = e.session_id
+                    AND e.stage = 'EXIT'
+                WHERE q.stage = 'QUEUE_JOIN'
+                    AND q.session_id = ?
+                    AND e.id IS NULL
+            """,
+                (session_id,),
+            )
+            queue_length = cursor.fetchone()["count"]
+
+            # Calculate recent completion rate (last 30 minutes)
+            cursor = self.db.conn.execute(
+                """
+                SELECT COUNT(*) as completions,
+                       MIN(e.timestamp) as first_completion
+                FROM events q
+                JOIN events e
+                    ON q.token_id = e.token_id
+                    AND q.session_id = e.session_id
+                WHERE q.stage = 'QUEUE_JOIN'
+                    AND e.stage = 'EXIT'
+                    AND q.session_id = ?
+                    AND e.timestamp > datetime('now', '-30 minutes')
+            """,
+                (session_id,),
+            )
+
+            recent_data = cursor.fetchone()
+            recent_completions = recent_data["completions"]
+
+            # Calculate average service time from recent completions
+            cursor = self.db.conn.execute(
+                """
+                SELECT 
+                    AVG((julianday(e.timestamp) - julianday(q.timestamp)) * 1440) as avg_time
+                FROM events q
+                JOIN events e
+                    ON q.token_id = e.token_id
+                    AND q.session_id = e.session_id
+                WHERE q.stage = 'QUEUE_JOIN'
+                    AND e.stage = 'EXIT'
+                    AND q.session_id = ?
+                    AND e.timestamp > datetime('now', '-30 minutes')
+            """,
+                (session_id,),
+            )
+
+            avg_service_time = cursor.fetchone()["avg_time"] or 0
+
+            # Determine confidence based on sample size
+            if recent_completions >= 5:
+                confidence = "high"
+                confidence_icon = "✓"
+            elif recent_completions >= 2:
+                confidence = "medium"
+                confidence_icon = "~"
+            else:
+                confidence = "low"
+                confidence_icon = "?"
+
+            # Calculate smart estimate
+            if recent_completions > 0 and avg_service_time > 0:
+                # Use recent completion rate
+                minutes_per_person = avg_service_time
+                estimated_wait = int(queue_length * minutes_per_person)
+                method = "recent_rate"
+                reasoning = f"Based on {recent_completions} recent completions (~{int(avg_service_time)} min/person)"
+            else:
+                # Fall back to overall average
+                overall_avg = self._calculate_avg_wait_time(limit=20)
+                if overall_avg > 0:
+                    estimated_wait = overall_avg + (queue_length * 2)
+                    method = "overall_avg"
+                    reasoning = f"Using overall average ({queue_length} in queue)"
+                else:
+                    # No data, use default estimate
+                    estimated_wait = 20 if queue_length > 0 else 0
+                    method = "default"
+                    reasoning = "Insufficient data for accurate estimate"
+                    confidence = "low"
+                    confidence_icon = "?"
+
+            # Cap estimate at reasonable maximum
+            if estimated_wait > 120:
+                estimated_wait = 120
+                reasoning += " (capped at 2 hours)"
+
+            return {
+                "estimate_minutes": estimated_wait,
+                "confidence": confidence,
+                "confidence_icon": confidence_icon,
+                "method": method,
+                "reasoning": reasoning,
+                "queue_length": queue_length,
+                "recent_completions": recent_completions,
+                "avg_service_time": (
+                    round(avg_service_time, 1) if avg_service_time else 0
+                ),
+            }
+
+        except Exception as e:
+            logger.error(f"Smart wait estimate failed: {e}")
+            # Return fallback
+            return {
+                "estimate_minutes": 20,
+                "confidence": "low",
+                "confidence_icon": "?",
+                "method": "error",
+                "reasoning": "Error calculating estimate",
+                "queue_length": 0,
+                "recent_completions": 0,
+                "avg_service_time": 0,
             }
 
     def run(self, host="0.0.0.0", port=8080):

@@ -554,6 +554,99 @@
       .journey-event.service .stage-icon {
         background: #3b82f6;
       }
+
+      /* Event Notes */
+      .notes-section {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+
+      .notes-input-area {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .notes-input-area input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+
+      .notes-input-area input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .notes-input-area button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .notes-input-area button:hover {
+        background: #5568d3;
+      }
+
+      .notes-list {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .note-item {
+        padding: 10px;
+        border-left: 3px solid #667eea;
+        background: #f8f9fa;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+
+      .note-time {
+        color: #999;
+        font-size: 11px;
+        margin-bottom: 3px;
+      }
+
+      .note-author {
+        color: #667eea;
+        font-weight: 600;
+      }
+
+      /* Confidence indicator */
+      .confidence-indicator {
+        display: inline-block;
+        margin-left: 8px;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+      }
+
+      .confidence-high {
+        background: #d1fae5;
+        color: #065f46;
+      }
+
+      .confidence-medium {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .confidence-low {
+        background: #fee2e2;
+        color: #991b1b;
+      }
     </style>
   </head>
   <body>
@@ -615,6 +708,25 @@
         <div id="card-result" style="display: none"></div>
       </div>
 
+      <!-- Event Notes Logger -->
+      <div class="notes-section">
+        <h3>📝 Event Notes</h3>
+        <div class="notes-input-area">
+          <input
+            type="text"
+            id="note-input"
+            placeholder="Log an operational note (e.g., Added 2nd checker, Power issue resolved...)"
+            onkeypress="if (event.key === 'Enter') addNote();"
+          />
+          <button onclick="addNote()">Add Note</button>
+        </div>
+        <div class="notes-list" id="notes-list">
+          <div style="text-align: center; color: #999; padding: 20px">
+            No notes yet
+          </div>
+        </div>
+      </div>
+
       <!-- Statistics Cards -->
       <div class="stats-grid">
         <div class="stat-card highlight" id="queue-card">
@@ -630,9 +742,14 @@
         </div>
 
         <div class="stat-card" id="wait-card">
-          <div class="label">Est. Wait (New)</div>
-          <div class="value" id="estimated-wait">-</div>
-          <div class="sub-value">minutes for new arrival</div>
+          <div class="label">Smart Wait Estimate</div>
+          <div class="value">
+            <span id="estimated-wait">-</span>
+            <span id="wait-confidence" class="confidence-indicator"></span>
+          </div>
+          <div class="sub-value" id="wait-reasoning">
+            minutes for new arrival
+          </div>
         </div>
 
         <div class="stat-card">
@@ -755,8 +872,28 @@
         // Update statistics
         const stats = data.stats;
         document.getElementById("in-queue").textContent = stats.in_queue;
-        document.getElementById("estimated-wait").textContent =
-          stats.estimated_wait_new || "-";
+
+        // Update smart wait estimate with confidence
+        const smartEstimate = stats.smart_wait_estimate;
+        if (smartEstimate) {
+          document.getElementById("estimated-wait").textContent =
+            smartEstimate.estimate_minutes + " min";
+
+          const confidenceEl = document.getElementById("wait-confidence");
+          confidenceEl.textContent =
+            smartEstimate.confidence_icon + " " + smartEstimate.confidence;
+          confidenceEl.className =
+            "confidence-indicator confidence-" + smartEstimate.confidence;
+
+          document.getElementById("wait-reasoning").textContent =
+            smartEstimate.reasoning;
+        } else {
+          document.getElementById("estimated-wait").textContent =
+            stats.estimated_wait_new || "-";
+          document.getElementById("wait-reasoning").textContent =
+            "minutes for new arrival";
+        }
+
         document.getElementById("longest-wait").textContent =
           stats.longest_wait_current || "0";
         document.getElementById("avg-wait").textContent =
@@ -1161,6 +1298,80 @@
           `;
         }
       }
+
+      // Load and display notes
+      async function loadNotes() {
+        try {
+          const response = await fetch("/api/notes");
+          const data = await response.json();
+
+          const notesList = document.getElementById("notes-list");
+
+          if (!data.notes || data.notes.length === 0) {
+            notesList.innerHTML =
+              '<div style="text-align: center; color: #999; padding: 20px;">No notes yet</div>';
+            return;
+          }
+
+          notesList.innerHTML = "";
+          data.notes.forEach((note) => {
+            const noteEl = document.createElement("div");
+            noteEl.className = "note-item";
+
+            const time = new Date(note.timestamp).toLocaleTimeString();
+            const date = new Date(note.timestamp).toLocaleDateString();
+
+            noteEl.innerHTML = `
+              <div class="note-time">${date} ${time} • <span class="note-author">${note.author}</span></div>
+              <div>${note.note}</div>
+            `;
+
+            notesList.appendChild(noteEl);
+          });
+        } catch (error) {
+          console.error("Failed to load notes:", error);
+        }
+      }
+
+      // Add a new note
+      async function addNote() {
+        const input = document.getElementById("note-input");
+        const noteText = input.value.trim();
+
+        if (!noteText) {
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/notes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              note: noteText,
+              author: "staff",
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            input.value = "";
+            loadNotes(); // Reload notes
+          } else {
+            alert("Failed to add note: " + (data.error || "Unknown error"));
+          }
+        } catch (error) {
+          alert("Failed to add note: " + error.message);
+        }
+      }
+
+      // Load notes on page load and refresh every 30 seconds
+      window.addEventListener("load", () => {
+        loadNotes();
+        setInterval(loadNotes, 30000);
+      });
     </script>
   </body>
 </html>
