@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Queue Status - Drug Checking Service</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        text-align: center;
+        max-width: 800px;
+        width: 100%;
+      }
+
+      .status-indicator {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        margin-right: 12px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .status-active {
+        background: #10b981;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+      }
+
+      .status-inactive {
+        background: #ef4444;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.6;
+        }
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        font-weight: 300;
+        margin-bottom: 2rem;
+        opacity: 0.95;
+      }
+
+      .queue-length {
+        font-size: 12rem;
+        font-weight: 700;
+        line-height: 1;
+        margin: 2rem 0;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .queue-label {
+        font-size: 2rem;
+        font-weight: 300;
+        opacity: 0.9;
+        margin-bottom: 3rem;
+      }
+
+      .wait-time {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 2rem 3rem;
+        margin: 2rem 0;
+        display: inline-block;
+      }
+
+      .wait-time-value {
+        font-size: 4rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+
+      .wait-time-label {
+        font-size: 1.5rem;
+        font-weight: 300;
+        opacity: 0.9;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-top: 3rem;
+      }
+
+      .info-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 1.5rem;
+      }
+
+      .info-value {
+        font-size: 2.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+
+      .info-label {
+        font-size: 1rem;
+        opacity: 0.8;
+        font-weight: 300;
+      }
+
+      .footer {
+        margin-top: 3rem;
+        opacity: 0.6;
+        font-size: 0.9rem;
+      }
+
+      .service-closed {
+        background: rgba(239, 68, 68, 0.2);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-top: 2rem;
+      }
+
+      @media (max-width: 768px) {
+        .queue-length {
+          font-size: 8rem;
+        }
+
+        h1 {
+          font-size: 1.8rem;
+        }
+
+        .wait-time-value {
+          font-size: 3rem;
+        }
+
+        .info-value {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>
+        <span class="status-indicator" id="status-indicator"></span>
+        Drug Checking Service
+      </h1>
+
+      <div id="queue-display">
+        <div class="queue-length" id="queue-length">--</div>
+        <div class="queue-label">people in queue</div>
+      </div>
+
+      <div class="wait-time" id="wait-time-container">
+        <div class="wait-time-value" id="wait-time">--</div>
+        <div class="wait-time-label">estimated wait time</div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-value" id="completed-today">--</div>
+          <div class="info-label">served today</div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-value" id="avg-service">--</div>
+          <div class="info-label">avg service time</div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-value" id="status-text">OPEN</div>
+          <div class="info-label">service status</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        Updates every 5 seconds • Session: <span id="session-id">--</span>
+      </div>
+    </div>
+
+    <script>
+      let lastUpdate = Date.now();
+      const INACTIVE_THRESHOLD = 600000; // 10 minutes
+
+      async function updateDisplay() {
+        try {
+          const response = await fetch("/api/public");
+          const data = await response.json();
+
+          // Update queue length
+          document.getElementById("queue-length").textContent =
+            data.queue_length || 0;
+
+          // Update wait time
+          const waitMin = data.estimated_wait_minutes || 0;
+          if (waitMin === 0) {
+            document.getElementById("wait-time").textContent = "<5";
+            document.getElementById(
+              "wait-time",
+            ).nextElementSibling.textContent = "minutes";
+          } else {
+            document.getElementById("wait-time").textContent = waitMin;
+            document.getElementById(
+              "wait-time",
+            ).nextElementSibling.textContent =
+              waitMin === 1 ? "minute" : "minutes";
+          }
+
+          // Update completed today
+          document.getElementById("completed-today").textContent =
+            data.completed_today || 0;
+
+          // Update average service time
+          const avgMin = data.avg_service_minutes || 0;
+          document.getElementById("avg-service").textContent =
+            avgMin > 0 ? avgMin + " min" : "--";
+
+          // Update session
+          document.getElementById("session-id").textContent =
+            data.session_id || "--";
+
+          // Update service status
+          const indicator = document.getElementById("status-indicator");
+          const statusText = document.getElementById("status-text");
+
+          if (data.service_active) {
+            indicator.className = "status-indicator status-active";
+            statusText.textContent = "OPEN";
+          } else {
+            indicator.className = "status-indicator status-inactive";
+            statusText.textContent = "CLOSED";
+          }
+
+          lastUpdate = Date.now();
+        } catch (error) {
+          console.error("Failed to update display:", error);
+
+          // Show inactive if update fails
+          if (Date.now() - lastUpdate > INACTIVE_THRESHOLD) {
+            document.getElementById("status-indicator").className =
+              "status-indicator status-inactive";
+            document.getElementById("status-text").textContent = "OFFLINE";
+          }
+        }
+      }
+
+      // Initial update
+      updateDisplay();
+
+      // Auto-refresh every 5 seconds
+      setInterval(updateDisplay, 5000);
+    </script>
+  </body>
+</html>

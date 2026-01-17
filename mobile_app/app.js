@@ -189,7 +189,7 @@ async function updateStats() {
           <div class="muted">${evt.deviceId}</div>
         </div>
         <div class="muted">${formatTime(evt.timestampMs)}</div>
-      </div>`
+      </div>`,
     )
     .join("");
 }
@@ -355,12 +355,12 @@ async function exportJsonl() {
       device_id: evt.deviceId,
       timestamp_ms: evt.timestampMs,
       source: evt.source || "mobile-web-nfc-v1",
-    })
+    }),
   );
   await downloadFile(
     `mobile-export-${Date.now()}.jsonl`,
     lines.join("\n"),
-    "application/x-ndjson"
+    "application/x-ndjson",
   );
   showToast("JSONL downloaded");
 }
@@ -383,12 +383,12 @@ async function exportCsv() {
     ]
       .map((v) => `${v}`.replace(/"/g, '""'))
       .map((v) => (v.includes(",") ? `"${v}"` : v))
-      .join(",")
+      .join(","),
   );
   await downloadFile(
     `mobile-export-${Date.now()}.csv`,
     [header, ...rows].join("\n"),
-    "text/csv"
+    "text/csv",
   );
   showToast("CSV downloaded");
 }
@@ -424,7 +424,7 @@ manualForm.addEventListener("submit", async (e) => {
       serialNumber: `manual-${token}`,
       timestampMs: Date.now(),
     },
-    "manual"
+    "manual",
   );
   manualDialog.close();
 });

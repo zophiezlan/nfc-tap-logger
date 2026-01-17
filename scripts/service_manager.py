@@ -203,9 +203,9 @@ def main():
         "stop": stop_service,
         "restart": restart_service,
         "status": status_service,
-        "logs": lambda: logs_service(args.lines, args.follow)
-        if args.command == "logs"
-        else None,
+        "logs": lambda: (
+            logs_service(args.lines, args.follow) if args.command == "logs" else None
+        ),
     }
 
     if args.command in commands:

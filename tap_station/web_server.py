@@ -322,6 +322,16 @@ class StatusWebServer:
                 session=self.config.session_id,
             )
 
+        @self.app.route("/shift")
+        def shift_summary():
+            """Shift summary page for handoffs"""
+            return render_template(
+                "shift.html",
+                device_id=self.config.device_id,
+                stage=self.config.stage,
+                session=self.config.session_id,
+            )
+
         @self.app.route("/api/control/status")
         def api_control_status():
             """Get system status for control panel"""
@@ -351,6 +361,149 @@ class StatusWebServer:
             except Exception as e:
                 logger.error(f"Command execution failed: {e}")
                 return jsonify({"success": False, "error": str(e)}), 500
+
+        @self.app.route("/api/control/force-exit", methods=["POST"])
+        def api_force_exit():
+            """Force exit for stuck cards"""
+            try:
+                data = request.get_json()
+                token_ids = data.get("token_ids", [])
+
+                if not token_ids:
+                    return (
+                        jsonify({"success": False, "error": "No token IDs provided"}),
+                        400,
+                    )
+
+                result = self._force_exit_cards(token_ids)
+                return jsonify(result), 200
+
+            except Exception as e:
+                logger.error(f"Force exit failed: {e}")
+                return jsonify({"success": False, "error": str(e)}), 500
+
+        @self.app.route("/api/control/stuck-cards")
+        def api_stuck_cards():
+            """Get list of stuck cards (in queue >2 hours)"""
+            try:
+                stuck_cards = self._get_stuck_cards()
+                return jsonify(stuck_cards), 200
+            except Exception as e:
+                logger.error(f"Get stuck cards failed: {e}")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/export")
+        def api_export():
+            """Export data as CSV"""
+            try:
+                from io import StringIO
+                import csv
+
+                # Get filter parameters
+                filter_type = request.args.get("filter", "all")
+                session_id = self.config.session_id
+
+                # Build query based on filter
+                if filter_type == "hour":
+                    where_clause = "WHERE session_id = ? AND timestamp > datetime('now', '-1 hour')"
+                elif filter_type == "today":
+                    where_clause = (
+                        "WHERE session_id = ? AND date(timestamp) = date('now')"
+                    )
+                else:
+                    where_clause = "WHERE session_id = ?"
+
+                # Fetch data
+                cursor = self.db.conn.execute(
+                    f"""
+                    SELECT id, token_id, uid, stage, timestamp, device_id, session_id
+                    FROM events
+                    {where_clause}
+                    ORDER BY timestamp DESC
+                """,
+                    (session_id,),
+                )
+
+                # Generate CSV
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(
+                    [
+                        "ID",
+                        "Token ID",
+                        "UID",
+                        "Stage",
+                        "Timestamp",
+                        "Device ID",
+                        "Session ID",
+                    ]
+                )
+
+                for row in cursor.fetchall():
+                    writer.writerow(
+                        [
+                            row["id"],
+                            row["token_id"],
+                            row["uid"],
+                            row["stage"],
+                            row["timestamp"],
+                            row["device_id"],
+                            row["session_id"],
+                        ]
+                    )
+
+                # Return as downloadable file
+                from flask import make_response
+
+                csv_data = output.getvalue()
+                response = make_response(csv_data)
+                response.headers["Content-Disposition"] = (
+                    f"attachment; filename=nfc_data_{filter_type}_{session_id}.csv"
+                )
+                response.headers["Content-Type"] = "text/csv"
+
+                return response
+
+            except Exception as e:
+                logger.error(f"Export failed: {e}")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/public")
+        def public_display():
+            """Public-facing queue status display"""
+            return render_template("public.html")
+
+        @self.app.route("/api/public")
+        def api_public():
+            """
+            API endpoint for public queue display
+
+            Returns:
+                JSON with public-safe queue statistics
+            """
+            try:
+                stats = self._get_public_stats()
+                return jsonify(stats), 200
+
+            except Exception as e:
+                logger.error(f"API public failed: {e}")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/shift-summary")
+        def api_shift_summary():
+            """
+            API endpoint for shift handoff summary
+
+            Returns:
+                JSON with shift summary information
+            """
+            try:
+                summary = self._get_shift_summary()
+                return jsonify(summary), 200
+
+            except Exception as e:
+                logger.error(f"API shift summary failed: {e}")
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/dashboard")
         def api_dashboard():
@@ -436,8 +589,14 @@ class StatusWebServer:
         # Average wait time (last 20 completed)
         avg_wait = self._calculate_avg_wait_time(limit=20)
 
+        # Get 3-stage metrics (if available)
+        three_stage_metrics = self._calculate_3stage_metrics(limit=20)
+
         # Get operational metrics
         operational_metrics = self._get_operational_metrics()
+
+        # Count people currently in service (if using 3-stage)
+        in_service = self._get_current_in_service()
 
         # Recent completions with wait times
         recent_completions = self._get_recent_completions(limit=10)
@@ -460,6 +619,7 @@ class StatusWebServer:
                 "today_events": today_events,
                 "last_hour_events": last_hour_events,
                 "in_queue": in_queue,
+                "in_service": in_service,
                 "completed_today": completed_today,
                 "avg_wait_minutes": avg_wait,
                 "throughput_per_hour": (
@@ -469,6 +629,13 @@ class StatusWebServer:
                 "estimated_wait_new": operational_metrics["estimated_wait_new"],
                 "service_uptime_minutes": operational_metrics["service_uptime_minutes"],
                 "capacity_utilization": operational_metrics["capacity_utilization"],
+                # 3-stage metrics
+                "avg_queue_wait_minutes": three_stage_metrics["avg_queue_wait_minutes"],
+                "avg_service_time_minutes": three_stage_metrics[
+                    "avg_service_time_minutes"
+                ],
+                "avg_total_time_minutes": three_stage_metrics["avg_total_time_minutes"],
+                "has_3stage_data": three_stage_metrics["has_3stage_data"],
             },
             "operational": {
                 "alerts": operational_metrics["alerts"],
@@ -572,6 +739,8 @@ class StatusWebServer:
 
         # Generate alerts
         alerts = []
+
+        # Queue length alerts
         if in_queue > 10:
             alerts.append(
                 {"level": "warning", "message": f"Queue is long ({in_queue} people)"}
@@ -580,22 +749,111 @@ class StatusWebServer:
             alerts.append(
                 {
                     "level": "critical",
-                    "message": f"Queue critical ({in_queue} people) - consider additional resources",
+                    "message": f"🚨 Queue critical ({in_queue} people) - consider additional resources",
                 }
             )
+
+        # Wait time alerts
         if longest_wait > 45:
             alerts.append(
-                {"level": "warning", "message": f"Longest wait: {longest_wait} min"}
+                {"level": "warning", "message": f"⏱️ Longest wait: {longest_wait} min"}
             )
         if longest_wait > 90:
             alerts.append(
                 {
                     "level": "critical",
-                    "message": f"Critical wait time: {longest_wait} min",
+                    "message": f"🚨 Critical wait time: {longest_wait} min",
                 }
             )
+
+        # Capacity alerts
         if capacity_utilization > 90:
-            alerts.append({"level": "info", "message": "Operating near capacity"})
+            alerts.append({"level": "info", "message": "⚡ Operating near capacity"})
+
+        # Check for station inactivity (no events in last 10 minutes)
+        cursor = self.db.conn.execute(
+            """
+            SELECT MAX(timestamp) as last_event
+            FROM events
+            WHERE session_id = ?
+        """,
+            (session_id,),
+        )
+        row = cursor.fetchone()
+        if row and row["last_event"]:
+            last_event_dt = datetime.fromisoformat(row["last_event"])
+            minutes_since_last = int((now - last_event_dt).total_seconds() / 60)
+
+            if minutes_since_last > 10 and in_queue > 0:
+                alerts.append(
+                    {
+                        "level": "critical",
+                        "message": f"⚠️ No activity in {minutes_since_last} min - station may be down!",
+                    }
+                )
+            elif minutes_since_last > 5 and in_queue > 0:
+                alerts.append(
+                    {
+                        "level": "warning",
+                        "message": f"No taps in {minutes_since_last} min - check stations",
+                    }
+                )
+
+        # Check for unusual service time variance
+        cursor = self.db.conn.execute(
+            """
+            SELECT
+                AVG((julianday(e.timestamp) - julianday(q.timestamp)) * 1440) as avg_time,
+                MAX((julianday(e.timestamp) - julianday(q.timestamp)) * 1440) as max_time
+            FROM events q
+            JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = 'EXIT'
+                AND q.session_id = ?
+                AND e.timestamp > datetime('now', '-1 hour')
+        """,
+            (session_id,),
+        )
+        row = cursor.fetchone()
+        if row and row["avg_time"] and row["max_time"]:
+            avg_time = float(row["avg_time"])
+            max_time = float(row["max_time"])
+
+            # Alert if someone took >3x average time (may indicate complex case)
+            if max_time > avg_time * 3 and avg_time > 5:
+                alerts.append(
+                    {
+                        "level": "info",
+                        "message": f"📊 Service time variance detected - longest service: {int(max_time)} min",
+                    }
+                )
+
+        # Check for potential abandonments (people in queue > 2 hours)
+        cursor = self.db.conn.execute(
+            """
+            SELECT COUNT(*) as count
+            FROM events q
+            LEFT JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+                AND e.stage = 'EXIT'
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND q.session_id = ?
+                AND e.id IS NULL
+                AND q.timestamp < datetime('now', '-2 hours')
+        """,
+            (session_id,),
+        )
+        stuck_count = cursor.fetchone()["count"]
+        if stuck_count > 0:
+            alerts.append(
+                {
+                    "level": "warning",
+                    "message": f"⚠️ {stuck_count} people in queue >2 hours - possible abandonments or missed exits",
+                }
+            )
 
         # Queue health assessment
         if in_queue > 20 or longest_wait > 90:
@@ -1251,6 +1509,461 @@ class StatusWebServer:
         except Exception as e:
             logger.error(f"Command execution failed: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
+
+    def _get_public_stats(self) -> dict:
+        """
+        Get public-facing statistics (safe for participant display)
+
+        Returns:
+            Dictionary with public statistics
+        """
+        session_id = self.config.session_id
+        now = datetime.now(timezone.utc)
+
+        # Get current queue length
+        cursor = self.db.conn.execute(
+            """
+            SELECT COUNT(DISTINCT q.token_id) as count
+            FROM events q
+            LEFT JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+                AND e.stage = 'EXIT'
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND q.session_id = ?
+                AND e.id IS NULL
+        """,
+            (session_id,),
+        )
+        queue_length = cursor.fetchone()["count"]
+
+        # Calculate estimated wait time
+        avg_wait = self._calculate_avg_wait_time(limit=10)
+        # Add buffer based on queue length
+        estimated_wait = avg_wait + (queue_length * 2) if avg_wait > 0 else 5
+
+        # Get completed today
+        cursor = self.db.conn.execute(
+            """
+            SELECT COUNT(*) as count
+            FROM events q
+            JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = 'EXIT'
+                AND q.session_id = ?
+                AND date(e.timestamp) = date('now')
+        """,
+            (session_id,),
+        )
+        completed_today = cursor.fetchone()["count"]
+
+        # Check if service is active (any activity in last 10 minutes)
+        cursor = self.db.conn.execute(
+            """
+            SELECT COUNT(*) as count
+            FROM events
+            WHERE session_id = ?
+                AND timestamp > datetime('now', '-10 minutes')
+        """,
+            (session_id,),
+        )
+        service_active = cursor.fetchone()["count"] > 0
+
+        return {
+            "queue_length": queue_length,
+            "estimated_wait_minutes": estimated_wait,
+            "completed_today": completed_today,
+            "avg_service_minutes": avg_wait,
+            "service_active": service_active,
+            "session_id": session_id,
+            "timestamp": now.isoformat(),
+        }
+
+    def _get_shift_summary(self) -> dict:
+        """
+        Get shift handoff summary
+
+        Returns:
+            Dictionary with shift summary information
+        """
+        session_id = self.config.session_id
+        now = datetime.now(timezone.utc)
+
+        # Current queue state
+        cursor = self.db.conn.execute(
+            """
+            SELECT COUNT(DISTINCT q.token_id) as count
+            FROM events q
+            LEFT JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+                AND e.stage = 'EXIT'
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND q.session_id = ?
+                AND e.id IS NULL
+        """,
+            (session_id,),
+        )
+        current_queue = cursor.fetchone()["count"]
+
+        # Completed this shift (last 4 hours)
+        cursor = self.db.conn.execute(
+            """
+            SELECT COUNT(*) as count
+            FROM events q
+            JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = 'EXIT'
+                AND q.session_id = ?
+                AND e.timestamp > datetime('now', '-4 hours')
+        """,
+            (session_id,),
+        )
+        completed_shift = cursor.fetchone()["count"]
+
+        # Average wait this shift
+        cursor = self.db.conn.execute(
+            """
+            SELECT
+                AVG((julianday(e.timestamp) - julianday(q.timestamp)) * 1440) as avg_wait
+            FROM events q
+            JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = 'EXIT'
+                AND q.session_id = ?
+                AND e.timestamp > datetime('now', '-4 hours')
+        """,
+            (session_id,),
+        )
+        row = cursor.fetchone()
+        avg_wait_shift = int(row["avg_wait"]) if row["avg_wait"] else 0
+
+        # Busiest hour this shift
+        cursor = self.db.conn.execute(
+            """
+            SELECT
+                strftime('%H:00', e.timestamp) as hour,
+                COUNT(*) as count
+            FROM events q
+            JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = 'EXIT'
+                AND q.session_id = ?
+                AND e.timestamp > datetime('now', '-4 hours')
+            GROUP BY hour
+            ORDER BY count DESC
+            LIMIT 1
+        """,
+            (session_id,),
+        )
+        busiest = cursor.fetchone()
+        busiest_hour = busiest["hour"] if busiest else "N/A"
+        busiest_count = busiest["count"] if busiest else 0
+
+        # Service uptime today
+        cursor = self.db.conn.execute(
+            """
+            SELECT MIN(timestamp) as first_event
+            FROM events
+            WHERE session_id = ?
+                AND date(timestamp) = date('now')
+        """,
+            (session_id,),
+        )
+        row = cursor.fetchone()
+        first_event = None
+        service_hours = 0
+        if row and row["first_event"]:
+            first_dt = datetime.fromisoformat(row["first_event"])
+            service_hours = round((now - first_dt).total_seconds() / 3600, 1)
+
+        # Longest current wait
+        cursor = self.db.conn.execute(
+            """
+            SELECT MIN(q.timestamp) as earliest
+            FROM events q
+            LEFT JOIN events e
+                ON q.token_id = e.token_id
+                AND q.session_id = e.session_id
+                AND e.stage = 'EXIT'
+            WHERE q.stage = 'QUEUE_JOIN'
+                AND q.session_id = ?
+                AND e.id IS NULL
+        """,
+            (session_id,),
+        )
+        row = cursor.fetchone()
+        longest_wait = 0
+        if row and row["earliest"]:
+            earliest_dt = datetime.fromisoformat(row["earliest"])
+            longest_wait = int((now - earliest_dt).total_seconds() / 60)
+
+        return {
+            "current_queue": current_queue,
+            "completed_this_shift": completed_shift,
+            "avg_wait_minutes_shift": avg_wait_shift,
+            "busiest_hour": busiest_hour,
+            "busiest_hour_count": busiest_count,
+            "service_hours_today": service_hours,
+            "longest_current_wait_minutes": longest_wait,
+            "timestamp": now.isoformat(),
+            "session_id": session_id,
+        }
+
+    def _calculate_3stage_metrics(self, limit=20) -> dict:
+        """
+        Calculate separate metrics for 3-stage journey
+
+        Stages:
+        - QUEUE_JOIN: Person enters queue
+        - SERVICE_START: Staff begins helping
+        - EXIT: Service complete
+
+        Returns:
+            Dictionary with queue_wait_minutes, service_time_minutes, total_time_minutes
+        """
+        session_id = self.config.session_id
+
+        try:
+            # Get recent 3-stage completions
+            cursor = self.db.conn.execute(
+                """
+                SELECT
+                    q.token_id,
+                    q.timestamp as queue_time,
+                    s.timestamp as service_start_time,
+                    e.timestamp as exit_time
+                FROM events q
+                LEFT JOIN events s
+                    ON q.token_id = s.token_id
+                    AND q.session_id = s.session_id
+                    AND s.stage = 'SERVICE_START'
+                LEFT JOIN events e
+                    ON q.token_id = e.token_id
+                    AND q.session_id = e.session_id
+                    AND e.stage = 'EXIT'
+                WHERE q.stage = 'QUEUE_JOIN'
+                    AND q.session_id = ?
+                    AND e.timestamp IS NOT NULL
+                ORDER BY e.timestamp DESC
+                LIMIT ?
+            """,
+                (session_id, limit),
+            )
+
+            journeys = cursor.fetchall()
+
+            if not journeys:
+                return {
+                    "avg_queue_wait_minutes": 0,
+                    "avg_service_time_minutes": 0,
+                    "avg_total_time_minutes": 0,
+                    "has_3stage_data": False,
+                    "journeys_analyzed": 0,
+                }
+
+            queue_waits = []
+            service_times = []
+            total_times = []
+            three_stage_count = 0
+
+            for journey in journeys:
+                queue_dt = datetime.fromisoformat(journey["queue_time"])
+                exit_dt = datetime.fromisoformat(journey["exit_time"])
+
+                # Calculate total time (always available)
+                total_minutes = (exit_dt - queue_dt).total_seconds() / 60
+                total_times.append(total_minutes)
+
+                # If SERVICE_START exists, calculate separate metrics
+                if journey["service_start_time"]:
+                    service_start_dt = datetime.fromisoformat(
+                        journey["service_start_time"]
+                    )
+
+                    queue_wait = (service_start_dt - queue_dt).total_seconds() / 60
+                    service_time = (exit_dt - service_start_dt).total_seconds() / 60
+
+                    # Only include if times are reasonable (positive and < 24 hours)
+                    if 0 <= queue_wait < 1440 and 0 <= service_time < 1440:
+                        queue_waits.append(queue_wait)
+                        service_times.append(service_time)
+                        three_stage_count += 1
+
+            has_3stage = three_stage_count > 0
+
+            return {
+                "avg_queue_wait_minutes": (
+                    int(sum(queue_waits) / len(queue_waits)) if queue_waits else 0
+                ),
+                "avg_service_time_minutes": (
+                    int(sum(service_times) / len(service_times)) if service_times else 0
+                ),
+                "avg_total_time_minutes": (
+                    int(sum(total_times) / len(total_times)) if total_times else 0
+                ),
+                "has_3stage_data": has_3stage,
+                "journeys_analyzed": len(journeys),
+                "three_stage_count": three_stage_count,
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to calculate 3-stage metrics: {e}")
+            return {
+                "avg_queue_wait_minutes": 0,
+                "avg_service_time_minutes": 0,
+                "avg_total_time_minutes": 0,
+                "has_3stage_data": False,
+                "journeys_analyzed": 0,
+            }
+
+    def _get_current_in_service(self) -> int:
+        """
+        Get count of people currently being served (between SERVICE_START and EXIT)
+
+        Returns:
+            Number of people currently in service
+        """
+        session_id = self.config.session_id
+
+        try:
+            cursor = self.db.conn.execute(
+                """
+                SELECT COUNT(DISTINCT s.token_id) as count
+                FROM events s
+                LEFT JOIN events e
+                    ON s.token_id = e.token_id
+                    AND s.session_id = e.session_id
+                    AND e.stage = 'EXIT'
+                WHERE s.stage = 'SERVICE_START'
+                    AND s.session_id = ?
+                    AND e.id IS NULL
+            """,
+                (session_id,),
+            )
+
+            return cursor.fetchone()["count"]
+
+        except Exception as e:
+            logger.warning(f"Failed to get in-service count: {e}")
+            return 0
+
+    def _get_stuck_cards(self) -> dict:
+        """
+        Get list of cards stuck in queue (>2 hours without exit)
+
+        Returns:
+            Dictionary with stuck cards and metadata
+        """
+        session_id = self.config.session_id
+        now = datetime.now(timezone.utc)
+
+        try:
+            cursor = self.db.conn.execute(
+                """
+                SELECT
+                    q.token_id,
+                    q.timestamp as queue_time,
+                    q.device_id
+                FROM events q
+                LEFT JOIN events e
+                    ON q.token_id = e.token_id
+                    AND q.session_id = e.session_id
+                    AND e.stage = 'EXIT'
+                WHERE q.stage = 'QUEUE_JOIN'
+                    AND q.session_id = ?
+                    AND e.id IS NULL
+                    AND q.timestamp < datetime('now', '-2 hours')
+                ORDER BY q.timestamp ASC
+            """,
+                (session_id,),
+            )
+
+            stuck_cards = []
+            for row in cursor.fetchall():
+                queue_dt = datetime.fromisoformat(row["queue_time"])
+                hours_stuck = (now - queue_dt).total_seconds() / 3600
+
+                stuck_cards.append(
+                    {
+                        "token_id": row["token_id"],
+                        "queue_time": queue_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                        "hours_stuck": round(hours_stuck, 1),
+                        "device_id": row["device_id"],
+                    }
+                )
+
+            return {
+                "stuck_cards": stuck_cards,
+                "count": len(stuck_cards),
+                "session_id": session_id,
+                "timestamp": now.isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get stuck cards: {e}")
+            return {"stuck_cards": [], "count": 0, "error": str(e)}
+
+    def _force_exit_cards(self, token_ids: list) -> dict:
+        """
+        Force exit for stuck cards by inserting EXIT events
+
+        Args:
+            token_ids: List of token IDs to force exit
+
+        Returns:
+            Dictionary with success status and details
+        """
+        session_id = self.config.session_id
+        now = datetime.now(timezone.utc)
+
+        try:
+            success_count = 0
+            failed = []
+
+            for token_id in token_ids:
+                try:
+                    # Insert EXIT event with special device_id to mark as forced
+                    self.db.log_event(
+                        token_id=token_id,
+                        uid=f"FORCED_{token_id}",
+                        stage="EXIT",
+                        device_id="manual_force_exit",
+                        session_id=session_id,
+                        timestamp=now,
+                    )
+                    success_count += 1
+                    logger.info(f"Force exited card: {token_id}")
+
+                except Exception as e:
+                    logger.error(f"Failed to force exit {token_id}: {e}")
+                    failed.append({"token_id": token_id, "error": str(e)})
+
+            return {
+                "success": True,
+                "processed": len(token_ids),
+                "success_count": success_count,
+                "failed_count": len(failed),
+                "failed": failed,
+                "message": f"Successfully force-exited {success_count} of {len(token_ids)} cards",
+            }
+
+        except Exception as e:
+            logger.error(f"Force exit operation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "processed": 0,
+                "success_count": 0,
+            }
 
     def run(self, host="0.0.0.0", port=8080):
         """

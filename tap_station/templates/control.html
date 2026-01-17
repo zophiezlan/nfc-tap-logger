@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -12,8 +12,9 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
         background: #1a1a1a;
         color: #e0e0e0;
       }
@@ -608,6 +609,82 @@
         </div>
       </div>
 
+      <!-- Stuck Cards Management -->
+      <div class="section">
+        <h2>🏷️ Stuck Cards Management</h2>
+        <div class="section-description">
+          Cards stuck in queue (>2 hours) - mark as exited at end of event
+        </div>
+        <div id="stuck-cards-container">
+          <div
+            id="stuck-cards-loading"
+            style="text-align: center; padding: 20px; color: #999"
+          >
+            <span class="loading-spinner"></span> Loading stuck cards...
+          </div>
+          <div id="stuck-cards-list" style="display: none">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px">
+              <button
+                class="control-button"
+                onclick="markSelectedAsExited()"
+                style="flex: 1"
+              >
+                <div class="icon">✅</div>
+                <div class="title">Mark Selected as Exited</div>
+              </button>
+              <button
+                class="control-button danger"
+                onclick="markAllAsExited()"
+                style="flex: 1"
+              >
+                <div class="icon">⚡</div>
+                <div class="title">Mark All as Exited</div>
+              </button>
+            </div>
+            <div
+              style="
+                background: #2a2a2a;
+                border: 1px solid #404040;
+                border-radius: 8px;
+                padding: 15px;
+              "
+            >
+              <table style="width: 100%; border-collapse: collapse">
+                <thead>
+                  <tr style="border-bottom: 2px solid #404040">
+                    <th style="padding: 10px; text-align: left">
+                      <input
+                        type="checkbox"
+                        id="select-all-checkbox"
+                        onchange="toggleSelectAll()"
+                      />
+                    </th>
+                    <th style="padding: 10px; text-align: left">Token ID</th>
+                    <th style="padding: 10px; text-align: left">Queue Time</th>
+                    <th style="padding: 10px; text-align: left">Hours Stuck</th>
+                  </tr>
+                </thead>
+                <tbody id="stuck-cards-tbody">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div
+            id="stuck-cards-empty"
+            style="
+              display: none;
+              text-align: center;
+              padding: 30px;
+              color: #999;
+            "
+          >
+            <div style="font-size: 48px; margin-bottom: 10px">✓</div>
+            <div>No stuck cards found</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Command Output -->
       <div class="section">
         <h2>📺 Command Output</h2>
@@ -654,6 +731,8 @@
       window.addEventListener("load", () => {
         loadSystemStatus();
         setInterval(loadSystemStatus, 10000); // Update every 10 seconds
+        loadStuckCards();
+        setInterval(loadStuckCards, 30000); // Update stuck cards every 30 seconds
       });
 
       async function loadSystemStatus() {
@@ -785,6 +864,123 @@
         setTimeout(() => {
           toast.classList.remove("visible");
         }, 3000);
+      }
+
+      // Stuck Cards Management
+      async function loadStuckCards() {
+        try {
+          const response = await fetch("/api/control/stuck-cards");
+          const data = await response.json();
+
+          const loading = document.getElementById("stuck-cards-loading");
+          const list = document.getElementById("stuck-cards-list");
+          const empty = document.getElementById("stuck-cards-empty");
+          const tbody = document.getElementById("stuck-cards-tbody");
+
+          loading.style.display = "none";
+
+          if (data.stuck_cards && data.stuck_cards.length > 0) {
+            list.style.display = "block";
+            empty.style.display = "none";
+
+            tbody.innerHTML = "";
+            data.stuck_cards.forEach((card) => {
+              const row = document.createElement("tr");
+              row.style.borderBottom = "1px solid #333";
+              row.innerHTML = `
+                <td style="padding: 10px;">
+                  <input type="checkbox" class="stuck-card-checkbox" value="${card.token_id}" />
+                </td>
+                <td style="padding: 10px;">${card.token_id}</td>
+                <td style="padding: 10px; color: #999; font-size: 14px;">${card.queue_time}</td>
+                <td style="padding: 10px; color: ${card.hours_stuck >= 4 ? "#ef4444" : "#f59e0b"}; font-weight: 600;">
+                  ${card.hours_stuck.toFixed(1)}h
+                </td>
+              `;
+              tbody.appendChild(row);
+            });
+          } else {
+            list.style.display = "none";
+            empty.style.display = "block";
+          }
+        } catch (error) {
+          console.error("Failed to load stuck cards:", error);
+          showToast("Failed to load stuck cards", "error");
+        }
+      }
+
+      function toggleSelectAll() {
+        const selectAll = document.getElementById("select-all-checkbox");
+        const checkboxes = document.querySelectorAll(".stuck-card-checkbox");
+        checkboxes.forEach((cb) => {
+          cb.checked = selectAll.checked;
+        });
+      }
+
+      async function markSelectedAsExited() {
+        const checkboxes = document.querySelectorAll(
+          ".stuck-card-checkbox:checked",
+        );
+        const tokenIds = Array.from(checkboxes).map((cb) => cb.value);
+
+        if (tokenIds.length === 0) {
+          showToast("Please select at least one card", "error");
+          return;
+        }
+
+        if (!confirm(`Mark ${tokenIds.length} card(s) as exited?`)) {
+          return;
+        }
+
+        await forceExitCards(tokenIds);
+      }
+
+      async function markAllAsExited() {
+        const checkboxes = document.querySelectorAll(".stuck-card-checkbox");
+        const tokenIds = Array.from(checkboxes).map((cb) => cb.value);
+
+        if (tokenIds.length === 0) {
+          showToast("No stuck cards to mark", "error");
+          return;
+        }
+
+        if (
+          !confirm(
+            `Mark ALL ${tokenIds.length} card(s) as exited? This action cannot be undone.`,
+          )
+        ) {
+          return;
+        }
+
+        await forceExitCards(tokenIds);
+      }
+
+      async function forceExitCards(tokenIds) {
+        showToast(`Marking ${tokenIds.length} card(s) as exited...`, "info");
+
+        try {
+          const response = await fetch("/api/control/force-exit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_ids: tokenIds }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            showToast(
+              `Successfully marked ${data.marked_count} card(s) as exited`,
+              "success",
+            );
+            loadStuckCards(); // Reload the list
+          } else {
+            showToast("Failed to mark cards: " + data.error, "error");
+          }
+        } catch (error) {
+          showToast("Request failed: " + error.message, "error");
+        }
       }
     </script>
   </body>

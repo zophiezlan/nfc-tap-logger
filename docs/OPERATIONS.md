@@ -52,19 +52,16 @@ Day-of-event guide for peer workers and operators running NFC tap stations.
 **Location:** Registration desk or queue entry point
 
 1. **Power on the Pi**
-
    - Connect power bank
    - Wait 30 seconds for boot
    - Look for flashing activity LED
 
 2. **Verify it's working**
-
    - Tap a test card on reader
    - Listen for beep
    - If no beep, see troubleshooting section
 
 3. **Position the hardware**
-
    - Place reader where participants can reach
    - Mount "TAP HERE" sign above reader
    - Secure with velcro/tape
@@ -105,23 +102,19 @@ Repeat same process as Station 1:
 **When someone arrives for service:**
 
 1. **Greet and hand card**
-
    - "Welcome! Here's a card - tap it at each station"
    - "It helps us track wait times"
 
 2. **Guide them to tap**
-
    - "Hold it flat on this reader for a second"
    - Point to tap zone
 
 3. **Wait for beep**
-
    - 1 beep = ✅ Success: "You're all set!"
    - 2 beeps = ⚠️ Duplicate: "Already checked in - you're good!"
    - Long beep = ❌ Error: "Try again, hold it flat"
 
 4. **If tap fails after 2-3 attempts**
-
    - Try different card
    - Write name/number on backup sheet
    - Keep going (don't hold up the queue)
@@ -135,12 +128,10 @@ Repeat same process as Station 1:
 **When someone exits service:**
 
 1. **Remind them to tap**
-
    - "Don't forget to tap out!"
    - Point to reader
 
 2. **Wait for beep**
-
    - Same beep codes as Station 1
 
 3. **Thank them**
@@ -645,12 +636,10 @@ Time    | Participant ID / Description | Stage
 **Don't immediately power off!** Give system time to finish writes.
 
 1. **Stop accepting new taps**
-
    - Remove "TAP HERE" signs
    - Collect remaining cards
 
 2. **Wait 2-3 minutes**
-
    - Let any pending writes complete
 
 3. **Graceful shutdown**

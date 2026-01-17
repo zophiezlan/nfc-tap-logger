@@ -94,17 +94,14 @@ ifconfig | grep "inet "
 On the phone:
 
 1. **Set Session ID**
-
    - Example: `festival-2026-01`
    - Must match across all stations
 
 2. **Choose Stage**
-
    - `QUEUE_JOIN` for entry station
    - `EXIT` for exit station
 
 3. **Set Device ID**
-
    - Example: `phone-queue-1`, `phone-exit-1`
    - Must be unique per phone
 
@@ -125,13 +122,11 @@ On the phone:
 **After the event:**
 
 1. **Export from phone:**
-
    - Tap "Download JSONL" (recommended)
    - Or "Download CSV"
    - File saved to phone's Downloads folder
 
 2. **Transfer to laptop:**
-
    - USB cable and file transfer
    - AirDrop / Nearby Share
    - Email attachment

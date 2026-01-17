@@ -6,6 +6,7 @@ Run this on the Raspberry Pi to help diagnose the write issue
 
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import inspect
@@ -34,8 +35,12 @@ print("\n2. Parameter analysis:")
 print("-" * 70)
 sig = inspect.signature(method)
 for param_name, param in sig.parameters.items():
-    print(f"  {param_name}: {param.annotation if param.annotation != inspect.Parameter.empty else 'no annotation'}")
-    print(f"    Default: {param.default if param.default != inspect.Parameter.empty else 'no default'}")
+    print(
+        f"  {param_name}: {param.annotation if param.annotation != inspect.Parameter.empty else 'no annotation'}"
+    )
+    print(
+        f"    Default: {param.default if param.default != inspect.Parameter.empty else 'no default'}"
+    )
 
 # Now let's actually test different calling conventions with a real card
 print("\n3. Testing write operations (requires card on reader):")
@@ -73,18 +78,44 @@ try:
     print(f"\nWill test writing {repr(test_data)} to page {test_page}")
     print("WARNING: This will modify the card!")
     response = input("Continue? (y/n): ").strip().lower()
-    if response != 'y':
+    if response != "y":
         print("Aborted")
         sys.exit(0)
 
     # Try different calling methods
     methods_to_try = [
-        ("bytes object", lambda: pn532.mifareultralight_WritePage(test_page, test_data)),
-        ("bytearray", lambda: pn532.mifareultralight_WritePage(test_page, bytearray(test_data))),
-        ("list of ints", lambda: pn532.mifareultralight_WritePage(test_page, [int(b) for b in test_data])),
-        ("tuple of ints", lambda: pn532.mifareultralight_WritePage(test_page, tuple([int(b) for b in test_data]))),
-        ("unpacked ints", lambda: pn532.mifareultralight_WritePage(test_page, *[int(b) for b in test_data])),
-        ("comma-separated ints", lambda: pn532.mifareultralight_WritePage(test_page, test_data[0], test_data[1], test_data[2], test_data[3])),
+        (
+            "bytes object",
+            lambda: pn532.mifareultralight_WritePage(test_page, test_data),
+        ),
+        (
+            "bytearray",
+            lambda: pn532.mifareultralight_WritePage(test_page, bytearray(test_data)),
+        ),
+        (
+            "list of ints",
+            lambda: pn532.mifareultralight_WritePage(
+                test_page, [int(b) for b in test_data]
+            ),
+        ),
+        (
+            "tuple of ints",
+            lambda: pn532.mifareultralight_WritePage(
+                test_page, tuple([int(b) for b in test_data])
+            ),
+        ),
+        (
+            "unpacked ints",
+            lambda: pn532.mifareultralight_WritePage(
+                test_page, *[int(b) for b in test_data]
+            ),
+        ),
+        (
+            "comma-separated ints",
+            lambda: pn532.mifareultralight_WritePage(
+                test_page, test_data[0], test_data[1], test_data[2], test_data[3]
+            ),
+        ),
     ]
 
     successful_method = None
@@ -128,13 +159,14 @@ try:
     print("\n4. Library information:")
     print("-" * 70)
     import pn532pi
+
     print(f"pn532pi version: {getattr(pn532pi, '__version__', 'unknown')}")
     print(f"pn532pi file location: {pn532pi.__file__}")
 
     # List all methods containing 'write' or 'Write'
     print("\nAvailable write methods:")
     for attr in dir(Pn532):
-        if 'write' in attr.lower():
+        if "write" in attr.lower():
             method = getattr(Pn532, attr)
             if callable(method):
                 try:
@@ -146,5 +178,6 @@ try:
 except Exception as e:
     print(f"\nFATAL ERROR: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)

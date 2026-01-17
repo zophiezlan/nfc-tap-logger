@@ -23,9 +23,30 @@ Drug checking services at festivals need data to optimize flow, measure impact, 
 - **📋 [Operations Guide](docs/OPERATIONS.md)** - Day-of-event workflow, live monitoring & decision-making
 - **✅ [Pre-Deployment Checklist](docs/PRE_DEPLOYMENT_CHECKLIST.md)** - Ensure you're ready before your event
 - **📊 [Live Dashboard](#live-monitoring)** - Real-time queue tracking & operational metrics
+- **🔥 [New Features Guide](docs/NEW_FEATURES.md)** - Public display, enhanced alerts, shift summaries
 - **🎛️ [Control Panel](docs/CONTROL_PANEL.md)** - Web-based system administration
 - **🔧 [Troubleshooting](docs/TROUBLESHOOTING.md)** - Fix common issues
 - **💻 [Contributing](CONTRIBUTING.md)** - For developers
+
+## What's New (v2.2.1)
+
+**🚀 Quick Wins for Event Operations:**
+
+- **Force-Exit Tool** - Mark stuck cards as exited in bulk at end of events (Control Panel)
+- **Real-Time Export** - One-click CSV downloads directly from dashboard (no SSH needed)
+
+**v2.2 - 3-Stage Tracking:**
+
+- **3-Stage Service Tracking** - Separate queue wait from service time (QUEUE_JOIN → SERVICE_START → EXIT)
+
+**v2.1 - Enhanced Operational Intelligence:**
+
+- **Public Queue Display** (`/public`) - Large, simple display showing current wait times for participants
+- **Enhanced Staff Alerts** - Proactive monitoring for station failures, long waits, and operational issues
+- **Shift Summary** (`/shift`) - Quick handoff information for shift changes
+- **Activity Monitoring** - Automatic detection of stuck cards, service anomalies, and capacity issues
+
+See [Force-Exit & Export Guide](docs/FORCE_EXIT_AND_EXPORT.md), [3-Stage Tracking Guide](docs/3_STAGE_TRACKING.md), and [New Features Guide](docs/NEW_FEATURES.md) for details.
 
 ## System Overview
 
@@ -168,7 +189,6 @@ hostname -I
 **For coordinators and decision-makers**
 
 - **Real-time metrics:**
-
   - People in queue right now
   - Estimated wait time for new arrivals
   - Longest current wait (time in service)
@@ -176,13 +196,11 @@ hostname -I
   - Throughput per hour
 
 - **Operational alerts:**
-
   - 🟢 Green: All systems normal
   - 🟡 Yellow: Queue getting busy (>10 people or >45min wait)
   - 🔴 Red: Critical conditions (>20 people or >90min wait)
 
 - **Queue details:**
-
   - Position in queue (#1, #2, etc.)
   - Time each person has been waiting
   - Real-time updates every 5 seconds

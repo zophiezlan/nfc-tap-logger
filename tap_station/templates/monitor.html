@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -12,8 +12,9 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
         background: #1a1a1a;
         color: white;
         display: flex;
@@ -321,7 +322,7 @@
         document.getElementById("completed").textContent =
           stats.completed_today;
         document.getElementById("throughput").textContent = Math.round(
-          stats.throughput_per_hour
+          stats.throughput_per_hour,
         );
 
         // Update card styling based on queue health
@@ -346,7 +347,7 @@
             "🚨",
             "CRITICAL QUEUE",
             "Consider additional resources immediately",
-            "#ef4444"
+            "#ef4444",
           );
         } else if (health === "warning") {
           queueCard.className = "stat-big warning";
@@ -355,21 +356,21 @@
             "⚠️",
             "Queue Getting Busy",
             "Monitor closely and prepare for increased demand",
-            "#f59e0b"
+            "#f59e0b",
           );
         } else if (health === "moderate") {
           updateMessageBox(
             "📊",
             "Moderate Activity",
             "Service running smoothly",
-            "#3b82f6"
+            "#3b82f6",
           );
         } else {
           updateMessageBox(
             "✅",
             "All Systems Normal",
             "Keep up the great work!",
-            "#10b981"
+            "#10b981",
           );
         }
       }

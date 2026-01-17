@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shift Summary - {{ session }}</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #f5f5f5;
+        color: #333;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+        margin-bottom: 10px;
+      }
+
+      .header .subtitle {
+        opacity: 0.9;
+        font-size: 1rem;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+
+      .summary-card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .summary-card .label {
+        font-size: 0.875rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 10px;
+      }
+
+      .summary-card .value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea;
+      }
+
+      .summary-card .sub {
+        font-size: 0.875rem;
+        color: #999;
+        margin-top: 8px;
+      }
+
+      .info-section {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+
+      .info-section h2 {
+        font-size: 1.25rem;
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #eee;
+      }
+
+      .info-row:last-child {
+        border-bottom: none;
+      }
+
+      .info-row .label {
+        color: #666;
+      }
+
+      .info-row .value {
+        font-weight: 600;
+        color: #333;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+      }
+
+      .button {
+        flex: 1;
+        padding: 15px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+        transition: transform 0.2s;
+      }
+
+      .button:active {
+        transform: scale(0.98);
+      }
+
+      .button-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .button-secondary {
+        background: #e5e7eb;
+        color: #333;
+      }
+
+      .button:hover {
+        opacity: 0.9;
+      }
+
+      .refresh-info {
+        text-align: center;
+        color: #999;
+        font-size: 0.875rem;
+        margin-top: 20px;
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+        .actions,
+        .refresh-info {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Shift Summary</h1>
+        <div class="subtitle">Session: {{ session }}</div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="label">Current Queue</div>
+          <div class="value" id="current-queue">--</div>
+          <div class="sub">people waiting</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="label">Completed (Shift)</div>
+          <div class="value" id="completed-shift">--</div>
+          <div class="sub">last 4 hours</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="label">Avg Wait Time</div>
+          <div class="value" id="avg-wait">--</div>
+          <div class="sub">minutes (shift)</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="label">Service Hours</div>
+          <div class="value" id="service-hours">--</div>
+          <div class="sub">hours today</div>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <h2>📊 Shift Details</h2>
+        <div class="info-row">
+          <span class="label">Busiest Hour</span>
+          <span class="value" id="busiest-hour">--</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Longest Current Wait</span>
+          <span class="value" id="longest-wait">--</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Time Now</span>
+          <span class="value" id="current-time">--</span>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <h2>📝 Notes for Incoming Shift</h2>
+        <div id="shift-notes" style="color: #666; line-height: 1.6">
+          <p>• Review current queue on main dashboard</p>
+          <p>• Check battery levels on both stations</p>
+          <p>• Verify NFC readers are responding</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a href="/dashboard" class="button button-primary"
+          >View Full Dashboard</a
+        >
+        <button onclick="window.print()" class="button button-secondary">
+          Print Summary
+        </button>
+        <button onclick="location.reload()" class="button button-secondary">
+          Refresh
+        </button>
+      </div>
+
+      <div class="refresh-info">
+        Last updated: <span id="last-update">--</span>
+      </div>
+    </div>
+
+    <script>
+      async function loadShiftSummary() {
+        try {
+          const response = await fetch("/api/shift-summary");
+          const data = await response.json();
+
+          // Update values
+          document.getElementById("current-queue").textContent =
+            data.current_queue || 0;
+          document.getElementById("completed-shift").textContent =
+            data.completed_this_shift || 0;
+          document.getElementById("avg-wait").textContent =
+            data.avg_wait_minutes_shift || "--";
+          document.getElementById("service-hours").textContent =
+            data.service_hours_today
+              ? data.service_hours_today.toFixed(1)
+              : "--";
+
+          // Busiest hour
+          const busiestText =
+            data.busiest_hour !== "N/A"
+              ? `${data.busiest_hour} (${data.busiest_hour_count} people)`
+              : "N/A";
+          document.getElementById("busiest-hour").textContent = busiestText;
+
+          // Longest wait
+          const longestText =
+            data.longest_current_wait_minutes > 0
+              ? `${data.longest_current_wait_minutes} minutes`
+              : "None";
+          document.getElementById("longest-wait").textContent = longestText;
+
+          // Current time
+          document.getElementById("current-time").textContent =
+            new Date().toLocaleTimeString();
+
+          // Last update
+          document.getElementById("last-update").textContent =
+            new Date().toLocaleTimeString();
+        } catch (error) {
+          console.error("Failed to load shift summary:", error);
+        }
+      }
+
+      // Load on page load
+      loadShiftSummary();
+    </script>
+  </body>
+</html>

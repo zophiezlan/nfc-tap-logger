@@ -228,9 +228,7 @@ class HealthCheck:
                 level = (
                     "error"
                     if used_percent >= 90
-                    else "warning"
-                    if used_percent >= 80
-                    else "info"
+                    else "warning" if used_percent >= 80 else "info"
                 )
 
                 self.check_status(

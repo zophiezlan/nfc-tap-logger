@@ -118,6 +118,7 @@ def test_mock_write():
 
 def test_write_ntag_pages_accepts_data_argument():
     """Ensure write supports (page, data) signature used by pn532pi"""
+
     class DummyPn532:
         def __init__(self):
             self.calls = []
@@ -138,6 +139,7 @@ def test_write_ntag_pages_accepts_data_argument():
 
 def test_read_token_id_handles_tuple_read_page():
     """Ensure tuple returns from ReadPage are handled."""
+
     class DummyPn532:
         def mifareultralight_ReadPage(self, page):
             return True, bytearray(b"001\x00")
@@ -151,6 +153,7 @@ def test_read_token_id_handles_tuple_read_page():
 
 def test_write_token_id_verifies_tuple_readback():
     """Ensure tuple readback data doesn't break verification."""
+
     class DummyPn532:
         def readPassiveTargetID(self, cardbaudrate=0x00):
             return True, bytearray([1, 2, 3, 4])

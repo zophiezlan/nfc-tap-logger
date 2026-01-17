@@ -131,6 +131,7 @@ Pi Pin 13 (GPIO27) → 220Ω resistor → LED anode (long leg) → LED cathode (
 ```
 
 Place on breadboard:
+
 - Row E: Connect GPIO27 wire
 - Row E: Insert 220Ω resistor (one leg)
 - Row F: Resistor other leg + LED anode (long leg)
@@ -143,6 +144,7 @@ Pi Pin 15 (GPIO22) → 220Ω resistor → LED anode (long leg) → LED cathode (
 ```
 
 Place on breadboard:
+
 - Row H: Connect GPIO22 wire
 - Row H: Insert 220Ω resistor (one leg)
 - Row I: Resistor other leg + LED anode (long leg)
@@ -156,6 +158,7 @@ Buzzer negative (−) → GND rail
 ```
 
 Place on breadboard:
+
 - Row K: Connect GPIO17 wire and buzzer positive pin
 - Row L: Connect buzzer negative pin → jumper to GND rail
 
@@ -167,6 +170,7 @@ Button leg 2 → GND rail
 ```
 
 Place on breadboard:
+
 - Row M: Connect GPIO26 wire and one button leg
 - Row N: Connect other button leg → jumper to GND rail
 - Software will enable internal pull-up resistor (no external resistor needed)

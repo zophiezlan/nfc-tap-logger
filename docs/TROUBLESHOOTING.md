@@ -110,17 +110,19 @@ i2cdetect -y 1
    - Confirm VCC is on 3.3V, NOT 5V
 
 3. **Check PN532 mode**
-
    - PN532 must be in I2C mode
    - Check DIP switches or solder jumpers
    - Consult module documentation
 
 4. **Try alternate I2C bus**
+
    ```bash
    sudo i2cdetect -y 0
    ```
+
    - Some Pis use bus 0 instead of 1
    - If device found on bus 0, update `config.yaml`:
+
      ```yaml
      nfc:
        i2c_bus: 0
@@ -186,30 +188,26 @@ Expected output with PN532:
 **Possible causes:**
 
 1. **Wrong card type**
-
    - **Check:** Are you using NTAG215 cards?
    - **Fix:** Order NTAG215 specifically
 
 2. **Cards not initialized**
-
    - **Check:** Did you run `init_cards.py`?
    - **Fix:** Initialize cards:
+
      ```bash
      python scripts/init_cards.py --start 1 --end 100
      ```
 
 3. **Poor contact**
-
    - **Check:** How long is card held on reader?
    - **Fix:** Hold card flat, centered, for 2+ seconds
 
 4. **Reader distance/orientation**
-
    - **Check:** Is card touching reader surface?
    - **Fix:** Position reader so card can lay flat on antenna
 
 5. **Power issues**
-
    - **Check:** `vcgencmd get_throttled`
    - **Fix:** See Power Issues section
 
@@ -269,17 +267,14 @@ vcgencmd get_throttled
 **Causes & solutions:**
 
 1. **Weak power bank**
-
    - **Solution:** Use quality 2A+ power bank
    - **Test:** Try different power bank
 
 2. **Bad USB cable**
-
    - **Solution:** Use thick, short USB-C cable
    - **Test:** Try different cable
 
 3. **Power bank in power-save mode**
-
    - **Solution:** Some power banks sleep with low draw
    - **Fix:** Tape power button down or use "always-on" mode
 
@@ -305,18 +300,15 @@ vcgencmd get_throttled
 **Diagnostic steps:**
 
 1. **Check power bank**
-
    - Is it charged? (check indicator LEDs)
    - Is it turned on? (some have power button)
    - Try different power bank
 
 2. **Check cable**
-
    - Try different USB-C cable
    - Check for bent pins
 
 3. **Check SD card**
-
    - Remove and reinsert SD card
    - Try SD card in different device
    - Reflash SD card if corrupted
@@ -407,19 +399,17 @@ sudo journalctl -u tap-station --since "10 minutes ago"
 **Common causes:**
 
 1. **Python exception**
-
    - Check `logs/tap-station.log` for stack trace
    - May be code bug or config error
 
 2. **Hardware failure**
-
    - PN532 disconnected during operation
    - I2C bus errors
 
 3. **Database corruption**
-
    - Rare due to WAL mode
    - Restore from backup:
+
      ```bash
      sudo systemctl stop tap-station
      cp backups/events_BACKUP.db data/events.db
@@ -519,12 +509,12 @@ python scripts/export_data.py --db /tmp/events_copy.db
    ```
 
 2. **Verify card type**
-
    - Should be NTAG215 (504 bytes usable)
    - NTAG213 (144 bytes) also works
    - Mifare Classic might not work
 
 3. **Check initialization**
+
    ```bash
    # List initialized cards
    cat data/card_mapping.csv
@@ -845,15 +835,14 @@ sudo systemctl start tap-station
    ```
 
 4. **Reflash OS:**
-
    - Use Raspberry Pi Imager
    - Fresh install of Raspberry Pi OS Lite
 
 5. **Reinstall software:**
-
    - Follow [Setup Guide](SETUP.md)
 
 6. **Restore data:**
+
    ```bash
    cp ~/backup/events.db ~/nfc-tap-logger/data/
    cp ~/backup/config.yaml ~/nfc-tap-logger/

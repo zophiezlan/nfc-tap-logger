@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -12,8 +12,9 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
         background: #f5f5f5;
         color: #333;
       }
@@ -23,6 +24,21 @@
         color: white;
         padding: 20px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+      }
+
+      .header-left {
+        flex: 1;
+      }
+
+      .header-right {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
       }
 
       .header h1 {
@@ -294,19 +310,21 @@
       }
 
       .export-button {
-        background: #667eea;
+        background: rgba(255, 255, 255, 0.2);
         color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-size: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        margin-top: 10px;
+        transition: all 0.2s;
+        white-space: nowrap;
       }
 
       .export-button:hover {
-        background: #5568d3;
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
       }
 
       /* Alerts */
@@ -414,13 +432,45 @@
   </head>
   <body>
     <div class="header">
-      <h1><span class="pulse"></span> Live Dashboard</h1>
-      <div class="session-info">
-        Session: {{ session }} | Station: {{ device_id }} ({{ stage }})
+      <div class="header-left">
+        <h1><span class="pulse"></span> Live Dashboard</h1>
+        <div class="session-info">
+          Session: {{ session }} | Station: {{ device_id }} ({{ stage }})
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="export-button" onclick="exportData('hour')">
+          📊 Export Last Hour
+        </button>
+        <button class="export-button" onclick="exportData('today')">
+          📅 Export Today
+        </button>
+        <button class="export-button" onclick="exportData('all')">
+          📦 Export All
+        </button>
       </div>
     </div>
 
     <div class="container">
+      <!-- 3-Stage Info Banner (hidden by default) -->
+      <div
+        id="3stage-banner"
+        style="
+          display: none;
+          background: #dbeafe;
+          border-left: 4px solid #3b82f6;
+          padding: 15px 20px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        "
+      >
+        <strong>📊 3-Stage Tracking Active</strong><br />
+        <small style="color: #1e40af"
+          >System is tracking Queue Wait (QUEUE_JOIN → SERVICE_START) and
+          Service Time (SERVICE_START → EXIT) separately.</small
+        >
+      </div>
+
       <!-- Operational Alerts -->
       <div id="alerts-container" style="margin-bottom: 20px"></div>
 
@@ -430,6 +480,12 @@
           <div class="label">In Queue Now</div>
           <div class="value" id="in-queue">-</div>
           <div class="sub-value">people waiting</div>
+        </div>
+
+        <div class="stat-card" id="in-service-card" style="display: none">
+          <div class="label">Being Served</div>
+          <div class="value" id="in-service">-</div>
+          <div class="sub-value">active services</div>
         </div>
 
         <div class="stat-card" id="wait-card">
@@ -448,6 +504,18 @@
           <div class="label">Avg Wait Time</div>
           <div class="value" id="avg-wait">-</div>
           <div class="sub-value">recent average</div>
+        </div>
+
+        <div class="stat-card" id="queue-wait-card" style="display: none">
+          <div class="label">Avg Queue Wait</div>
+          <div class="value" id="avg-queue-wait">-</div>
+          <div class="sub-value">waiting time</div>
+        </div>
+
+        <div class="stat-card" id="service-time-card" style="display: none">
+          <div class="label">Avg Service Time</div>
+          <div class="value" id="avg-service-time">-</div>
+          <div class="sub-value">testing time</div>
         </div>
 
         <div class="stat-card">
@@ -559,8 +627,41 @@
         document.getElementById("uptime").textContent =
           stats.service_uptime_minutes || "0";
         document.getElementById("throughput").textContent = Math.round(
-          stats.throughput_per_hour
+          stats.throughput_per_hour,
         );
+
+        // Show/hide 3-stage metrics if available
+        if (stats.has_3stage_data) {
+          // Show 3-stage banner
+          document.getElementById("3stage-banner").style.display = "block";
+
+          // Show 3-stage specific cards
+          document.getElementById("in-service-card").style.display = "block";
+          document.getElementById("queue-wait-card").style.display = "block";
+          document.getElementById("service-time-card").style.display = "block";
+
+          // Update 3-stage values
+          document.getElementById("in-service").textContent =
+            stats.in_service || "0";
+          document.getElementById("avg-queue-wait").textContent =
+            stats.avg_queue_wait_minutes
+              ? stats.avg_queue_wait_minutes + " min"
+              : "-";
+          document.getElementById("avg-service-time").textContent =
+            stats.avg_service_time_minutes
+              ? stats.avg_service_time_minutes + " min"
+              : "-";
+
+          // Update the "Avg Wait Time" label to show total
+          document
+            .getElementById("avg-wait")
+            .parentElement.querySelector(".label").textContent =
+            "Avg Total Time";
+          document
+            .getElementById("avg-wait")
+            .parentElement.querySelector(".sub-value").textContent =
+            "queue + service";
+        }
 
         // Update queue card color based on health
         updateQueueCardHealth(data.operational.queue_health, stats.in_queue);
@@ -593,7 +694,7 @@
                 <div class="alert ${alert.level}">
                     ${alert.message}
                 </div>
-            `
+            `,
           )
           .join("");
       }
@@ -637,7 +738,7 @@
 
         if (health === "critical" || health === "warning") {
           const waitElements = waitCard.querySelectorAll(
-            ".label, .value, .sub-value"
+            ".label, .value, .sub-value",
           );
           waitElements.forEach((el) => (el.style.color = "white"));
         }
@@ -783,6 +884,31 @@
           clearInterval(refreshInterval);
         }
       });
+
+      // Export data function
+      function exportData(filter) {
+        const filterNames = {
+          hour: "Last Hour",
+          today: "Today",
+          all: "All Data",
+        };
+
+        const filterName = filterNames[filter] || filter;
+
+        // Show loading indication (you could add a toast notification here)
+        console.log(`Exporting ${filterName}...`);
+
+        // Trigger download
+        const url = `/api/export?filter=${filter}`;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `tap_station_export_${filter}_${new Date().toISOString().split("T")[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log(`Export ${filterName} completed`);
+      }
     </script>
   </body>
 </html>

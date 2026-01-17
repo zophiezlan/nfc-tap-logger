@@ -422,20 +422,17 @@ Card won't read?
 ## Questions to Answer Before Expanding
 
 1. **What's the biggest pain point with current system?**
-
    - Setup complexity?
    - Peer training?
    - Hardware reliability?
    - Data export/analysis?
 
 2. **What's the deployment environment?**
-
    - Always have WiFi?
    - Multiple simultaneous events?
    - Indoor vs outdoor?
 
 3. **What's the scale?**
-
    - 50 people or 500?
    - 2 stations or 10?
    - 1 event/month or 1/week?

@@ -51,7 +51,6 @@ Complete guide for deploying NFC Tap Logger on Raspberry Pi hardware.
 ### Step 1: Prepare the Raspberry Pi
 
 1. **Install Raspberry Pi OS:**
-
    - Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
    - Choose: "Raspberry Pi OS Lite" (64-bit recommended)
    - Enable SSH in advanced options
@@ -398,9 +397,9 @@ feedback:
 
 ```yaml
 shutdown_button:
-  enabled: true          # Enable shutdown button on GPIO 26
-  gpio_pin: 26          # BCM pin number
-  hold_time: 3.0        # Seconds to hold for shutdown
+  enabled: true # Enable shutdown button on GPIO 26
+  gpio_pin: 26 # BCM pin number
+  hold_time: 3.0 # Seconds to hold for shutdown
 ```
 
 Press and hold button for 3 seconds to trigger a clean system shutdown.

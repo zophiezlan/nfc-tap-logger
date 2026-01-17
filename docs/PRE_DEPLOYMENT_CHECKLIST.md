@@ -175,7 +175,6 @@ sqlite3 data/events.db "SELECT COUNT(*) FROM events WHERE session_id='your-sessi
 **Do a full simulation before the event!**
 
 1. **Station 1 (Queue Entry)**
-
    - [ ] Tap test card #1
    - [ ] Hear beep
    - [ ] See event in dashboard
@@ -184,7 +183,6 @@ sqlite3 data/events.db "SELECT COUNT(*) FROM events WHERE session_id='your-sessi
    - [ ] See both in queue on dashboard
 
 2. **Station 2 (Exit)**
-
    - [ ] Tap test card #1
    - [ ] Hear beep
    - [ ] See completion in dashboard
@@ -193,7 +191,6 @@ sqlite3 data/events.db "SELECT COUNT(*) FROM events WHERE session_id='your-sessi
    - [ ] Verify both completed
 
 3. **Dashboard Verification**
-
    - [ ] "In Queue" count is correct (0 after both exited)
    - [ ] "Completed Today" shows 2
    - [ ] Recent completions show both cards with wait times
@@ -273,8 +270,8 @@ sqlite3 data/events.db "SELECT COUNT(*) FROM events WHERE session_id='your-sessi
 - [ ] WiFi network available (or mobile hotspot)
 - [ ] Both Pis connected to network
 - [ ] IP addresses noted:
-  - Station 1: ******\_\_\_\_******
-  - Station 2: ******\_\_\_\_******
+  - Station 1: **\*\***\_\_\_\_**\*\***
+  - Station 2: **\*\***\_\_\_\_**\*\***
 - [ ] Monitoring device connected to same network
 - [ ] Firewall allows port 8080 (if applicable)
 
@@ -308,9 +305,9 @@ sqlite3 data/events.db "SELECT COUNT(*) FROM events WHERE session_id='your-sessi
 
 ### Contact Information
 
-- Tech lead phone: ******\_\_\_\_******
-- Backup tech support: ******\_\_\_\_******
-- Venue IT contact: ******\_\_\_\_******
+- Tech lead phone: **\*\***\_\_\_\_**\*\***
+- Backup tech support: **\*\***\_\_\_\_**\*\***
+- Venue IT contact: **\*\***\_\_\_\_**\*\***
 
 ### Backup Plans
 
@@ -414,17 +411,17 @@ sqlite3 data/events.db "SELECT COUNT(*) FROM events WHERE session_id='your-sessi
 
 Use this space for event-specific information:
 
-**Event name:** **************\_\_\_\_**************
+**Event name:** **\*\***\*\***\*\***\_\_\_\_**\*\***\*\***\*\***
 
-**Date:** **************\_\_\_\_**************
+**Date:** **\*\***\*\***\*\***\_\_\_\_**\*\***\*\***\*\***
 
-**Expected attendees:** **************\_\_\_\_**************
+**Expected attendees:** **\*\***\*\***\*\***\_\_\_\_**\*\***\*\***\*\***
 
-**Session ID used:** **************\_\_\_\_**************
+**Session ID used:** **\*\***\*\***\*\***\_\_\_\_**\*\***\*\***\*\***
 
-**Station 1 IP:** **************\_\_\_\_**************
+**Station 1 IP:** **\*\***\*\***\*\***\_\_\_\_**\*\***\*\***\*\***
 
-**Station 2 IP:** **************\_\_\_\_**************
+**Station 2 IP:** **\*\***\*\***\*\***\_\_\_\_**\*\***\*\***\*\***
 
 **Issues encountered:**
 
@@ -452,7 +449,7 @@ Use this space for event-specific information:
 
 ---
 
-## ✨ You're Ready!
+## ✨ You're Ready
 
 If you've checked off all items above, you're ready for a successful deployment!
 
