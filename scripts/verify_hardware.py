@@ -187,7 +187,7 @@ def check_nfc_reader():
 
 def check_gpio():
     """Check GPIO functionality (buzzer/LEDs)"""
-    print_header("GPIO Check")
+    print_header("GPIO Check (LEDs & Buzzer)")
 
     try:
         import RPi.GPIO as GPIO
@@ -198,28 +198,59 @@ def check_gpio():
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
 
-        test_pin = 17  # Buzzer pin
-        GPIO.setup(test_pin, GPIO.OUT)
+        # Pin definitions
+        BUZZER_PIN = 17
+        GREEN_LED_PIN = 27
+        RED_LED_PIN = 22
 
-        print(f"\nTesting GPIO {test_pin} (buzzer pin)...")
+        GPIO.setup(BUZZER_PIN, GPIO.OUT)
+        GPIO.setup(GREEN_LED_PIN, GPIO.OUT)
+        GPIO.setup(RED_LED_PIN, GPIO.OUT)
+
+        print("\nTesting Green LED (GPIO 27)...")
+        GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+        time.sleep(0.5)
+        GPIO.output(GREEN_LED_PIN, GPIO.LOW)
+        green_ok = input("Did green LED flash? (y/n): ").strip().lower() == "y"
+        print_result("Green LED (GPIO 27)", green_ok)
+
+        print("\nTesting Red LED (GPIO 22)...")
+        GPIO.output(RED_LED_PIN, GPIO.HIGH)
+        time.sleep(0.5)
+        GPIO.output(RED_LED_PIN, GPIO.LOW)
+        red_ok = input("Did red LED flash? (y/n): ").strip().lower() == "y"
+        print_result("Red LED (GPIO 22)", red_ok)
+
+        print("\nTesting Buzzer (GPIO 17)...")
         print("You should hear a short beep...")
-
-        # Beep
-        GPIO.output(test_pin, GPIO.HIGH)
+        GPIO.output(BUZZER_PIN, GPIO.HIGH)
         time.sleep(0.2)
-        GPIO.output(test_pin, GPIO.LOW)
+        GPIO.output(BUZZER_PIN, GPIO.LOW)
+        buzzer_ok = input("Did you hear a beep? (y/n): ").strip().lower() == "y"
+        print_result("Buzzer (GPIO 17)", buzzer_ok)
+
+        # Test success pattern
+        print("\nTesting success pattern (green LED + beep)...")
+        GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+        GPIO.output(BUZZER_PIN, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(BUZZER_PIN, GPIO.LOW)
+        time.sleep(0.1)
+        GPIO.output(GREEN_LED_PIN, GPIO.LOW)
 
         GPIO.cleanup()
 
-        response = input("Did you hear a beep? (y/n): ").strip().lower()
-        success = response == "y"
-
-        print_result("GPIO/Buzzer working", success)
+        success = green_ok and red_ok and buzzer_ok
 
         if not success:
-            print("  Check buzzer wiring:")
-            print("    Buzzer+ → GPIO 17 (Pin 11)")
-            print("    Buzzer- → GND")
+            print("\n  Check wiring:")
+            if not green_ok:
+                print("    Green LED+ → GPIO 27 (Pin 13) → 220Ω → LED → GND")
+            if not red_ok:
+                print("    Red LED+ → GPIO 22 (Pin 15) → 220Ω → LED → GND")
+            if not buzzer_ok:
+                print("    Buzzer+ → GPIO 17 (Pin 11)")
+                print("    Buzzer- → GND")
 
         return success
 
@@ -268,6 +299,55 @@ def check_battery():
     except Exception as e:
         print_result("Power check", False, str(e))
         return False
+
+
+def check_rtc():
+    """Check RTC (Real-Time Clock) if present"""
+    print_header("RTC Check (Optional)")
+
+    try:
+        # Check if RTC device exists
+        rtc_devices = ["/dev/rtc0", "/dev/rtc1"]
+        rtc_found = any(os.path.exists(dev) for dev in rtc_devices)
+
+        if not rtc_found:
+            print_result("RTC device", False, "No RTC detected (optional)")
+            print("  RTC is optional but recommended for accurate timestamps")
+            print("  Without RTC, Pi will sync time via network on boot")
+            return True  # Not a failure, just informational
+
+        print_result("RTC device found", True)
+
+        # Try to read RTC time
+        try:
+            result = subprocess.run(
+                ["sudo", "hwclock", "-r"], capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                rtc_time = result.stdout.strip()
+                print_result("RTC readable", True, rtc_time)
+
+                # Check if RTC time is reasonable (not 2000 or 1970)
+                import datetime
+
+                current_year = datetime.datetime.now().year
+                if "2000" in rtc_time or "197" in rtc_time:
+                    print("  ⚠ RTC time seems unset, may need battery or sync")
+                    print("  Set with: sudo hwclock --systohc")
+                elif str(current_year) not in rtc_time:
+                    print("  ⚠ RTC time may be incorrect")
+
+                return True
+            else:
+                print_result("RTC readable", False, result.stderr)
+                return False
+        except Exception as e:
+            print_result("Read RTC", False, str(e))
+            return False
+
+    except Exception as e:
+        print_result("RTC check", False, str(e))
+        return True  # Not critical
 
 
 def check_database():
@@ -325,7 +405,8 @@ def main():
     # Run checks
     results["I2C"] = check_i2c()
     results["NFC"] = check_nfc_reader()
-    results["GPIO"] = check_gpio()
+    results["GPIO/LEDs/Buzzer"] = check_gpio()
+    results["RTC (Optional)"] = check_rtc()
     results["Power"] = check_battery()
     results["Database"] = check_database()
 

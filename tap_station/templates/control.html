@@ -228,6 +228,142 @@
         padding: 30px;
         max-width: 500px;
         width: 90%;
+
+        .hardware-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 15px;
+          margin-top: 15px;
+        }
+
+        .hardware-component {
+          background: #1f1f1f;
+          border-radius: 8px;
+          padding: 15px;
+          border-left: 4px solid #6b7280;
+        }
+
+        .hardware-component.status-ok {
+          border-left-color: #10b981;
+        }
+
+        .hardware-component.status-warning {
+          border-left-color: #f59e0b;
+        }
+
+        .hardware-component.status-error {
+          border-left-color: #ef4444;
+        }
+
+        .hardware-component.status-info {
+          border-left-color: #3b82f6;
+        }
+
+        .hardware-component.status-unknown {
+          border-left-color: #6b7280;
+        }
+
+        .hardware-component .component-name {
+          font-size: 13px;
+          font-weight: 600;
+          text-transform: uppercase;
+          color: #9ca3af;
+          margin-bottom: 8px;
+          letter-spacing: 0.5px;
+        }
+
+        .hardware-component .component-status {
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 5px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .hardware-component .status-badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .hardware-component .status-badge.ok {
+          background: #065f46;
+          color: #6ee7b7;
+        }
+
+        .hardware-component .status-badge.warning {
+          background: #78350f;
+          color: #fbbf24;
+        }
+
+        .hardware-component .status-badge.error {
+          background: #7f1d1d;
+          color: #fca5a5;
+        }
+
+        .hardware-component .status-badge.info {
+          background: #1e3a8a;
+          color: #93c5fd;
+        }
+
+        .hardware-component .status-badge.unknown {
+          background: #374151;
+          color: #9ca3af;
+        }
+
+        .hardware-component .component-message {
+          font-size: 13px;
+          color: #d1d5db;
+          line-height: 1.4;
+        }
+
+        .hardware-component .component-details {
+          margin-top: 8px;
+          font-size: 12px;
+          color: #9ca3af;
+          border-top: 1px solid #374151;
+          padding-top: 8px;
+        }
+
+        .hardware-component .detail-line {
+          display: flex;
+          justify-content: space-between;
+          margin: 3px 0;
+        }
+
+        .hardware-component .detail-label {
+          color: #6b7280;
+        }
+
+        .hardware-component .detail-value {
+          color: #e5e7eb;
+          font-weight: 500;
+        }
+
+        .critical-warning {
+          background: #7f1d1d;
+          color: #fca5a5;
+          padding: 10px 15px;
+          border-radius: 8px;
+          margin-top: 15px;
+          font-size: 14px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .loading {
+          text-align: center;
+          padding: 40px;
+          color: #9ca3af;
+          font-size: 14px;
+        }
+
         border: 2px solid #667eea;
       }
 
@@ -485,6 +621,17 @@
             <div class="title">I2C Devices</div>
             <div class="description">Scan for I2C devices</div>
           </button>
+        </div>
+      </div>
+
+      <!-- Hardware Status -->
+      <div class="section">
+        <h2>⚙️ Hardware Status</h2>
+        <div class="section-description">
+          Real-time monitoring of hardware components
+        </div>
+        <div id="hardware-status-container">
+          <div class="loading">Loading hardware status...</div>
         </div>
       </div>
 
@@ -998,6 +1145,140 @@
           showToast("Database backup download started", "success");
         }, 500);
       }
+
+      // Hardware Status Monitoring
+      async function loadHardwareStatus() {
+        try {
+          const response = await fetch("/api/control/hardware-status");
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to load hardware status");
+          }
+
+          displayHardwareStatus(data);
+        } catch (error) {
+          console.error("Error loading hardware status:", error);
+          document.getElementById("hardware-status-container").innerHTML = `
+            <div class="critical-warning">
+              ⚠️ Failed to load hardware status: ${error.message}
+            </div>
+          `;
+        }
+      }
+
+      function displayHardwareStatus(data) {
+        const container = document.getElementById("hardware-status-container");
+        const components = data.components || {};
+
+        let criticalIssues = [];
+        let html = '<div class="hardware-grid">';
+
+        // Define display order and labels
+        const componentOrder = [
+          { key: "i2c", label: "I2C Bus", icon: "🔌" },
+          { key: "gpio", label: "GPIO / LEDs", icon: "💡" },
+          { key: "temperature", label: "CPU Temp", icon: "🌡️" },
+          { key: "power", label: "Power", icon: "⚡" },
+          { key: "disk", label: "Disk Space", icon: "💾" },
+          { key: "rtc", label: "RTC Clock", icon: "⏰" },
+        ];
+
+        componentOrder.forEach(({ key, label, icon }) => {
+          const component = components[key];
+          if (!component) return;
+
+          const status = component.status || "unknown";
+          const message = component.message || "No information";
+          const isCritical = component.critical || false;
+
+          if (isCritical) {
+            criticalIssues.push(`${label}: ${message}`);
+          }
+
+          html += `
+            <div class="hardware-component status-${status}">
+              <div class="component-name">${icon} ${label}</div>
+              <div class="component-status">
+                <span class="status-badge ${status}">${status.toUpperCase()}</span>
+              </div>
+              <div class="component-message">${message}</div>
+          `;
+
+          // Add details if available
+          if (component.details) {
+            html += '<div class="component-details">';
+            for (const [detailKey, detailValue] of Object.entries(
+              component.details,
+            )) {
+              html += `
+                <div class="detail-line">
+                  <span class="detail-label">${detailKey.replace(/_/g, " ")}:</span>
+                  <span class="detail-value">${detailValue}</span>
+                </div>
+              `;
+            }
+            html += "</div>";
+          }
+
+          // Add temperature value
+          if (key === "temperature" && component.value) {
+            html += `<div class="component-details">
+              <div class="detail-line">
+                <span class="detail-label">Current:</span>
+                <span class="detail-value">${component.value}°C</span>
+              </div>
+            </div>`;
+          }
+
+          // Add disk space percentage
+          if (key === "disk" && component.percent_used) {
+            html += `<div class="component-details">
+              <div class="detail-line">
+                <span class="detail-label">Used:</span>
+                <span class="detail-value">${component.percent_used}%</span>
+              </div>
+            </div>`;
+          }
+
+          // Add RTC time if available
+          if (key === "rtc" && component.time) {
+            html += `<div class="component-details">
+              <div class="detail-line">
+                <span class="detail-label">Hardware Time:</span>
+                <span class="detail-value">${component.time}</span>
+              </div>
+            </div>`;
+          }
+
+          html += "</div>";
+        });
+
+        html += "</div>";
+
+        // Add critical warnings banner if needed
+        if (criticalIssues.length > 0) {
+          html =
+            `
+          <div class="critical-warning">
+            ⚠️ <strong>CRITICAL HARDWARE ISSUES:</strong> ${criticalIssues.join(" | ")}
+          </div>
+        ` + html;
+        }
+
+        // Add last update timestamp
+        html += `<div style="text-align: center; margin-top: 15px; color: #6b7280; font-size: 12px;">
+          Last updated: ${new Date(data.timestamp).toLocaleString()}
+        </div>`;
+
+        container.innerHTML = html;
+      }
+
+      // Auto-refresh hardware status every 30 seconds
+      setInterval(loadHardwareStatus, 30000);
+
+      // Load hardware status on page load
+      loadHardwareStatus();
     </script>
   </body>
 </html>
