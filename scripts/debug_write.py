@@ -22,7 +22,7 @@ print("\nPreparing NFC reader (stopping conflicting services)...")
 cleanup_success = cleanup_before_nfc_access(
     stop_service=True,
     reset_i2c=False,
-    require_sudo=True,
+    require_sudo=True,  # Needed for stopping/starting systemd service
     verbose=True,
 )
 
