@@ -10,6 +10,7 @@ import os
 import sys
 import subprocess
 import time
+import signal
 import logging
 from typing import Tuple, List, Optional
 
@@ -194,12 +195,12 @@ class NFCCleanupManager:
                     )
 
                     if result.returncode == 0 and result.stdout.strip():
-                        # Parse PIDs, filtering empty lines
-                        pid_lines = [
-                            line.strip()
-                            for line in result.stdout.strip().split("\n")
-                            if line.strip()
-                        ]
+                        # Parse PIDs, filtering empty lines and validating format
+                        pid_lines = []
+                        for line in result.stdout.strip().split("\n"):
+                            stripped = line.strip()
+                            if stripped:
+                                pid_lines.append(stripped)
                         
                         for pid_str in pid_lines:
                             try:
@@ -246,8 +247,6 @@ class NFCCleanupManager:
         for pid, cmdline in processes:
             try:
                 # Send SIGTERM (graceful shutdown)
-                import signal
-
                 os.kill(pid, signal.SIGTERM)
                 logger.info(f"Sent SIGTERM to PID {pid}: {cmdline[:60]}")
                 killed += 1
