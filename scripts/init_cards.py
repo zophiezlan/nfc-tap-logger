@@ -20,6 +20,7 @@ import subprocess
 import shutil
 from tap_station.nfc_reader import NFCReader, MockNFCReader
 from tap_station.feedback import FeedbackController
+from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
 class ErrorType:
@@ -30,42 +31,6 @@ class ErrorType:
     CARD_REMOVED = "card_removed"
     WRITE_FAILED = "write_failed"
     UNKNOWN = "unknown"
-
-
-def check_service_status():
-    """Check if tap-station service is running"""
-    try:
-        result = subprocess.run(
-            ["systemctl", "is-active", "tap-station"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        return result.stdout.strip() == "active"
-    except Exception:
-        return False
-
-
-def stop_service():
-    """Stop the tap-station service"""
-    try:
-        print("Stopping tap-station service...")
-        result = subprocess.run(
-            ["sudo", "systemctl", "stop", "tap-station"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            time.sleep(1)  # Give it a moment to fully stop
-            print("✓ Service stopped")
-            return True
-        else:
-            print(f"✗ Failed to stop service: {result.stderr}")
-            return False
-    except Exception as e:
-        print(f"✗ Error stopping service: {e}")
-        return False
 
 
 def start_service():
@@ -799,29 +764,51 @@ def main():
         print("Error: Invalid token ID range", file=sys.stderr)
         return 1
 
-    # Check if systemctl is available
-    has_systemctl = shutil.which("systemctl") is not None
+    # Track if service was running (for restart later)
     service_was_running = False
 
-    # Check and manage service (unless in mock mode or disabled)
-    if not args.mock and not args.no_service_check and has_systemctl:
-        if check_service_status():
-            service_was_running = True
-            print("\n⚠️  WARNING: tap-station service is currently running")
-            print("   The service must be stopped to initialize cards.\n")
+    # Perform automatic cleanup (unless in mock mode or disabled)
+    if not args.mock and not args.no_service_check:
+        print("\n" + "=" * 60)
+        print("Pre-flight Check: NFC Reader Cleanup")
+        print("=" * 60)
+        print()
 
-            response = input("Stop the service now? [Y/n]: ").strip().lower()
-            if response in ("", "y", "yes"):
-                if not stop_service():
-                    print("\nCannot proceed without stopping the service.")
-                    print(
-                        "You can manually stop it with: sudo systemctl stop tap-station"
-                    )
-                    return 1
-            else:
-                print("\nCannot initialize cards while service is running.")
-                print("Please stop it manually: sudo systemctl stop tap-station")
+        # Use the new cleanup utility
+        success = cleanup_before_nfc_access(
+            stop_service=True,
+            reset_i2c=False,  # Don't reset I2C by default (requires sudo)
+            require_sudo=True,
+            verbose=True,
+        )
+
+        if not success:
+            print("\n⚠️  Could not prepare NFC reader for use")
+            print("   Some issues may require manual intervention.")
+            print()
+            response = input("Attempt to continue anyway? [y/N]: ").strip().lower()
+            if response not in ("y", "yes"):
+                print("\nAborting. Please resolve the issues above.")
+                print("For help, see docs/TROUBLESHOOTING.md")
                 return 1
+
+        # Check if we need to restart service later
+        has_systemctl = shutil.which("systemctl") is not None
+        if has_systemctl:
+            try:
+                result = subprocess.run(
+                    ["systemctl", "is-enabled", "tap-station"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                # If service is enabled, we should restart it when done
+                if result.returncode == 0 and result.stdout.strip() == "enabled":
+                    service_was_running = True
+            except Exception:
+                pass
+
+        print()
 
     try:
         initializer = CardInitializer(
@@ -836,7 +823,7 @@ def main():
         result = initializer.run()
 
         # Restart service if we stopped it
-        if service_was_running and has_systemctl:
+        if service_was_running:
             start_service()
 
         return result if result is not None else 0
@@ -844,7 +831,7 @@ def main():
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
         # Restart service if we stopped it
-        if service_was_running and has_systemctl:
+        if service_was_running:
             start_service()
         return 130
 
@@ -855,7 +842,7 @@ def main():
         traceback.print_exc()
 
         # Restart service if we stopped it
-        if service_was_running and has_systemctl:
+        if service_was_running:
             start_service()
 
         return 1

@@ -36,7 +36,25 @@ Problem: Station not working
 **Cause:**
 Service or another process is holding the NFC reader
 
-**Quick Fix - Use Dev Reset:**
+**Automatic Fix (Recommended):**
+
+Scripts now automatically detect and resolve conflicts! Just run the script normally:
+
+```bash
+# These scripts now handle cleanup automatically
+python3 scripts/verify_hardware.py
+python3 scripts/init_cards.py --start 1 --end 10
+python3 scripts/init_cards_with_ndef.py --start 1 --end 10
+```
+
+The scripts will:
+- Detect if tap-station service is running
+- Stop the service automatically (with your permission)
+- Clean up any stuck processes
+- Verify the NFC reader is accessible
+- Restart the service when done (if it was running before)
+
+**Manual Fix (If Automatic Fails):**
 
 ```bash
 # Option 1: Quick Python reset (no sudo)
@@ -46,15 +64,15 @@ python3 scripts/dev_reset.py
 sudo bash scripts/dev_reset.sh
 ```
 
-**Manual Fix:**
+**Legacy Manual Steps:**
 
 ```bash
 # Stop the service
 sudo systemctl stop tap-station
 
-# Kill any hanging processes
-pkill -f "tap_station/main.py"
-pkill -f "scripts/init_cards"
+# Kill any hanging processes using specific PIDs
+ps aux | grep "tap_station\|init_cards"
+kill <PID>
 
 # Reset I2C bus (needs sudo)
 sudo modprobe -r i2c_dev
@@ -64,13 +82,14 @@ sudo modprobe i2c_dev
 i2cdetect -y 1
 ```
 
-**What dev_reset.sh does:**
+**What the automatic cleanup does:**
 
-- Stops tap-station service
-- Kills all Python processes using NFC reader
-- Clears lock/PID files
-- Resets I2C bus
-- Optionally clears logs and test data
+- Checks if tap-station service is running and stops it
+- Finds Python processes using the NFC reader and terminates them gracefully
+- Verifies I2C device accessibility
+- Checks PN532 detection
+- Optionally resets I2C bus if needed
+- Restarts service when script completes (if it was enabled)
 
 ---
 
