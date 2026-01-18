@@ -1,0 +1,207 @@
+# ============================================================================
+# EXAMPLE: Multi-Location Festival Service
+# ============================================================================
+# This configuration is for a large festival with drug checking services
+# available at multiple locations across the venue:
+#   - Main stage area
+#   - Camping zone
+#   - Dance tent area
+#
+# Each location operates independently but shares the same workflow and
+# configuration. This allows festival-goers to access services wherever
+# they are on site.
+#
+# Use case: Large multi-day festival, multiple service points
+# ============================================================================
+
+service:
+  name: "Festival Safe Space"
+  description: "Multi-Site Drug Checking Network"
+  type: "festival"
+  organization: "Festival Harm Reduction Coalition"
+  contact:
+    display: true
+    info: "Locations at Main Stage, Camping Zone, and Dance Tent"
+  hours:
+    display: true
+    schedule: "Friday 6PM - Monday 6AM (continuous)"
+    timezone: "UTC"
+
+# Standard three-stage workflow
+workflow:
+  stages:
+    - id: "QUEUE_JOIN"
+      label: "Joined Queue"
+      description: "In queue for service"
+      order: 1
+      required: true
+      visible_to_public: true
+      duration_estimate: 0
+      icon: "⏰"
+
+    - id: "SERVICE_START"
+      label: "Being Served"
+      description: "Service in progress"
+      order: 2
+      required: true
+      visible_to_public: true
+      duration_estimate: 8
+      icon: "🔬"
+
+    - id: "EXIT"
+      label: "Complete"
+      description: "Service complete"
+      order: 3
+      required: true
+      visible_to_public: true
+      duration_estimate: 0
+      icon: "✅"
+
+  allow_skip_stages: false
+  allow_repeat_stages: false
+  enforce_stage_order: true
+
+# Moderate capacity per location
+capacity:
+  people_per_hour: 10
+  avg_service_minutes: 6
+  default_wait_estimate: 20
+  queue_multiplier: 2
+
+  peak_hours:
+    enabled: true
+    ranges:
+      - start: "21:00"
+        end: "03:00"
+
+# Standard alert thresholds
+alerts:
+  queue:
+    warning_threshold: 12
+    critical_threshold: 25
+
+  wait_time:
+    warning_minutes: 45
+    critical_minutes: 90
+
+  service_inactivity:
+    warning_minutes: 8
+    critical_minutes: 15
+
+  stuck_cards:
+    threshold_hours: 2
+
+  messages:
+    queue_warning: "{count} people waiting at this location"
+    queue_critical: "Queue very long ({count}) at this location - redirect or add staff"
+    wait_warning: "Wait time approximately {minutes} min"
+    inactivity_warning: "No activity at this location for {minutes} min - check staffing"
+
+ui:
+  labels:
+    queue_count: "in queue at this location"
+    wait_time: "wait time here"
+    served_today: "served at all locations"
+    avg_service_time: "avg service time"
+    service_status: "location status"
+
+  public_display:
+    show_queue_positions: true
+    show_wait_estimates: true
+    show_served_count: true
+    show_avg_time: true
+    show_service_hours: true
+    refresh_interval_seconds: 5
+
+staffing:
+  require_staff_id: true
+
+  roles:
+    - id: "peer_worker"
+      label: "Peer Worker"
+      description: "Service provider at location"
+      permissions:
+        - "scan_nfc"
+        - "view_queue"
+        - "view_dashboard"
+
+    - id: "location_lead"
+      label: "Location Lead"
+      description: "Supervisor for this location"
+      permissions:
+        - "scan_nfc"
+        - "view_queue"
+        - "view_dashboard"
+        - "view_analytics"
+        - "force_exit_participant"
+
+    - id: "festival_coordinator"
+      label: "Festival Coordinator"
+      description: "Oversees all locations"
+      permissions:
+        - "*"
+
+  shifts:
+    enabled: true
+    duration_hours: 6
+    handoff_checklist:
+      - "Review queue at each location"
+      - "Check staffing levels across all sites"
+      - "Note any cross-location issues"
+      - "Review overall festival service stats"
+
+# Multi-location configuration
+locations:
+  multi_location: true
+  shared_queue: false  # Each location has its own queue
+
+  sites:
+    - id: "main_stage"
+      name: "Main Stage Area"
+      description: "Drug checking tent near main stage"
+      enabled: true
+      stations:
+        - device_id: "main_station1"
+          description: "Main Stage Station 1"
+        - device_id: "main_station2"
+          description: "Main Stage Station 2"
+
+    - id: "camping"
+      name: "Camping Zone"
+      description: "Drug checking in camping area"
+      enabled: true
+      stations:
+        - device_id: "camp_station1"
+          description: "Camping Station 1"
+
+    - id: "dance_tent"
+      name: "Dance Tent"
+      description: "Drug checking near dance tent"
+      enabled: true
+      stations:
+        - device_id: "dance_station1"
+          description: "Dance Tent Station 1"
+
+  show_all_locations: true  # Public display shows all locations
+
+metrics:
+  windows:
+    recent_events: 20
+    recent_completions: 15
+    activity_history_hours: 24  # Longer for multi-day festival
+    shift_summary_hours: 6
+    wait_time_sample_size: 25
+
+  targets:
+    max_wait_time_minutes: 30
+    min_people_per_hour: 8
+    max_queue_length: 15
+
+data_collection:
+  anonymize_data: true
+  data_retention_days: 365  # Keep for annual analysis
+
+advanced:
+  features:
+    advanced_analytics: true
+    predictive_wait_times: false  # Complex with multiple locations

@@ -1,0 +1,111 @@
+# ============================================================================
+# EXAMPLE: Simple Queue Service
+# ============================================================================
+# This configuration is for a basic festival drug checking service that
+# uses a simple queue system where participants:
+#   1. Join the queue (tap in)
+#   2. Receive service (no intermediate tracking)
+#   3. Exit (tap out)
+#
+# Use case: Small festival, limited staff, simple workflow
+# ============================================================================
+
+service:
+  name: "Harm Reduction Queue"
+  description: "Simple Drug Checking Service"
+  type: "popup"
+  organization: "Community Harm Reduction"
+  contact:
+    display: true
+    info: "Ask any peer worker for help"
+  hours:
+    display: true
+    schedule: "2:00 PM - 10:00 PM"
+    timezone: "UTC"
+
+# Simple two-stage workflow
+workflow:
+  stages:
+    - id: "QUEUE_JOIN"
+      label: "In Queue"
+      description: "Waiting for service"
+      order: 1
+      required: true
+      visible_to_public: true
+      duration_estimate: 0
+      icon: "⏰"
+
+    - id: "EXIT"
+      label: "Served"
+      description: "Service complete"
+      order: 2
+      required: true
+      visible_to_public: true
+      duration_estimate: 0
+      icon: "✅"
+
+  allow_skip_stages: false
+  allow_repeat_stages: false
+  enforce_stage_order: true
+
+# Lower capacity for smaller service
+capacity:
+  people_per_hour: 8
+  avg_service_minutes: 7
+  default_wait_estimate: 15
+  queue_multiplier: 2
+
+# More conservative alert thresholds for smaller service
+alerts:
+  queue:
+    warning_threshold: 5
+    critical_threshold: 10
+
+  wait_time:
+    warning_minutes: 30
+    critical_minutes: 60
+
+  service_inactivity:
+    warning_minutes: 10
+    critical_minutes: 20
+
+  stuck_cards:
+    threshold_hours: 1
+
+  messages:
+    queue_warning: "Queue building up ({count} waiting)"
+    queue_critical: "Queue very long ({count}) - need more staff"
+
+ui:
+  labels:
+    queue_count: "waiting"
+    wait_time: "wait time"
+    served_today: "people helped today"
+    avg_service_time: "average time"
+    service_status: "status"
+
+  public_display:
+    show_queue_positions: true
+    show_wait_estimates: true
+    show_served_count: true
+    show_avg_time: false  # Hide detailed metrics
+    refresh_interval_seconds: 10  # Slower refresh
+
+staffing:
+  require_staff_id: false
+  roles:
+    - id: "peer_worker"
+      label: "Peer Worker"
+      description: "Service provider"
+      permissions:
+        - "scan_nfc"
+        - "view_queue"
+
+locations:
+  multi_location: false
+  sites:
+    - id: "main"
+      name: "Service Tent"
+      enabled: true
+      stations:
+        - device_id: "station1"
