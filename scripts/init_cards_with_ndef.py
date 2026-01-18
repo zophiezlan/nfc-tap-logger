@@ -17,6 +17,7 @@ import argparse
 from pathlib import Path
 from tap_station.nfc_reader import NFCReader, MockNFCReader
 from tap_station.ndef_writer import NDEFWriter, MockNDEFWriter
+from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
 class NFCCardInitializer:
@@ -329,6 +330,32 @@ def main():
         if not (args.url.startswith("http://") or args.url.startswith("https://")):
             print("Error: URL must start with http:// or https://", file=sys.stderr)
             return 1
+
+    # Perform automatic cleanup (unless in mock mode)
+    if not args.mock:
+        print("\n" + "=" * 60)
+        print("Pre-flight Check: NFC Reader Cleanup")
+        print("=" * 60)
+        print()
+
+        success = cleanup_before_nfc_access(
+            stop_service=True,
+            reset_i2c=False,
+            require_sudo=True,
+            verbose=True,
+        )
+
+        if not success:
+            print("\n⚠️  Could not prepare NFC reader for use")
+            print("   Some issues may require manual intervention.")
+            print()
+            response = input("Attempt to continue anyway? [y/N]: ").strip().lower()
+            if response not in ("y", "yes"):
+                print("\nAborting. Please resolve the issues above.")
+                print("For help, see docs/TROUBLESHOOTING.md")
+                return 1
+
+        print()
 
     try:
         initializer = NFCCardInitializer(

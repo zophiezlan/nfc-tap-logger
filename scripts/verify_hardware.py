@@ -17,6 +17,8 @@ import time
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from tap_station.nfc_cleanup import cleanup_before_nfc_access
+
 
 def print_header(title):
     """Print formatted section header"""
@@ -129,13 +131,33 @@ def check_nfc_reader():
         print("  Fix I2C issues first (see I2C Bus Check section above)")
         return False
 
+    # Perform cleanup before accessing NFC reader
+    print("\nPreparing NFC reader (stopping conflicting services)...")
+    cleanup_success = cleanup_before_nfc_access(
+        stop_service=True,
+        reset_i2c=False,
+        require_sudo=True,
+        verbose=False,  # Don't be too verbose during hardware check
+    )
+
+    if not cleanup_success:
+        print_result(
+            "NFC reader preparation",
+            False,
+            "Could not prepare reader (see messages above)",
+        )
+        print("  You may need to manually stop services or processes")
+        return False
+
+    print("✓ NFC reader prepared")
+
     # Determine which I2C bus to use
     i2c_bus = 1 if os.path.exists("/dev/i2c-1") else 0
 
     try:
         from tap_station.nfc_reader import NFCReader
 
-        print(f"Initializing PN532 reader on I2C bus {i2c_bus}...")
+        print(f"\nInitializing PN532 reader on I2C bus {i2c_bus}...")
         reader = NFCReader(i2c_bus=i2c_bus, address=0x24)
         print_result("PN532 initialized", True)
 
@@ -177,6 +199,7 @@ def check_nfc_reader():
         elif "Failed to communicate with PN532" in error_msg:
             print("\n  ⚠ PN532 not responding")
             print("  Check wiring and ensure PN532 is in I2C mode")
+            print("  Try running: sudo bash scripts/dev_reset.sh")
         elif "Permission denied" in error_msg:
             print("\n  ⚠ Permission issue")
             print("  Add user to i2c group: sudo usermod -a -G i2c $USER")

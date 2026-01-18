@@ -110,9 +110,18 @@ bash scripts/verify_deployment.sh
 sudo systemctl start tap-station
 ```
 
-**5. Dev/Testing reset**
+**5. Initialize cards**
 
-If scripts hang or freeze (common during development):
+```bash
+source venv/bin/activate
+python scripts/init_cards.py --start 1 --end 100
+```
+
+The script automatically handles conflicts with running services - no manual cleanup needed!
+
+**6. Manual reset (if needed)**
+
+In rare cases where automatic cleanup fails:
 
 ```bash
 # Quick reset (no sudo)

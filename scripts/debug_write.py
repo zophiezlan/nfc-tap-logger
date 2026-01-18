@@ -11,10 +11,27 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import inspect
 from pn532pi import Pn532, Pn532I2c
+from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 print("=" * 70)
 print("PN532 Write Function Diagnostic")
 print("=" * 70)
+
+# Perform cleanup before accessing NFC reader
+print("\nPreparing NFC reader (stopping conflicting services)...")
+cleanup_success = cleanup_before_nfc_access(
+    stop_service=True,
+    reset_i2c=False,
+    require_sudo=True,  # Needed for stopping/starting systemd service
+    verbose=True,
+)
+
+if not cleanup_success:
+    print("\n⚠️  Could not prepare NFC reader")
+    print("   Attempting initialization anyway...")
+    input("Press Enter to continue...")
+
+print()
 
 # Inspect the write function
 print("\n1. Inspecting mifareultralight_WritePage method:")
