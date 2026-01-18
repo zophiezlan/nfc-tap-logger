@@ -1,0 +1,235 @@
+# ============================================================================
+# EXAMPLE: Comprehensive Drug Checking Service
+# ============================================================================
+# This configuration is for a full-featured festival drug checking service
+# with multiple stages in the workflow:
+#   1. Join queue
+#   2. Initial intake/consultation
+#   3. Sample testing
+#   4. Results discussion
+#   5. Exit
+#
+# Use case: Large festival, well-staffed, detailed harm reduction process
+# ============================================================================
+
+service:
+  name: "Festival Drug Checking Service"
+  description: "Comprehensive Harm Reduction & Testing"
+  type: "festival"
+  organization: "Safer Party Alliance"
+  contact:
+    display: true
+    info: "Service located at Medical Tent East Wing"
+  hours:
+    display: true
+    schedule: "12:00 PM - 4:00 AM"
+    timezone: "UTC"
+
+# Multi-stage workflow with detailed tracking
+workflow:
+  stages:
+    - id: "QUEUE_JOIN"
+      label: "Queue"
+      description: "Joined queue"
+      order: 1
+      required: true
+      visible_to_public: true
+      duration_estimate: 0
+      icon: "⏰"
+
+    - id: "INTAKE"
+      label: "Check-in"
+      description: "Initial consultation and sample intake"
+      order: 2
+      required: true
+      visible_to_public: true
+      duration_estimate: 3
+      icon: "📋"
+
+    - id: "TESTING"
+      label: "Testing"
+      description: "Sample analysis in progress"
+      order: 3
+      required: true
+      visible_to_public: false  # Don't show internal processing
+      duration_estimate: 12
+      icon: "🔬"
+
+    - id: "RESULTS"
+      label: "Results"
+      description: "Results review and harm reduction discussion"
+      order: 4
+      required: true
+      visible_to_public: true
+      duration_estimate: 8
+      icon: "💬"
+
+    - id: "EXIT"
+      label: "Complete"
+      description: "Service complete"
+      order: 5
+      required: true
+      visible_to_public: true
+      duration_estimate: 0
+      icon: "✅"
+
+  allow_skip_stages: false
+  allow_repeat_stages: false
+  enforce_stage_order: true
+
+# Higher capacity with efficient multi-stage process
+capacity:
+  people_per_hour: 15
+  avg_service_minutes: 20  # Total time through all stages
+  default_wait_estimate: 30
+  queue_multiplier: 2.5
+
+  peak_hours:
+    enabled: true
+    ranges:
+      - start: "22:00"
+        end: "02:00"
+
+# Adjusted thresholds for high-volume service
+alerts:
+  queue:
+    warning_threshold: 15
+    critical_threshold: 30
+
+  wait_time:
+    warning_minutes: 60
+    critical_minutes: 120
+
+  service_inactivity:
+    warning_minutes: 5
+    critical_minutes: 10
+
+  stuck_cards:
+    threshold_hours: 3  # Allow more time for complex workflow
+
+  service_time_variance:
+    multiplier: 4  # More variance expected with detailed process
+
+  messages:
+    queue_warning: "{count} people in queue - monitor staffing levels"
+    queue_critical: "LONG QUEUE: {count} people - urgently need more staff"
+    wait_warning: "Wait time approximately {minutes} min"
+    wait_critical: "Wait time very long ({minutes} min) - assess bottlenecks"
+
+ui:
+  labels:
+    queue_count: "in queue"
+    wait_time: "estimated wait"
+    served_today: "tests completed today"
+    avg_service_time: "avg total time"
+    service_status: "service status"
+    current_queue: "Queue Status"
+    recent_completions: "Recently Completed"
+
+  branding:
+    show_logo: false
+    color_scheme: "default"
+
+  public_display:
+    show_queue_positions: true
+    show_wait_estimates: true
+    show_served_count: true
+    show_avg_time: true
+    show_service_hours: true
+    refresh_interval_seconds: 5
+
+  dashboard:
+    show_individual_queue_positions: true
+    max_recent_events: 20
+    max_recent_completions: 15
+    analytics_history_hours: 12
+
+staffing:
+  require_staff_id: true  # Track which staff member handled each stage
+
+  roles:
+    - id: "intake_worker"
+      label: "Intake Specialist"
+      description: "Initial consultation and sample intake"
+      permissions:
+        - "scan_nfc"
+        - "view_queue"
+        - "view_dashboard"
+
+    - id: "technician"
+      label: "Testing Technician"
+      description: "Performs sample analysis"
+      permissions:
+        - "scan_nfc"
+        - "view_queue"
+        - "view_dashboard"
+
+    - id: "counselor"
+      label: "Harm Reduction Counselor"
+      description: "Results discussion and HR counseling"
+      permissions:
+        - "scan_nfc"
+        - "view_queue"
+        - "view_dashboard"
+
+    - id: "coordinator"
+      label: "Service Coordinator"
+      description: "Shift supervisor"
+      permissions:
+        - "scan_nfc"
+        - "view_queue"
+        - "view_dashboard"
+        - "view_analytics"
+        - "force_exit_participant"
+        - "manage_alerts"
+
+    - id: "admin"
+      label: "Administrator"
+      permissions:
+        - "*"
+
+  shifts:
+    enabled: true
+    duration_hours: 4
+    handoff_checklist:
+      - "Review queue status and wait times"
+      - "Check for stuck cards or incomplete workflows"
+      - "Brief on any technical issues"
+      - "Note substance trends or alerts"
+
+locations:
+  multi_location: false
+  sites:
+    - id: "main_tent"
+      name: "Main Testing Tent"
+      description: "Primary drug checking facility"
+      enabled: true
+      stations:
+        - device_id: "intake_station1"
+          description: "Intake Station 1"
+        - device_id: "intake_station2"
+          description: "Intake Station 2"
+        - device_id: "results_station1"
+          description: "Results Station 1"
+
+metrics:
+  windows:
+    recent_events: 25
+    recent_completions: 15
+    activity_history_hours: 12
+    shift_summary_hours: 4
+    wait_time_sample_size: 30
+
+  targets:
+    max_wait_time_minutes: 45
+    min_people_per_hour: 12
+    max_queue_length: 20
+
+data_collection:
+  anonymize_data: true
+  data_retention_days: 90
+
+advanced:
+  features:
+    advanced_analytics: true
+    predictive_wait_times: true

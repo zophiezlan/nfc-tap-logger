@@ -19,6 +19,7 @@ Drug checking services at festivals need data to optimize flow, measure impact, 
 ## Quick Links
 
 - **🚀 [Setup Guide](docs/SETUP.md)** - Hardware wiring & software installation
+- **⚙️ [Service Configuration Guide](docs/SERVICE_CONFIGURATION.md)** - **NEW!** Customize for your festival service
 - **📱 [Mobile App Guide](docs/MOBILE.md)** - Use Android phones instead of Raspberry Pis
 - **📋 [Operations Guide](docs/OPERATIONS.md)** - Day-of-event workflow, live monitoring & decision-making
 - **✅ [Pre-Deployment Checklist](docs/PRE_DEPLOYMENT_CHECKLIST.md)** - Ensure you're ready before your event
@@ -47,6 +48,32 @@ Drug checking services at festivals need data to optimize flow, measure impact, 
 - **Activity Monitoring** - Automatic detection of stuck cards, service anomalies, and capacity issues
 
 See [Force-Exit & Export Guide](docs/FORCE_EXIT_AND_EXPORT.md), [3-Stage Tracking Guide](docs/3_STAGE_TRACKING.md), and [New Features Guide](docs/NEW_FEATURES.md) for details.
+
+## ⚙️ Configurable for Any Festival Service
+
+**NEW:** The system is now fully configurable for different festival-based community drug checking services!
+
+Different services have different needs:
+- **Workflow**: Simple queue (join→exit) vs. comprehensive (intake→test→results→exit)
+- **Capacity**: 5 people/hour vs. 20 people/hour
+- **Staffing**: Single peer worker vs. specialized roles (intake, testing, counseling)
+- **Locations**: Single tent vs. multiple service points across festival
+- **Alerts**: Different thresholds based on your capacity and goals
+
+**Customize everything** via `service_config.yaml`:
+- Service name, hours, and branding
+- Custom workflow stages matching your process
+- Alert thresholds for your service capacity
+- UI labels and terminology
+- Multi-location support
+- Staffing roles and permissions
+
+**Example configurations provided:**
+- Simple queue service (popup/small festivals)
+- Comprehensive testing service (large festivals)
+- Multi-location festival service
+
+👉 **[Service Configuration Guide](docs/SERVICE_CONFIGURATION.md)** - Complete customization guide with examples
 
 ## System Overview
 
