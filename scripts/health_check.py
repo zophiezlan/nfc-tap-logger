@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
 class HealthCheck:
@@ -126,6 +127,24 @@ class HealthCheck:
     def check_nfc(self):
         """Check NFC reader"""
         self.print_header("NFC Reader")
+
+        # Perform cleanup before accessing NFC reader
+        print("Preparing NFC reader (stopping conflicting services)...")
+        cleanup_success = cleanup_before_nfc_access(
+            stop_service=True,
+            reset_i2c=False,
+            require_sudo=True,
+            verbose=False,
+        )
+
+        if not cleanup_success:
+            self.check_status(
+                "NFC reader preparation",
+                False,
+                "Could not prepare reader",
+                level="warning",
+            )
+            print("  Attempting initialization anyway...")
 
         try:
             from tap_station.nfc_reader import NFCReader

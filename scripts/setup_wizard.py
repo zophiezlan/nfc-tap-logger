@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yaml
 from pathlib import Path
+from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
 def print_header(title):
@@ -51,10 +52,23 @@ def test_nfc_reader():
     """Test NFC reader connectivity"""
     print("Testing NFC reader...")
 
+    # Perform cleanup before accessing NFC reader
+    print("\nPreparing NFC reader (stopping conflicting services)...")
+    cleanup_success = cleanup_before_nfc_access(
+        stop_service=True,
+        reset_i2c=False,
+        require_sudo=True,
+        verbose=True,
+    )
+
+    if not cleanup_success:
+        print("\n⚠️  Could not prepare NFC reader")
+        print("   Attempting initialization anyway...")
+
     try:
         from tap_station.nfc_reader import NFCReader
 
-        print("Initializing PN532...")
+        print("\nInitializing PN532...")
         reader = NFCReader()
 
         print("✓ NFC reader initialized successfully!")

@@ -11,6 +11,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pn532pi import Pn532, Pn532I2c
+from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
 def _read_page_data(pn532, page):
@@ -27,6 +28,20 @@ def main():
     print("=" * 70)
     print("Simple PN532 Write Test")
     print("=" * 70)
+
+    # Perform cleanup before accessing NFC reader
+    print("\nPreparing NFC reader (stopping conflicting services)...")
+    cleanup_success = cleanup_before_nfc_access(
+        stop_service=True,
+        reset_i2c=False,
+        require_sudo=True,
+        verbose=True,
+    )
+
+    if not cleanup_success:
+        print("\n⚠️  Could not prepare NFC reader")
+        print("   Attempting initialization anyway...")
+        input("Press Enter to continue...")
 
     try:
         # Initialize
