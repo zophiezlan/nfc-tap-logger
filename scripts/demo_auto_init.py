@@ -86,10 +86,10 @@ def demo_auto_init():
         session_id2 = "demo-mixed-2026"
         
         mixed_cards = [
-            ("08E76BF6G59324", "050", "Pre-initialized card #050", False),
-            ("09F87CG7H60435", "09F87CG7", "Blank card (will auto-init)", True),
-            ("0AA98DH8I71546", "025", "Pre-initialized card #025", False),
-            ("0BB09EI9J82657", "0BB09EI9", "Blank card (will auto-init)", True),
+            ("08E76BF6A59324", "050", "Pre-initialized card #050", False),
+            ("09F87CA7B60435", "09F87CA7", "Blank card (will auto-init)", True),
+            ("0AA98DA8C71546", "025", "Pre-initialized card #025", False),
+            ("0BB09EA9D82657", "0BB09EA9", "Blank card (will auto-init)", True),
         ]
         
         # Start auto-init from 100 to avoid conflicts

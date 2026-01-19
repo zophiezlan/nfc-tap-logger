@@ -2,6 +2,7 @@
 
 import sqlite3
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 import logging
@@ -266,7 +267,6 @@ class Database:
             self.conn.rollback()
             
             # Return a fallback using UUID to ensure uniqueness
-            import uuid
             fallback_id = abs(hash(str(uuid.uuid4()))) % 10000
             fallback_str = f"E{fallback_id:03d}"  # E prefix indicates error/fallback
             logger.warning(f"Using fallback token ID: {fallback_str}")
