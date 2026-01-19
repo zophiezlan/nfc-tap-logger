@@ -202,11 +202,7 @@ class TapStation:
 
         # Check if auto-initialization is enabled and card appears uninitialized
         # Uninitialized cards will have token_id that looks like a UID (8+ hex chars)
-        if (
-            self.config.auto_init_cards
-            and len(token_id) >= 8
-            and all(c in "0123456789ABCDEF" for c in token_id)
-        ):
+        if self.config.auto_init_cards and self._is_uninitialized_card(token_id):
             # This looks like an uninitialized card (UID being used as token_id)
             # Auto-assign the next token ID
             _, new_token_id = self.db.get_next_auto_init_token_id(
@@ -225,19 +221,16 @@ class TapStation:
                     self.logger.info(
                         f"Successfully wrote token ID {new_token_id} to card"
                     )
-                    token_id = new_token_id
-                    # Give success beep for initialization
-                    self.feedback.success()
                 else:
                     self.logger.warning(
                         f"Failed to write token ID to card, will use auto-assigned ID anyway"
                     )
-                    token_id = new_token_id
             except Exception as e:
                 self.logger.warning(
                     f"Exception writing token ID to card: {e}, will use auto-assigned ID anyway"
                 )
-                token_id = new_token_id
+            
+            token_id = new_token_id
 
         # Log to database
         success = self.db.log_event(
@@ -256,6 +249,18 @@ class TapStation:
             # Duplicate tap
             self.feedback.duplicate()
             self.logger.info("Duplicate tap ignored")
+
+    def _is_uninitialized_card(self, token_id: str) -> bool:
+        """
+        Check if a token ID looks like an uninitialized card (UID)
+        
+        Args:
+            token_id: Token ID to check
+            
+        Returns:
+            True if token_id looks like a UID (8+ hex chars), False otherwise
+        """
+        return len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id)
 
     def shutdown(self):
         """Cleanup and shutdown"""

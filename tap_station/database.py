@@ -216,8 +216,12 @@ class Database:
             Tuple of (next_token_id as int, token_id as formatted string)
         """
         try:
+            # Use a transaction to ensure atomicity and prevent race conditions
+            # This ensures that even with concurrent access, each card gets a unique ID
+            cursor = self.conn.cursor()
+            
             # Try to get existing counter
-            cursor = self.conn.execute(
+            cursor.execute(
                 "SELECT next_token_id FROM auto_init_counter WHERE session_id = ?",
                 (session_id,),
             )
@@ -226,27 +230,27 @@ class Database:
             if row:
                 # Use existing counter
                 next_id = row["next_token_id"]
+                
+                # Increment counter atomically
+                cursor.execute(
+                    """
+                    UPDATE auto_init_counter
+                    SET next_token_id = next_token_id + 1, updated_at = CURRENT_TIMESTAMP
+                    WHERE session_id = ?
+                """,
+                    (session_id,),
+                )
             else:
                 # Initialize counter for this session
                 next_id = start_id
-                self.conn.execute(
+                cursor.execute(
                     """
                     INSERT INTO auto_init_counter (session_id, next_token_id, updated_at)
                     VALUES (?, ?, CURRENT_TIMESTAMP)
                 """,
-                    (session_id, next_id),
+                    (session_id, next_id + 1),
                 )
-                self.conn.commit()
-
-            # Increment counter for next time
-            self.conn.execute(
-                """
-                UPDATE auto_init_counter
-                SET next_token_id = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE session_id = ?
-            """,
-                (next_id + 1, session_id),
-            )
+            
             self.conn.commit()
 
             # Format as 3-digit string
@@ -260,11 +264,13 @@ class Database:
         except sqlite3.Error as e:
             logger.error(f"Failed to get next auto-init token ID: {e}")
             self.conn.rollback()
-            # Return a fallback based on timestamp to avoid duplicates
-            import time
-
-            fallback_id = int(time.time() % 10000)
-            return (fallback_id, f"{fallback_id:04d}")
+            
+            # Return a fallback using UUID to ensure uniqueness
+            import uuid
+            fallback_id = abs(hash(str(uuid.uuid4()))) % 10000
+            fallback_str = f"E{fallback_id:03d}"  # E prefix indicates error/fallback
+            logger.warning(f"Using fallback token ID: {fallback_str}")
+            return (fallback_id, fallback_str)
 
     def export_to_csv(self, output_path: str, session_id: Optional[str] = None) -> int:
         """

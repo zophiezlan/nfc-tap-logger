@@ -172,28 +172,38 @@ class TestAutoInitDetection:
 
     def test_uid_detection(self):
         """Test that UIDs are correctly identified as uninitialized"""
+        # Import the utility function from main
+        from tap_station.main import TapStation
+        
+        # Create a mock tap station just to access the method
+        # (We can't instantiate fully without config file)
+        
+        # Test the logic directly
+        def looks_like_uid(token_id: str) -> bool:
+            return len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id)
+        
         # These look like UIDs (8+ hex chars)
-        assert self._looks_like_uid("04A32FB2")
-        assert self._looks_like_uid("04A32FB2C15080")
-        assert self._looks_like_uid("AABBCCDD")
+        assert looks_like_uid("04A32FB2")
+        assert looks_like_uid("04A32FB2C15080")
+        assert looks_like_uid("AABBCCDD")
         
         # These look like token IDs (3-4 digits)
-        assert not self._looks_like_uid("001")
-        assert not self._looks_like_uid("099")
-        assert not self._looks_like_uid("100")
-        assert not self._looks_like_uid("1000")
+        assert not looks_like_uid("001")
+        assert not looks_like_uid("099")
+        assert not looks_like_uid("100")
+        assert not looks_like_uid("1000")
         
         # Edge cases
-        assert not self._looks_like_uid("ABC")  # Too short
-        assert not self._looks_like_uid("12G45678")  # Contains non-hex
-
-    def _looks_like_uid(self, token_id: str) -> bool:
-        """Helper: Check if token_id looks like a UID"""
-        return len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id)
+        assert not looks_like_uid("ABC")  # Too short
+        assert not looks_like_uid("12G45678")  # Contains non-hex
 
 
 class TestAutoInitIntegration:
     """Integration tests for auto-initialization feature"""
+
+    def _looks_like_uid(self, token_id: str) -> bool:
+        """Helper: Check if token_id looks like a UID"""
+        return len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id)
 
     def test_auto_init_assigns_sequential_ids(self, temp_db):
         """Test that multiple uninitialized cards get sequential IDs"""
@@ -208,7 +218,7 @@ class TestAutoInitIntegration:
         assigned_ids = []
         for uid, token_id in cards:
             # Detect uninitialized (token_id looks like UID)
-            if len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id):
+            if self._looks_like_uid(token_id):
                 _, new_token_id = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
                 assigned_ids.append(new_token_id)
         
@@ -231,7 +241,7 @@ class TestAutoInitIntegration:
         
         results = []
         for uid, token_id in cards:
-            if len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id):
+            if self._looks_like_uid(token_id):
                 # Auto-init starting at 100 to avoid collision
                 _, new_token_id = temp_db.get_next_auto_init_token_id("test-session", start_id=100)
                 results.append((uid, new_token_id))
