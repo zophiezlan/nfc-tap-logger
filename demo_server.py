@@ -88,21 +88,21 @@ def load_demo_service_config():
                 {
                     'id': 'SERVICE_START',
                     'label': 'Testing Started',
-                    'description': 'Staff begins testing the substance',
+                    'description': 'Peer intake (5min) + Chemist testing (8min)',
                     'order': 2,
                     'required': True,
                     'visible_to_public': False,
-                    'duration_estimate': 8,
+                    'duration_estimate': 13,  # 5 min peer chat + 8 min testing
                     'icon': '🔬'
                 },
                 {
                     'id': 'SUBSTANCE_RETURNED',
-                    'label': 'Results Delivered',
-                    'description': 'Results explained and substance returned',
+                    'label': 'Results Discussion',
+                    'description': 'Results chat with peer (avg 10min, range 5-30min)',
                     'order': 3,
                     'required': False,
                     'visible_to_public': False,
-                    'duration_estimate': 1,
+                    'duration_estimate': 10,  # Average, but high variance
                     'icon': '✅'
                 },
                 {
@@ -118,17 +118,19 @@ def load_demo_service_config():
             ]
         },
         'capacity': {
-            'expected_throughput_per_hour': 20,
-            'average_service_time_minutes': 10,
-            'max_queue_length': 50
+            # Real HTID data: ~70 groups over 6 hours with 6 peers + 6 chemists
+            'expected_throughput_per_hour': 12,  # 70 groups / 6 hours
+            'average_service_time_minutes': 23,  # 5 min intake + 8 min test + 10 min results
+            'max_queue_length': 50,
+            'staff_count': 6  # 6 peer workers handling intake/results
         },
         'alerts': {
-            'queue_length_warning': 15,
-            'queue_length_critical': 25,
+            'queue_length_warning': 10,  # NSW realistic: getting busy
+            'queue_length_critical': 15,  # NSW realistic: peak queue at HTID was ~15 groups
             'wait_time_warning_minutes': 30,
             'wait_time_critical_minutes': 60,
-            'inactivity_warning_minutes': 5,
-            'stuck_card_threshold_minutes': 15
+            'inactivity_warning_minutes': 10,  # Quiet periods are normal (first/last hour)
+            'stuck_card_threshold_minutes': 45  # Results chat can go 30+ mins legitimately
         },
         'display': {
             'show_token_ids': True,

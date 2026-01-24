@@ -24,11 +24,20 @@ class DemoDataGenerator:
         self.active_participants: Dict[str, Dict[str, Any]] = {}
         self.next_token_id = 1
 
-        # Simulation parameters
-        self.arrival_rate_per_minute = 2.5  # Average arrivals
-        self.service_time_minutes_avg = 8
-        self.service_time_minutes_std = 3
-        self.abandon_rate = 0.05  # 5% abandon queue
+        # Simulation parameters based on HTID real-world data
+        # 70 groups over 6 hours = ~12 groups/hour average, but varies by time
+        self.base_arrival_rate_per_minute = 0.2  # Base rate (12 groups/hour = 0.2/min)
+        self.current_hour = 0  # Track which hour we're simulating
+
+        # Service times matching real HTID workflow
+        self.intake_time_avg = 5  # Initial peer chat
+        self.intake_time_std = 1.5
+        self.testing_time_avg = 8  # Chemist testing (7-10 min range)
+        self.testing_time_std = 1.5
+        self.results_time_avg = 10  # Results chat with peer
+        self.results_time_std = 8  # High variance! Can be 5-30+ mins
+
+        self.abandon_rate = 0.02  # 2% abandon queue (lower than generic festivals)
 
         # Station IDs for realism
         self.stations = {
@@ -86,10 +95,40 @@ class DemoDataGenerator:
 
         print(f"✅ Seeded {num_participants} participants")
 
+    def get_arrival_multiplier(self):
+        """
+        Get arrival rate multiplier based on festival hour pattern
+        Based on HTID: quiet hour 1, peak hours 2-3, drop hours 4-5, dead hour 6
+        """
+        # Simulate elapsed time (rough approximation based on cycles)
+        import time
+        if not hasattr(self, 'start_time'):
+            self.start_time = time.time()
+
+        elapsed_minutes = (time.time() - self.start_time) / 60
+        hour = (elapsed_minutes / 60) % 6  # Loop through 6-hour cycle for continuous demo
+
+        # Hour-by-hour multipliers matching HTID pattern
+        if hour < 1:
+            return 0.3  # Hour 1: Very quiet, people discovering service
+        elif hour < 2:
+            return 1.5  # Hour 2: Building up
+        elif hour < 3.5:
+            return 2.5  # Hours 2.5-3.5: Peak! Queue hits ~15 groups
+        elif hour < 4.5:
+            return 1.0  # Hour 4-4.5: Dropping off
+        elif hour < 5.5:
+            return 0.6  # Hour 5-5.5: Small queue
+        else:
+            return 0.2  # Hour 6: Almost empty
+
     def simulate_activity_cycle(self):
         """Simulate one cycle of activity"""
-        # New arrivals
-        if random.random() < (self.arrival_rate_per_minute / 12):  # ~5 second intervals
+        # New arrivals with realistic time-based variation
+        multiplier = self.get_arrival_multiplier()
+        arrival_probability = (self.base_arrival_rate_per_minute * multiplier) / 12  # ~5 sec intervals
+
+        if random.random() < arrival_probability:
             self._new_arrival()
 
         # Progress existing participants
@@ -167,17 +206,29 @@ class DemoDataGenerator:
             should_progress = False
 
             if current_stage == 'QUEUE_JOIN':
-                # Average 2-5 minutes in queue
-                if time_in_stage > 1 and random.random() < 0.15:
+                # Queue wait: depends on queue length and staff availability
+                # With 6 peer workers, minimal wait when queue < 6
+                # For demo: 1-3 minutes average progression
+                if time_in_stage > 0.5 and random.random() < 0.2:
                     should_progress = True
             elif current_stage == 'SERVICE_START':
-                # Average 8 minutes in testing
-                if time_in_stage > 2 and random.random() < 0.08:
+                # Intake (5 min) + Testing (8 min) = ~13 min total at this stage
+                # This combines peer intake + chemist work
+                if time_in_stage > 3 and random.random() < 0.1:
                     should_progress = True
             elif current_stage == 'SUBSTANCE_RETURNED':
-                # Quick handoff, ~1 minute
-                if time_in_stage > 0.5 and random.random() < 0.25:
-                    should_progress = True
+                # Results chat: avg 10 min but HIGH variance (5-30+ min)
+                # Some people leave quickly, some have long conversations
+                variance = random.random()
+                if variance < 0.3:  # 30% quick chat (5 min)
+                    if time_in_stage > 1.5 and random.random() < 0.3:
+                        should_progress = True
+                elif variance < 0.8:  # 50% normal chat (8-12 min)
+                    if time_in_stage > 2.5 and random.random() < 0.15:
+                        should_progress = True
+                else:  # 20% long conversation (15-30 min)
+                    if time_in_stage > 5 and random.random() < 0.08:
+                        should_progress = True
 
             if should_progress:
                 next_stage = self._get_next_stage(current_stage)
