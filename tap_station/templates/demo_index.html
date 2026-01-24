@@ -258,7 +258,7 @@
     <div class="header">
       <h1>🏥 NSW Health Drug Checking Service</h1>
       <p class="subtitle">Festival Queue Management System - Live Demo</p>
-      <div class="demo-badge">Interactive Demo Environment</div>
+      <div class="demo-badge" id="scenario-badge">Interactive Demo Environment</div>
       <div class="live-indicator">
         <span class="pulse"></span>
         <span>Live Data Simulation Running</span>
@@ -266,6 +266,20 @@
     </div>
 
     <div class="container">
+      <div class="intro-card" id="current-scenario-card" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: 3px solid #ffd700;">
+        <h2 style="color: white; margin-bottom: 15px;">📍 Currently Viewing</h2>
+        <h3 id="current-scenario-name" style="color: #ffd700; font-size: 1.8em; margin-bottom: 10px;"></h3>
+        <p id="current-scenario-desc" style="font-size: 1.1em; margin-bottom: 15px;"></p>
+        <div id="current-scenario-stats" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-top: 15px;">
+          <p style="margin: 5px 0;"><strong>To compare with other scenarios:</strong></p>
+          <p style="margin: 5px 0; font-size: 0.95em;">
+            • <strong>For deployed demo:</strong> Visit the other scenario URLs<br>
+            • <strong>For local testing:</strong> Stop server (Ctrl+C) and restart with:<br>
+            <code style="background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px; display: inline-block; margin-top: 5px;">python demo_server.py --scenario [scenario_name]</code>
+          </p>
+        </div>
+      </div>
+
       <div class="intro-card">
         <h2>Welcome to the NSW Health Drug Checking Demo</h2>
         <p>
@@ -472,50 +486,134 @@
     </div>
 
     <script>
-      // Get current scenario from URL or localStorage
-      const urlParams = new URLSearchParams(window.location.search);
-      const currentScenario = urlParams.get('scenario') || localStorage.getItem('demo_scenario') || 'htid';
+      // Detect which scenario is running by checking API
+      let currentScenario = 'htid'; // Default
 
-      // Save to localStorage
-      localStorage.setItem('demo_scenario', currentScenario);
+      // Scenario metadata
+      const scenarioData = {
+        'htid': {
+          name: '🎵 HTID (Hardstyle Til I Die)',
+          emoji: '🎵',
+          description: 'Single-day festival - Manageable demand, service met expectations',
+          staff: '6 peers, 6 chemists',
+          outcome: 'SUCCESS',
+          command: 'python demo_server.py --scenario htid'
+        },
+        'lost_paradise_actual': {
+          name: '🌴 Lost Paradise (Actual - Understaffed)',
+          emoji: '🌴',
+          description: 'Multi-day festival - CRITICAL capacity crisis with same staffing',
+          staff: '6 peers, 6 chemists (SAME AS HTID!)',
+          outcome: 'CAPACITY CRISIS',
+          command: 'python demo_server.py --scenario lost_paradise_actual'
+        },
+        'lost_paradise_ideal': {
+          name: '🌟 Lost Paradise (Ideal - Proper Staffing)',
+          emoji: '🌟',
+          description: 'Multi-day festival - Doubled staff, everyone served',
+          staff: '12 peers, 12 chemists (DOUBLED!)',
+          outcome: 'SUCCESS',
+          command: 'python demo_server.py --scenario lost_paradise_ideal'
+        }
+      };
 
-      // Highlight current scenario
-      document.addEventListener('DOMContentLoaded', () => {
+      // Try to detect scenario from session ID in API
+      async function detectScenario() {
+        try {
+          const response = await fetch('/health');
+          const data = await response.json();
+          const sessionId = data.session || '';
+
+          if (sessionId.includes('htid')) {
+            currentScenario = 'htid';
+          } else if (sessionId.includes('lost-paradise-actual')) {
+            currentScenario = 'lost_paradise_actual';
+          } else if (sessionId.includes('lost-paradise-ideal')) {
+            currentScenario = 'lost_paradise_ideal';
+          }
+
+          updateCurrentScenarioDisplay();
+        } catch (error) {
+          console.log('Could not detect scenario, using default');
+          updateCurrentScenarioDisplay();
+        }
+      }
+
+      function updateCurrentScenarioDisplay() {
+        const scenario = scenarioData[currentScenario];
+        const card = document.getElementById('current-scenario-card');
+        const badge = document.getElementById('scenario-badge');
+
+        // Update header badge
+        badge.textContent = scenario.emoji + ' ' + scenario.outcome;
+        if (currentScenario === 'htid' || currentScenario === 'lost_paradise_ideal') {
+          badge.style.background = 'rgba(16, 185, 129, 0.2)'; // Green
+        } else {
+          badge.style.background = 'rgba(220, 38, 38, 0.2)'; // Red
+        }
+
+        // Show current scenario card
+        card.style.display = 'block';
+        document.getElementById('current-scenario-name').textContent = scenario.name;
+        document.getElementById('current-scenario-desc').textContent = scenario.description;
+
+        const statsDiv = document.getElementById('current-scenario-stats');
+        statsDiv.innerHTML = `
+          <p style="margin: 5px 0;"><strong>Staff:</strong> ${scenario.staff}</p>
+          <p style="margin: 10px 0 5px 0;"><strong>To view other scenarios:</strong></p>
+          <p style="margin: 5px 0; font-size: 0.9em;">
+            • <strong>Deployed demo:</strong> Ask for the other scenario URLs<br>
+            • <strong>Local testing:</strong> Stop server (Ctrl+C) and run:<br>
+          </p>
+          <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 0.85em;">
+            ${scenario.command}
+          </div>
+          <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.9;">
+            💡 <strong>Tip:</strong> Deploy all 3 scenarios to separate Render instances for easy side-by-side comparison!
+          </p>
+        `;
+
+        // Highlight the current scenario card
+        highlightCurrentScenarioCard();
+      }
+
+      function highlightCurrentScenarioCard() {
         const cards = document.querySelectorAll('.scenario-card');
         cards.forEach(card => {
           const scenario = card.getAttribute('data-scenario');
+          const btn = card.querySelector('.btn');
+
           if (scenario === currentScenario) {
-            card.style.border = '3px solid #0066cc';
-            card.style.boxShadow = '0 15px 40px rgba(0, 102, 204, 0.3)';
+            // This is the running scenario
+            card.style.border = '3px solid #ffd700';
+            card.style.boxShadow = '0 15px 40px rgba(255, 215, 0, 0.4)';
+            btn.textContent = '✓ Currently Running';
+            btn.style.background = '#ffd700';
+            btn.style.color = '#000';
+            btn.style.cursor = 'default';
+          } else {
+            // Other scenarios
+            card.style.border = '3px solid transparent';
+            card.style.opacity = '0.7';
+            const scenarioInfo = scenarioData[scenario];
+            btn.textContent = 'Learn How to Switch →';
+
+            // Add click handler to show instructions
+            card.style.cursor = 'pointer';
+            card.onclick = () => {
+              alert(`To view ${scenarioInfo.name}:\n\n` +
+                    `1. If deployed: Visit the dedicated URL for this scenario\n` +
+                    `2. If local: Stop the server (Ctrl+C) and run:\n\n` +
+                    `   ${scenarioInfo.command}\n\n` +
+                    `💡 Tip: Deploy all 3 scenarios separately for instant switching!`);
+            };
           }
-
-          // Add click handler
-          card.addEventListener('click', () => {
-            // Store selection
-            localStorage.setItem('demo_scenario', scenario);
-
-            // Show loading indicator
-            const btn = card.querySelector('.btn');
-            const originalText = btn.textContent;
-            btn.textContent = 'Loading scenario...';
-            btn.style.opacity = '0.6';
-
-            // Reload with scenario parameter
-            // For now, just highlight - we'll implement full switching in backend
-            window.location.href = `/?scenario=${scenario}`;
-          });
         });
+      }
 
-        // Show current scenario name in header
-        const scenarioNames = {
-          'htid': 'HTID',
-          'lost_paradise_actual': 'Lost Paradise (Actual)',
-          'lost_paradise_ideal': 'Lost Paradise (Ideal)'
-        };
-        const subtitle = document.querySelector('.subtitle');
-        if (currentScenario !== 'htid') {
-          subtitle.textContent += ` - Currently viewing: ${scenarioNames[currentScenario]}`;
-        }
+      // Initialize
+      document.addEventListener('DOMContentLoaded', () => {
+        detectScenario();
       });
 
       // Update stats from API
