@@ -1,0 +1,16 @@
+# Web Demo Dependencies (cloud deployment)
+# Excludes hardware-specific packages (pn532pi, RPi.GPIO)
+
+# Configuration
+PyYAML==6.0.1
+
+# Web server
+Flask==3.0.0
+gunicorn==21.2.0
+
+# NDEF writing (for NFC Tools app integration)
+ndeflib==0.3.3
+
+# Optional: for development
+black==23.12.1
+flake8==6.1.0

@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NSW Health Drug Checking Demo</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        background: linear-gradient(135deg, #0066cc 0%, #00cc66 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .header {
+        text-align: center;
+        color: white;
+        padding: 40px 20px;
+        margin-bottom: 40px;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .header .subtitle {
+        font-size: 1.3em;
+        opacity: 0.95;
+        margin-bottom: 10px;
+      }
+
+      .header .demo-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 8px 20px;
+        border-radius: 20px;
+        margin-top: 10px;
+        font-weight: 600;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .intro-card {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .intro-card h2 {
+        color: #0066cc;
+        margin-bottom: 15px;
+      }
+
+      .intro-card p {
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 10px;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .feature-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .feature-card .icon {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .feature-card h3 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 1.2em;
+      }
+
+      .feature-card p {
+        color: #666;
+        font-size: 0.95em;
+        line-height: 1.5;
+      }
+
+      .views-section {
+        margin-top: 40px;
+      }
+
+      .views-section h2 {
+        color: white;
+        text-align: center;
+        margin-bottom: 25px;
+        font-size: 2em;
+      }
+
+      .view-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+
+      .view-card {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s, box-shadow 0.2s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+      }
+
+      .view-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .view-card .card-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+      }
+
+      .view-card h3 {
+        color: #0066cc;
+        margin-bottom: 10px;
+        font-size: 1.5em;
+      }
+
+      .view-card .card-subtitle {
+        color: #999;
+        font-size: 0.9em;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+      }
+
+      .view-card p {
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 15px;
+      }
+
+      .view-card .btn {
+        display: inline-block;
+        background: #0066cc;
+        color: white;
+        padding: 12px 30px;
+        border-radius: 8px;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: background 0.2s;
+      }
+
+      .view-card:hover .btn {
+        background: #0052a3;
+      }
+
+      .stats-bar {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+
+      .stat {
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #0066cc;
+      }
+
+      .stat-label {
+        color: #666;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 5px;
+      }
+
+      .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 8px 15px;
+        border-radius: 20px;
+        margin-top: 15px;
+      }
+
+      .pulse {
+        width: 12px;
+        height: 12px;
+        background: #00ff00;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .footer {
+        text-align: center;
+        color: white;
+        padding: 40px 20px;
+        margin-top: 60px;
+        opacity: 0.9;
+      }
+
+      .footer p {
+        margin: 5px 0;
+      }
+
+      @media (max-width: 768px) {
+        .header h1 {
+          font-size: 1.8em;
+        }
+
+        .view-cards {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🏥 NSW Health Drug Checking Service</h1>
+      <p class="subtitle">Festival Queue Management System - Live Demo</p>
+      <div class="demo-badge">Interactive Demo Environment</div>
+      <div class="live-indicator">
+        <span class="pulse"></span>
+        <span>Live Data Simulation Running</span>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="intro-card">
+        <h2>Welcome to the NSW Health Drug Checking Demo</h2>
+        <p>
+          This is a live demonstration of an NFC-based queue management system designed specifically
+          for drug checking services at music festivals. The system uses NFC tap cards to track
+          participants through the service workflow, providing real-time visibility, analytics, and
+          operational insights.
+        </p>
+        <p>
+          <strong>This demo is actively simulating festival activity</strong> with realistic participant
+          flow, queue dynamics, and service operations. All data shown is generated in real-time for
+          demonstration purposes.
+        </p>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-value" id="active-count">-</div>
+          <div class="stat-label">Active Now</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="queue-count">-</div>
+          <div class="stat-label">In Queue</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="total-count">-</div>
+          <div class="stat-label">Total Served</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="wait-time">-</div>
+          <div class="stat-label">Est. Wait (min)</div>
+        </div>
+      </div>
+
+      <div class="features">
+        <div class="feature-card">
+          <div class="icon">🎯</div>
+          <h3>Real-Time Tracking</h3>
+          <p>Track every participant's journey from queue entry to service completion with automatic NFC card detection.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📊</div>
+          <h3>Live Analytics</h3>
+          <p>Monitor queue length, wait times, service throughput, and operational metrics in real-time.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⚠️</div>
+          <h3>Smart Alerts</h3>
+          <p>Automatic detection of stuck cards, long wait times, queue buildups, and station issues.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔒</div>
+          <h3>Privacy First</h3>
+          <p>Anonymous token-based tracking with no personal data collection. Export for accountability reporting.</p>
+        </div>
+      </div>
+
+      <div class="views-section">
+        <h2>🎭 Explore the Demo Views</h2>
+        <div class="view-cards">
+          <a href="/public" class="view-card">
+            <div class="card-icon">📺</div>
+            <div class="card-subtitle">For Participants</div>
+            <h3>Public Queue Display</h3>
+            <p>
+              Large-format display designed for tablets/TVs showing current queue position and
+              estimated wait times. Participants can see where they are in the queue and when
+              to expect service.
+            </p>
+            <span class="btn">View Public Display →</span>
+          </a>
+
+          <a href="/dashboard" class="view-card">
+            <div class="card-icon">🎛️</div>
+            <div class="card-subtitle">For Staff</div>
+            <h3>Staff Dashboard</h3>
+            <p>
+              Comprehensive real-time metrics including queue stats, throughput analysis, wait time
+              estimates, and operational alerts. Designed for staff monitoring and service optimization.
+            </p>
+            <span class="btn">View Dashboard →</span>
+          </a>
+
+          <a href="/monitor" class="view-card">
+            <div class="card-icon">🔍</div>
+            <div class="card-subtitle">For Staff</div>
+            <h3>Activity Monitor</h3>
+            <p>
+              Live feed of all tap events, participant status tracking, and anomaly detection.
+              Identify stuck cards and participants who may need assistance.
+            </p>
+            <span class="btn">View Monitor →</span>
+          </a>
+
+          <a href="/control" class="view-card">
+            <div class="card-icon">⚙️</div>
+            <div class="card-subtitle">For Coordinators</div>
+            <h3>Control Panel</h3>
+            <p>
+              Administrative controls for manual event corrections, force-exit functionality,
+              database backup/export, and system configuration. Full audit trail maintained.
+            </p>
+            <span class="btn">View Control Panel →</span>
+          </a>
+
+          <a href="/shift" class="view-card">
+            <div class="card-icon">📋</div>
+            <div class="card-subtitle">For Staff Handoffs</div>
+            <h3>Shift Summary</h3>
+            <p>
+              Comprehensive shift handoff report with participant counts, service metrics,
+              anomalies detected, and current system status. Perfect for volunteer shift changes.
+            </p>
+            <span class="btn">View Shift Summary →</span>
+          </a>
+
+          <a href="/check?token=001" class="view-card">
+            <div class="card-icon">🎫</div>
+            <div class="card-subtitle">For Participants</div>
+            <h3>Individual Status Check</h3>
+            <p>
+              Participants can check their specific card status, see their complete journey through
+              the service, and get personalized wait estimates.
+            </p>
+            <span class="btn">Check Status (Token 001) →</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="intro-card" style="margin-top: 40px;">
+        <h2>💡 Demo Features</h2>
+        <p><strong>Live Data Simulation:</strong> The system is continuously generating realistic participant activity in the background, simulating arrivals, service progression, and completions.</p>
+        <p><strong>Realistic Workflow:</strong> Follows a 4-stage drug checking workflow: Queue Join → Testing Started → Results Delivered → Service Complete</p>
+        <p><strong>No Hardware Required:</strong> Running in mock mode - no physical NFC readers needed for this demo</p>
+        <p><strong>Fully Configurable:</strong> Service workflow, alerts, capacity limits, and UI messages can all be customized via YAML configuration</p>
+        <p><strong>Export Ready:</strong> All data can be exported to CSV for reporting and accountability purposes</p>
+      </div>
+
+      <div class="footer">
+        <p><strong>Questions or Feedback?</strong></p>
+        <p>This demo is designed to facilitate workshop discussions about workflow, UI/UX, and operational requirements.</p>
+        <p style="margin-top: 20px; opacity: 0.7;">NSW Health Drug Checking Service Demo | 2026</p>
+      </div>
+    </div>
+
+    <script>
+      // Update stats from API
+      async function updateStats() {
+        try {
+          const response = await fetch('/api/stats');
+          const data = await response.json();
+
+          document.getElementById('active-count').textContent = data.participants_in_service || '0';
+          document.getElementById('queue-count').textContent = data.queue_length || '0';
+          document.getElementById('total-count').textContent = data.total_participants || '0';
+
+          const waitMinutes = data.estimated_wait_minutes;
+          document.getElementById('wait-time').textContent = waitMinutes !== undefined ? waitMinutes : '-';
+        } catch (error) {
+          console.error('Error updating stats:', error);
+        }
+      }
+
+      // Update every 5 seconds
+      updateStats();
+      setInterval(updateStats, 5000);
+    </script>
+  </body>
+</html>
