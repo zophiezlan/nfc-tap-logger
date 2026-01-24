@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from tap_station.web_server import StatusWebServer
 from tap_station.database import Database
 from demo_data_generator import DemoDataGenerator
+from festival_scenarios import get_scenario_config, list_scenarios
 
 
 class DemoConfig:
@@ -30,16 +31,18 @@ class DemoConfig:
         self._raw = config_dict
 
 
-def load_demo_config():
-    """Load demo-specific configuration"""
+def load_demo_config(scenario_name='htid'):
+    """Load demo-specific configuration based on scenario"""
+    scenario = get_scenario_config(scenario_name)
+
     config = {
         'station': {
             'device_id': 'demo-web-station',
             'stage': 'QUEUE_JOIN',
-            'session_id': 'demo-festival-2026'
+            'session_id': scenario['session_id']
         },
         'database': {
-            'path': 'data/demo_events.db',
+            'path': f'data/demo_{scenario_name}.db',  # Separate DB per scenario
             'wal_mode': True
         },
         'nfc': {
@@ -59,13 +62,16 @@ def load_demo_config():
         'logging': {
             'level': 'INFO',
             'path': 'logs/demo.log'
-        }
+        },
+        'scenario': scenario  # Include full scenario data
     }
     return config
 
 
-def load_demo_service_config():
-    """Load demo service configuration for drug checking"""
+def load_demo_service_config(scenario_name='htid'):
+    """Load demo service configuration based on scenario"""
+    scenario = get_scenario_config(scenario_name)
+
     return {
         'service': {
             'name': 'NSW Festival Drug Checking Service',
@@ -118,19 +124,18 @@ def load_demo_service_config():
             ]
         },
         'capacity': {
-            # Real HTID data: ~70 groups over 6 hours with 6 peers + 6 chemists
-            'expected_throughput_per_hour': 12,  # 70 groups / 6 hours
-            'average_service_time_minutes': 23,  # 5 min intake + 8 min test + 10 min results
-            'max_queue_length': 50,
-            'staff_count': 6  # 6 peer workers handling intake/results
+            'expected_throughput_per_hour': scenario['throughput_per_hour'],
+            'average_service_time_minutes': scenario['service_time_total_min'],
+            'max_queue_length': 100,  # High for demo
+            'staff_count': scenario['peer_workers']
         },
         'alerts': {
-            'queue_length_warning': 10,  # NSW realistic: getting busy
-            'queue_length_critical': 15,  # NSW realistic: peak queue at HTID was ~15 groups
-            'wait_time_warning_minutes': 30,
-            'wait_time_critical_minutes': 60,
-            'inactivity_warning_minutes': 10,  # Quiet periods are normal (first/last hour)
-            'stuck_card_threshold_minutes': 45  # Results chat can go 30+ mins legitimately
+            'queue_length_warning': scenario['queue_warning'],
+            'queue_length_critical': scenario['queue_critical'],
+            'wait_time_warning_minutes': scenario['wait_warning_min'],
+            'wait_time_critical_minutes': scenario['wait_critical_min'],
+            'inactivity_warning_minutes': 10,
+            'stuck_card_threshold_minutes': scenario['stuck_threshold_min']
         },
         'display': {
             'show_token_ids': True,
@@ -171,15 +176,20 @@ def run_background_simulator(db: Database, config: dict, service_config: dict):
             time.sleep(10)
 
 
-def main():
+def main(scenario='htid'):
     """Main entry point for demo server"""
     print("=" * 60)
     print("🎪 NFC TAP LOGGER - NSW HEALTH DEMO")
     print("=" * 60)
 
-    # Load configurations
-    config_dict = load_demo_config()
-    service_config = load_demo_service_config()
+    # Load configurations for scenario
+    scenario_data = get_scenario_config(scenario)
+    print(f"\n📍 Scenario: {scenario_data['name']}")
+    print(f"   {scenario_data['description']}")
+    print(f"   Staff: {scenario_data['peer_workers']} peers, {scenario_data['chemists']} chemists\n")
+
+    config_dict = load_demo_config(scenario)
+    service_config = load_demo_service_config(scenario)
 
     # Create config object
     config = DemoConfig(config_dict)
@@ -241,4 +251,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description='NSW Health Drug Checking Demo Server')
+    parser.add_argument(
+        '--scenario',
+        choices=['htid', 'lost_paradise_actual', 'lost_paradise_ideal'],
+        default=os.environ.get('DEMO_SCENARIO', 'htid'),
+        help='Festival scenario to simulate'
+    )
+    args = parser.parse_args()
+
+    main(scenario=args.scenario)

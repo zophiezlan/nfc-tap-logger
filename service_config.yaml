@@ -8,7 +8,7 @@ alerts:
 capacity:
   average_service_time_minutes: 23
   expected_throughput_per_hour: 12
-  max_queue_length: 50
+  max_queue_length: 100
   staff_count: 6
 display:
   recent_events_limit: 20

@@ -24,20 +24,24 @@ class DemoDataGenerator:
         self.active_participants: Dict[str, Dict[str, Any]] = {}
         self.next_token_id = 1
 
-        # Simulation parameters based on HTID real-world data
-        # 70 groups over 6 hours = ~12 groups/hour average, but varies by time
-        self.base_arrival_rate_per_minute = 0.2  # Base rate (12 groups/hour = 0.2/min)
-        self.current_hour = 0  # Track which hour we're simulating
+        # Get scenario data
+        self.scenario = config.get('scenario', {})
 
-        # Service times matching real HTID workflow
-        self.intake_time_avg = 5  # Initial peer chat
-        self.intake_time_std = 1.5
-        self.testing_time_avg = 8  # Chemist testing (7-10 min range)
-        self.testing_time_std = 1.5
-        self.results_time_avg = 10  # Results chat with peer
-        self.results_time_std = 8  # High variance! Can be 5-30+ mins
+        # Simulation parameters based on scenario
+        throughput = self.scenario.get('throughput_per_hour', 12)
+        self.base_arrival_rate_per_minute = throughput / 60  # Convert to per-minute
 
-        self.abandon_rate = 0.02  # 2% abandon queue (lower than generic festivals)
+        # Service times from scenario
+        self.peer_intake_min = self.scenario.get('peer_intake_min', 5)
+        self.testing_min = self.scenario.get('testing_min', 8)
+        self.results_chat_min = self.scenario.get('results_chat_min', 10)
+        self.results_variance = self.scenario.get('results_chat_variance', 'medium')
+
+        # Abandonment rate from scenario
+        self.abandon_rate = self.scenario.get('abandonment_rate', 0.02)
+
+        # Get arrival pattern from scenario
+        self.arrival_pattern = self.scenario.get('arrival_pattern', {})
 
         # Station IDs for realism
         self.stations = {
@@ -97,30 +101,33 @@ class DemoDataGenerator:
 
     def get_arrival_multiplier(self):
         """
-        Get arrival rate multiplier based on festival hour pattern
-        Based on HTID: quiet hour 1, peak hours 2-3, drop hours 4-5, dead hour 6
+        Get arrival rate multiplier based on festival hour pattern from scenario
         """
-        # Simulate elapsed time (rough approximation based on cycles)
         import time
         if not hasattr(self, 'start_time'):
             self.start_time = time.time()
 
         elapsed_minutes = (time.time() - self.start_time) / 60
-        hour = (elapsed_minutes / 60) % 6  # Loop through 6-hour cycle for continuous demo
+        duration_hours = self.scenario.get('duration_hours', 6)
+        hour = (elapsed_minutes / 60) % duration_hours  # Loop through festival cycle
 
-        # Hour-by-hour multipliers matching HTID pattern
+        # Use scenario-specific arrival pattern
+        if not self.arrival_pattern:
+            return 1.0  # Default if no pattern specified
+
+        # Map hour to pattern key
         if hour < 1:
-            return 0.3  # Hour 1: Very quiet, people discovering service
+            return self.arrival_pattern.get('hour_0_1', 1.0)
         elif hour < 2:
-            return 1.5  # Hour 2: Building up
-        elif hour < 3.5:
-            return 2.5  # Hours 2.5-3.5: Peak! Queue hits ~15 groups
-        elif hour < 4.5:
-            return 1.0  # Hour 4-4.5: Dropping off
-        elif hour < 5.5:
-            return 0.6  # Hour 5-5.5: Small queue
+            return self.arrival_pattern.get('hour_1_2', 1.0)
+        elif hour < 3:
+            return self.arrival_pattern.get('hour_2_3', 1.0)
+        elif hour < 4:
+            return self.arrival_pattern.get('hour_3_4', 1.0)
+        elif hour < 5:
+            return self.arrival_pattern.get('hour_4_5', 1.0)
         else:
-            return 0.2  # Hour 6: Almost empty
+            return self.arrival_pattern.get('hour_5_6', 1.0)
 
     def simulate_activity_cycle(self):
         """Simulate one cycle of activity"""
@@ -212,23 +219,46 @@ class DemoDataGenerator:
                 if time_in_stage > 0.5 and random.random() < 0.2:
                     should_progress = True
             elif current_stage == 'SERVICE_START':
-                # Intake (5 min) + Testing (8 min) = ~13 min total at this stage
-                # This combines peer intake + chemist work
-                if time_in_stage > 3 and random.random() < 0.1:
+                # Intake + Testing time from scenario
+                # peer_intake_min + testing_min = total SERVICE_START duration
+                total_service_time = self.peer_intake_min + self.testing_min
+                min_time = total_service_time * 0.4  # Start checking after 40% of time
+                avg_time = total_service_time * 0.6  # Average completion at 60%
+
+                if time_in_stage > min_time and random.random() < (0.12 if time_in_stage > avg_time else 0.08):
                     should_progress = True
             elif current_stage == 'SUBSTANCE_RETURNED':
-                # Results chat: avg 10 min but HIGH variance (5-30+ min)
-                # Some people leave quickly, some have long conversations
+                # Results chat: variance depends on scenario
+                # Lost Paradise actual: low variance (rushed due to queue)
+                # HTID/Lost Paradise ideal: medium-high variance (quality conversations)
                 variance = random.random()
-                if variance < 0.3:  # 30% quick chat (5 min)
-                    if time_in_stage > 1.5 and random.random() < 0.3:
+
+                if self.results_variance == 'low':
+                    # Low variance - rushed service (overwhelmed)
+                    if time_in_stage > 1.5 and random.random() < 0.25:
                         should_progress = True
-                elif variance < 0.8:  # 50% normal chat (8-12 min)
-                    if time_in_stage > 2.5 and random.random() < 0.15:
-                        should_progress = True
-                else:  # 20% long conversation (15-30 min)
-                    if time_in_stage > 5 and random.random() < 0.08:
-                        should_progress = True
+                elif self.results_variance == 'medium':
+                    # Medium variance - mix of quick and normal chats
+                    if variance < 0.3:  # 30% quick chat
+                        if time_in_stage > 1.5 and random.random() < 0.3:
+                            should_progress = True
+                    elif variance < 0.8:  # 50% normal chat
+                        if time_in_stage > 2.5 and random.random() < 0.15:
+                            should_progress = True
+                    else:  # 20% long conversation
+                        if time_in_stage > 5 and random.random() < 0.08:
+                            should_progress = True
+                else:  # high variance
+                    # Very high variance - some VERY long conversations
+                    if variance < 0.2:  # 20% quick
+                        if time_in_stage > 1 and random.random() < 0.3:
+                            should_progress = True
+                    elif variance < 0.7:  # 50% normal
+                        if time_in_stage > 2.5 and random.random() < 0.12:
+                            should_progress = True
+                    else:  # 30% very long (quality harm reduction!)
+                        if time_in_stage > 7 and random.random() < 0.06:
+                            should_progress = True
 
             if should_progress:
                 next_stage = self._get_next_stage(current_stage)

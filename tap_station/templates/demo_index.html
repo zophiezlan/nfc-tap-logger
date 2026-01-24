@@ -323,6 +323,65 @@
         </div>
       </div>
 
+      <div class="views-section" style="margin-top: 50px;">
+        <h2>🎪 Select Festival Scenario</h2>
+        <p style="text-align: center; color: white; margin-bottom: 25px; font-size: 1.1em;">
+          Compare different deployment scenarios based on real-world NSW festival data
+        </p>
+        <div class="view-cards">
+          <div class="view-card scenario-card" data-scenario="htid" style="cursor: pointer; border: 3px solid transparent;">
+            <div class="card-icon">🎵</div>
+            <div class="card-subtitle">SINGLE DAY FESTIVAL</div>
+            <h3>HTID (Hardstyle Til I Die)</h3>
+            <p style="margin-bottom: 15px;">
+              <strong>Manageable demand</strong> - 6 hour operation, moderate arrivals, service met demand
+            </p>
+            <div style="background: #f7f9fc; padding: 15px; border-radius: 8px; text-align: left; margin: 10px 0; font-size: 0.9em;">
+              <div style="margin: 5px 0;"><strong>Staff:</strong> 6 peers, 6 chemists</div>
+              <div style="margin: 5px 0;"><strong>Served:</strong> 70 groups, 110 samples</div>
+              <div style="margin: 5px 0;"><strong>Peak queue:</strong> ~15 groups</div>
+              <div style="margin: 5px 0;"><strong>Max wait:</strong> 30 minutes</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>✓ Outcome:</strong> Success - good experience</div>
+            </div>
+            <span class="btn" style="background: #10b981;">View This Scenario →</span>
+          </div>
+
+          <div class="view-card scenario-card" data-scenario="lost_paradise_actual" style="cursor: pointer; border: 3px solid transparent;">
+            <div class="card-icon">🌴</div>
+            <div class="card-subtitle">MULTI-DAY FESTIVAL - ACTUAL</div>
+            <h3>Lost Paradise (Understaffed)</h3>
+            <p style="margin-bottom: 15px;">
+              <strong>CRITICAL capacity crisis</strong> - Same staffing, way more demand. Line out the door, 3hr waits
+            </p>
+            <div style="background: #fef2f2; padding: 15px; border-radius: 8px; text-align: left; margin: 10px 0; font-size: 0.9em;">
+              <div style="margin: 5px 0;"><strong>Staff:</strong> 6 peers, 6 chemists (SAME!)</div>
+              <div style="margin: 5px 0;"><strong>Served:</strong> 150 groups, 300 samples (2 days)</div>
+              <div style="margin: 5px 0; color: #dc2626;"><strong>Peak queue:</strong> 60+ groups (out the door)</div>
+              <div style="margin: 5px 0; color: #dc2626;"><strong>Max wait:</strong> 3 HOURS</div>
+              <div style="margin: 5px 0; color: #dc2626;"><strong>✗ Outcome:</strong> Many turned away, staff burnout</div>
+            </div>
+            <span class="btn" style="background: #dc2626;">View This Scenario →</span>
+          </div>
+
+          <div class="view-card scenario-card" data-scenario="lost_paradise_ideal" style="cursor: pointer; border: 3px solid transparent;">
+            <div class="card-icon">🌟</div>
+            <div class="card-subtitle">MULTI-DAY FESTIVAL - IDEAL</div>
+            <h3>Lost Paradise (Proper Staffing)</h3>
+            <p style="margin-bottom: 15px;">
+              <strong>PROPER resourcing</strong> - Same demand, doubled staff. Everyone served, <30min waits
+            </p>
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; text-align: left; margin: 10px 0; font-size: 0.9em;">
+              <div style="margin: 5px 0;"><strong>Staff:</strong> 12 peers, 12 chemists (DOUBLED!)</div>
+              <div style="margin: 5px 0;"><strong>Capacity:</strong> 250+ groups, 500+ samples</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>Peak queue:</strong> ~20 groups (manageable)</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>Max wait:</strong> 45 minutes</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>✓ Outcome:</strong> Success - meets demand, quality service</div>
+            </div>
+            <span class="btn" style="background: #0066cc;">View This Scenario →</span>
+          </div>
+        </div>
+      </div>
+
       <div class="views-section">
         <h2>🎭 Explore the Demo Views</h2>
         <div class="view-cards">
@@ -413,6 +472,52 @@
     </div>
 
     <script>
+      // Get current scenario from URL or localStorage
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentScenario = urlParams.get('scenario') || localStorage.getItem('demo_scenario') || 'htid';
+
+      // Save to localStorage
+      localStorage.setItem('demo_scenario', currentScenario);
+
+      // Highlight current scenario
+      document.addEventListener('DOMContentLoaded', () => {
+        const cards = document.querySelectorAll('.scenario-card');
+        cards.forEach(card => {
+          const scenario = card.getAttribute('data-scenario');
+          if (scenario === currentScenario) {
+            card.style.border = '3px solid #0066cc';
+            card.style.boxShadow = '0 15px 40px rgba(0, 102, 204, 0.3)';
+          }
+
+          // Add click handler
+          card.addEventListener('click', () => {
+            // Store selection
+            localStorage.setItem('demo_scenario', scenario);
+
+            // Show loading indicator
+            const btn = card.querySelector('.btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Loading scenario...';
+            btn.style.opacity = '0.6';
+
+            // Reload with scenario parameter
+            // For now, just highlight - we'll implement full switching in backend
+            window.location.href = `/?scenario=${scenario}`;
+          });
+        });
+
+        // Show current scenario name in header
+        const scenarioNames = {
+          'htid': 'HTID',
+          'lost_paradise_actual': 'Lost Paradise (Actual)',
+          'lost_paradise_ideal': 'Lost Paradise (Ideal)'
+        };
+        const subtitle = document.querySelector('.subtitle');
+        if (currentScenario !== 'htid') {
+          subtitle.textContent += ` - Currently viewing: ${scenarioNames[currentScenario]}`;
+        }
+      });
+
       // Update stats from API
       async function updateStats() {
         try {
