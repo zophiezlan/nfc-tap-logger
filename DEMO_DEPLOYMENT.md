@@ -47,6 +47,74 @@ Once running, visit:
 | **Shift Summary** | http://localhost:8080/shift | Handoff report for shift changes |
 | **Status Check** | http://localhost:8080/check?token=001 | Individual participant status |
 
+## 🎪 Festival Scenario Comparison
+
+The demo includes **three real-world scenarios** based on actual NSW festival deployments. This directly answers: *"How much resources do we need?"*
+
+### Scenario 1: HTID - Success Case ✅
+
+**Single day hardstyle festival** - Manageable demand, service met expectations
+
+```bash
+python demo_server.py --scenario htid
+```
+
+- **Duration**: 1 day, 6 hours
+- **Staffing**: 6 peers, 6 chemists
+- **Volume**: 70 groups, 110 samples
+- **Queue**: Peak ~15 groups
+- **Wait Time**: Max 30 minutes
+- **Abandonment**: 2% (very low)
+- **Outcome**: ✅ **SUCCESS** - Everyone served, quality conversations, happy participants
+- **Lesson**: This staffing level works for moderate-demand single-day festivals
+
+### Scenario 2: Lost Paradise (Actual) - Capacity Crisis ⚠️
+
+**Multi-day festival - OVERWHELMED** - Same staffing, way more demand
+
+```bash
+python demo_server.py --scenario lost_paradise_actual
+```
+
+- **Duration**: 2 days, 6 hours/day
+- **Staffing**: 6 peers, 6 chemists (SAME AS HTID!)
+- **Volume**: 150 groups, 300 samples (over 2 days)
+- **Queue**: Peak **60+ groups** (line out the door!)
+- **Wait Time**: Max **3 HOURS**
+- **Abandonment**: **25%** (many turned away)
+- **Outcome**: ❌ **CRITICAL FAILURE** - Severe understaffing, staff burnout, many participants couldn't access service
+- **Lesson**: Multi-day festivals need scaled resources - current model doesn't work
+
+### Scenario 3: Lost Paradise (Ideal) - Proper Resourcing ⭐
+
+**Same festival, DOUBLED staff** - Shows ROI of proper investment
+
+```bash
+python demo_server.py --scenario lost_paradise_ideal
+```
+
+- **Duration**: 2 days, 6 hours/day
+- **Staffing**: **12 peers, 12 chemists** (DOUBLED!)
+- **Capacity**: 250+ groups, 500+ samples
+- **Queue**: Peak ~20 groups (manageable)
+- **Wait Time**: Max 45 minutes
+- **Abandonment**: 3% (minimal)
+- **Outcome**: ✅ **SUCCESS** - Demand met, quality harm reduction, sustainable staffing
+- **Lesson**: Proper resourcing enables quality service at scale
+
+### Interactive Scenario Switcher
+
+The demo landing page includes an **interactive scenario selector**:
+- Click any scenario card to switch
+- Visual comparison of staffing vs outcomes
+- Color-coded: Green (success), Red (crisis)
+- Real-time stats update for each scenario
+
+This makes it easy to show stakeholders:
+1. What you're currently achieving (HTID)
+2. What happens when you're understaffed (Lost Paradise actual - 3hr waits!)
+3. What's possible with proper investment (Lost Paradise ideal)
+
 ## ☁️ Cloud Deployment Options
 
 ### Option 1: Render.com (Recommended - Free Tier Available)
