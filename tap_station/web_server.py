@@ -5,7 +5,8 @@ Provides:
 - /health endpoint for monitoring
 - /check?token=XXX endpoint for participant status
 - /api/status/<token> API endpoint
-- /control endpoint for system administration
+- /control endpoint for system administration (requires authentication)
+- /login endpoint for admin authentication
 """
 
 import sys
@@ -14,10 +15,11 @@ import subprocess
 import os
 import shutil
 import time
+import secrets
 from collections import defaultdict
 from threading import Lock
 from functools import wraps
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, current_app
 from datetime import datetime, timezone, timedelta
 
 # Import service configuration integration
@@ -87,6 +89,43 @@ class RateLimiter:
             return max(0, self.max_requests - len(self.requests[key]))
 
 
+def require_admin_auth(f):
+    """
+    Decorator to require admin authentication for control panel routes
+    
+    Checks if user is logged in via session. If not, redirects to login page.
+    Also checks session timeout and auto-logs out inactive sessions.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if user is authenticated
+        if not session.get('admin_authenticated'):
+            return redirect(url_for('login', next=request.url))
+        
+        # Check session timeout
+        last_activity = session.get('last_activity')
+        if last_activity:
+            try:
+                last_activity_time = datetime.fromisoformat(last_activity)
+                # Get timeout from Flask app config (set during init)
+                timeout_minutes = current_app.config.get('ADMIN_SESSION_TIMEOUT_MINUTES', 60)
+                if datetime.now(timezone.utc) - last_activity_time > timedelta(minutes=timeout_minutes):
+                    # Session timed out
+                    session.clear()
+                    return redirect(url_for('login', next=request.url, error='Session timed out. Please login again.'))
+            except (ValueError, TypeError):
+                # Invalid timestamp, clear session
+                session.clear()
+                return redirect(url_for('login'))
+        
+        # Update last activity time
+        session['last_activity'] = datetime.now(timezone.utc).isoformat()
+        
+        return f(*args, **kwargs)
+    
+    return decorated_function
+
+
 def rate_limit(limiter: RateLimiter):
     """
     Decorator to apply rate limiting to Flask routes
@@ -125,6 +164,17 @@ class StatusWebServer:
         self.config = config
         self.db = database
         self.app = Flask(__name__)
+        
+        # Configure Flask session for admin authentication
+        # Generate a secure random secret key for session encryption
+        self.app.config['SECRET_KEY'] = secrets.token_hex(32)
+        self.app.config['SESSION_COOKIE_HTTPONLY'] = True
+        self.app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+        
+        # Store admin password and timeout from config
+        self.app.config['ADMIN_PASSWORD'] = config.admin_password
+        self.app.config['ADMIN_SESSION_TIMEOUT_MINUTES'] = config.admin_session_timeout_minutes
         
         # Initialize rate limiters for different endpoint types
         # Control endpoints (manual-event, remove-event): 10 requests/minute
@@ -501,7 +551,49 @@ class StatusWebServer:
                 session=self.config.session_id,
             )
 
+        @self.app.route("/login", methods=["GET", "POST"])
+        def login():
+            """Admin login page and authentication"""
+            if request.method == "POST":
+                password = request.form.get("password", "").strip()
+                
+                # Verify password
+                if password == self.app.config.get('ADMIN_PASSWORD'):
+                    # Set session as authenticated
+                    session.permanent = True
+                    session['admin_authenticated'] = True
+                    session['last_activity'] = datetime.now(timezone.utc).isoformat()
+                    session['login_time'] = datetime.now(timezone.utc).isoformat()
+                    
+                    # Redirect to original destination or control panel
+                    next_url = request.args.get('next')
+                    if next_url and next_url.startswith('/'):
+                        return redirect(next_url)
+                    return redirect(url_for('control'))
+                else:
+                    # Invalid password
+                    return render_template(
+                        "login.html",
+                        session=self.config.session_id,
+                        error="Invalid password. Please try again."
+                    )
+            
+            # GET request - show login form
+            error = request.args.get('error')
+            return render_template(
+                "login.html",
+                session=self.config.session_id,
+                error=error
+            )
+
+        @self.app.route("/logout")
+        def logout():
+            """Logout admin user"""
+            session.clear()
+            return redirect(url_for('login', error='You have been logged out.'))
+
         @self.app.route("/control")
+        @require_admin_auth
         def control():
             """Control panel for system administration"""
             return render_template(
@@ -522,6 +614,7 @@ class StatusWebServer:
             )
 
         @self.app.route("/api/control/status")
+        @require_admin_auth
         def api_control_status():
             """Get system status for control panel"""
             try:
@@ -532,6 +625,7 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/execute", methods=["POST"])
+        @require_admin_auth
         def api_control_execute():
             """Execute a control command"""
             try:
@@ -552,6 +646,7 @@ class StatusWebServer:
                 return jsonify({"success": False, "error": str(e)}), 500
 
         @self.app.route("/api/control/force-exit", methods=["POST"])
+        @require_admin_auth
         def api_force_exit():
             """Force exit for stuck cards"""
             try:
@@ -572,6 +667,7 @@ class StatusWebServer:
                 return jsonify({"success": False, "error": str(e)}), 500
 
         @self.app.route("/api/control/stuck-cards")
+        @require_admin_auth
         def api_stuck_cards():
             """Get list of stuck cards (in queue >2 hours)"""
             try:
@@ -582,6 +678,7 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/anomalies")
+        @require_admin_auth
         @rate_limit(self.anomaly_limiter)
         def api_anomalies():
             """Get real-time anomaly detection for human errors"""
@@ -604,6 +701,7 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/manual-event", methods=["POST"])
+        @require_admin_auth
         @rate_limit(self.control_limiter)
         def api_manual_event():
             """Add a manual event for missed taps"""
@@ -727,6 +825,7 @@ class StatusWebServer:
                 return jsonify({"success": False, "error": str(e)}), 500
 
         @self.app.route("/api/control/remove-event", methods=["POST"])
+        @require_admin_auth
         @rate_limit(self.control_limiter)
         def api_remove_event():
             """Remove an incorrect event"""
@@ -917,6 +1016,7 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/backup-database")
+        @require_admin_auth
         def api_backup_database():
             """Download full database backup"""
             try:
@@ -1017,6 +1117,7 @@ class StatusWebServer:
                     return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/hardware-status")
+        @require_admin_auth
         def api_hardware_status():
             """Get hardware component status"""
             try:

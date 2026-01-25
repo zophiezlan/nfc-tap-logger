@@ -94,3 +94,13 @@ web_server:
   # Bind host and port
   host: "0.0.0.0"
   port: 8080
+
+  # Admin authentication for control panel
+  # Set a password to protect administrative functions
+  # All staff members can use this password during shift
+  admin:
+    # Password for accessing control panel (change this!)
+    password: "admin123"
+    
+    # Session timeout in minutes (auto-logout after inactivity)
+    session_timeout_minutes: 60

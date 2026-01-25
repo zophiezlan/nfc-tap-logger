@@ -61,6 +61,8 @@ _CONFIG_SCHEMA: Dict[str, Tuple[str, Any, Optional[Callable]]] = {
     "web_server_enabled": ("web_server.enabled", False, bool),
     "web_server_host": ("web_server.host", "0.0.0.0", str),
     "web_server_port": ("web_server.port", 8080, int),
+    "admin_password": ("web_server.admin.password", "admin123", str),
+    "admin_session_timeout_minutes": ("web_server.admin.session_timeout_minutes", 60, int),
 
     # API limits and validation
     "api_max_events_per_request": ("web_server.api.max_events_per_request", 1000, int),
