@@ -13,8 +13,12 @@ import logging
 import subprocess
 import os
 import shutil
+import time
+from collections import defaultdict
+from threading import Lock
+from functools import wraps
 from flask import Flask, render_template, jsonify, request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Import service configuration integration
 try:
@@ -27,6 +31,84 @@ except ImportError:
     logger.warning("Service configuration not available, using defaults")
 
 logger = logging.getLogger(__name__)
+
+
+# Simple rate limiting implementation
+class RateLimiter:
+    """Simple in-memory rate limiter for API endpoints"""
+    
+    def __init__(self, max_requests: int = 10, window_seconds: int = 60):
+        """
+        Initialize rate limiter
+        
+        Args:
+            max_requests: Maximum requests allowed per window
+            window_seconds: Time window in seconds
+        """
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.requests = defaultdict(list)
+        self.lock = Lock()
+    
+    def is_allowed(self, key: str) -> bool:
+        """
+        Check if request is allowed
+        
+        Args:
+            key: Identifier (e.g., IP address)
+            
+        Returns:
+            True if request is allowed
+        """
+        now = time.time()
+        with self.lock:
+            # Clean up old requests
+            self.requests[key] = [
+                req_time for req_time in self.requests[key]
+                if now - req_time < self.window_seconds
+            ]
+            
+            # Check if under limit
+            if len(self.requests[key]) < self.max_requests:
+                self.requests[key].append(now)
+                return True
+            
+            return False
+    
+    def get_remaining(self, key: str) -> int:
+        """Get number of remaining requests in current window"""
+        now = time.time()
+        with self.lock:
+            # Clean up old requests
+            self.requests[key] = [
+                req_time for req_time in self.requests[key]
+                if now - req_time < self.window_seconds
+            ]
+            return max(0, self.max_requests - len(self.requests[key]))
+
+
+def rate_limit(limiter: RateLimiter):
+    """
+    Decorator to apply rate limiting to Flask routes
+    
+    Args:
+        limiter: RateLimiter instance
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Use IP address as key
+            key = request.remote_addr or 'unknown'
+            
+            if not limiter.is_allowed(key):
+                return jsonify({
+                    "success": False,
+                    "error": "Rate limit exceeded. Please try again later.",
+                }), 429
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 
 class StatusWebServer:
@@ -43,6 +125,12 @@ class StatusWebServer:
         self.config = config
         self.db = database
         self.app = Flask(__name__)
+        
+        # Initialize rate limiters for different endpoint types
+        # Control endpoints (manual-event, remove-event): 10 requests/minute
+        self.control_limiter = RateLimiter(max_requests=10, window_seconds=60)
+        # Anomaly endpoint: 30 requests/minute (higher since it's read-only)
+        self.anomaly_limiter = RateLimiter(max_requests=30, window_seconds=60)
 
         # Load service configuration
         if SERVICE_CONFIG_AVAILABLE:
@@ -494,33 +582,17 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/anomalies")
+        @rate_limit(self.anomaly_limiter)
         def api_anomalies():
             """Get real-time anomaly detection for human errors"""
             try:
                 anomalies = self.db.get_anomalies(self.config.session_id)
 
-                # Calculate summary counts
-                summary = {
-                    "total_anomalies": sum(len(v) for v in anomalies.values()),
-                    "high_severity": sum(
-                        1
-                        for category in anomalies.values()
-                        for item in category
-                        if item.get("severity") == "high"
-                    ),
-                    "medium_severity": sum(
-                        1
-                        for category in anomalies.values()
-                        for item in category
-                        if item.get("severity") == "medium"
-                    ),
-                }
-
                 return (
                     jsonify(
                         {
                             "anomalies": anomalies,
-                            "summary": summary,
+                            "summary": anomalies.get("summary", {}),
                             "session_id": self.config.session_id,
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
@@ -532,6 +604,7 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/manual-event", methods=["POST"])
+        @rate_limit(self.control_limiter)
         def api_manual_event():
             """Add a manual event for missed taps"""
             try:
@@ -551,17 +624,67 @@ class StatusWebServer:
                         400,
                     )
 
-                # Parse timestamp
+                # Parse timestamp with comprehensive error handling
                 try:
-                    timestamp = datetime.fromisoformat(data["timestamp"])
-                    if timestamp.tzinfo is None:
-                        timestamp = timestamp.replace(tzinfo=timezone.utc)
-                except ValueError as e:
+                    timestamp_str = data["timestamp"]
+                    
+                    # Try ISO format first
+                    try:
+                        timestamp = datetime.fromisoformat(timestamp_str)
+                        if timestamp.tzinfo is None:
+                            timestamp = timestamp.replace(tzinfo=timezone.utc)
+                    except (ValueError, AttributeError):
+                        # Try parsing as Unix timestamp (seconds or milliseconds)
+                        try:
+                            ts_value = float(timestamp_str)
+                            # If value is very large, assume milliseconds
+                            if ts_value > 1e10:
+                                ts_value = ts_value / 1000
+                            timestamp = datetime.fromtimestamp(ts_value, tz=timezone.utc)
+                        except (ValueError, OSError) as e:
+                            return (
+                                jsonify(
+                                    {
+                                        "success": False,
+                                        "error": f"Invalid timestamp format. Expected ISO 8601 string (YYYY-MM-DDTHH:MM:SS) or Unix timestamp. Got: {timestamp_str}",
+                                    }
+                                ),
+                                400,
+                            )
+                    
+                    # Validate timestamp is reasonable (not too far in past or future)
+                    now = datetime.now(timezone.utc)
+                    max_age_days = 30
+                    max_future_hours = 1
+                    
+                    if timestamp < now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=max_age_days):
+                        return (
+                            jsonify(
+                                {
+                                    "success": False,
+                                    "error": f"Timestamp is more than {max_age_days} days in the past",
+                                }
+                            ),
+                            400,
+                        )
+                    
+                    if timestamp > now + timedelta(hours=max_future_hours):
+                        return (
+                            jsonify(
+                                {
+                                    "success": False,
+                                    "error": f"Timestamp is more than {max_future_hours} hours in the future",
+                                }
+                            ),
+                            400,
+                        )
+                        
+                except KeyError:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": f"Invalid timestamp format: {e}",
+                                "error": "Missing required field: timestamp",
                             }
                         ),
                         400,
@@ -604,40 +727,74 @@ class StatusWebServer:
                 return jsonify({"success": False, "error": str(e)}), 500
 
         @self.app.route("/api/control/remove-event", methods=["POST"])
+        @rate_limit(self.control_limiter)
         def api_remove_event():
             """Remove an incorrect event"""
             try:
                 data = request.get_json()
+                
+                if not data:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Request body must be JSON",
+                            }
+                        ),
+                        400,
+                    )
 
                 # Validate required fields
-                if "event_id" not in data:
+                required = ["event_id", "operator_id", "reason"]
+                missing = [f for f in required if f not in data]
+                if missing:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": "event_id is required",
+                                "error": f"Missing required fields: {', '.join(missing)}",
                             }
                         ),
                         400,
                     )
-
-                if "operator_id" not in data:
+                
+                # Validate event_id is an integer
+                try:
+                    event_id = int(data["event_id"])
+                    if event_id <= 0:
+                        raise ValueError("event_id must be positive")
+                except (ValueError, TypeError) as e:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": "operator_id is required",
+                                "error": f"Invalid event_id: must be a positive integer",
                             }
                         ),
                         400,
                     )
-
-                if "reason" not in data:
+                
+                # Validate operator_id is non-empty
+                operator_id = str(data["operator_id"]).strip()
+                if not operator_id:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": "reason is required",
+                                "error": "operator_id cannot be empty",
+                            }
+                        ),
+                        400,
+                    )
+                
+                # Validate reason is non-empty
+                reason = str(data["reason"]).strip()
+                if not reason:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "reason cannot be empty",
                             }
                         ),
                         400,
@@ -645,9 +802,9 @@ class StatusWebServer:
 
                 # Remove event
                 result = self.db.remove_event(
-                    event_id=data["event_id"],
-                    operator_id=data["operator_id"],
-                    reason=data["reason"],
+                    event_id=event_id,
+                    operator_id=operator_id,
+                    reason=reason,
                 )
 
                 if result["success"]:
