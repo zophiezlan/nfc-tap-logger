@@ -22,7 +22,7 @@ import logging
 import hashlib
 import secrets
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
@@ -164,7 +164,6 @@ class Session:
         if self.expires_at.tzinfo is not None and now.tzinfo is None:
             # If expires_at is aware but now is naive, make comparison fail-safe
             # by treating now as UTC and making it aware
-            from datetime import timezone
             now = now.replace(tzinfo=timezone.utc)
         return self.active and now < self.expires_at
 

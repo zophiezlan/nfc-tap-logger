@@ -399,8 +399,9 @@ class TestConvenienceFunctions:
 
     def test_get_slo_manager(self, db_connection):
         """Test global manager retrieval"""
-        # Reset the module-level singleton without re-importing the module
-        get_slo_manager.__globals__["_slo_manager"] = None
+        # Reset the module-level singleton
+        module = sys.modules["tap_station.custom_slo"]
+        module._slo_manager = None
 
         manager = get_slo_manager(db_connection)
         assert manager is not None
