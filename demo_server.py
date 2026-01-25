@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from tap_station.web_server import StatusWebServer
 from tap_station.database import Database
 from demo_data_generator import DemoDataGenerator
-from festival_scenarios import get_scenario_config, list_scenarios
+from festival_scenarios import get_scenario_config
 
 
 class DemoConfig:
@@ -56,7 +56,7 @@ def load_demo_config(scenario_name='htid'):
         },
         'web_server': {
             'enabled': True,
-            'host': '0.0.0.0',
+            'host': '0.0.0.0' if os.environ.get('PORT') else '127.0.0.1',
             'port': int(os.environ.get('PORT', 8080))
         },
         'logging': {
@@ -168,13 +168,24 @@ def run_background_simulator(db: Database, config: dict, service_config: dict):
     generator.seed_initial_data(num_participants=10)
 
     # Run continuous simulation
+    consecutive_errors = 0
+    max_consecutive_errors = 5
+    
     while True:
         try:
             generator.simulate_activity_cycle()
+            consecutive_errors = 0  # Reset on success
             time.sleep(5)  # Run simulation every 5 seconds
         except Exception as e:
-            print(f"⚠️  Simulator error: {e}")
-            time.sleep(10)
+            consecutive_errors += 1
+            print(f"⚠️  Simulator error ({consecutive_errors}/{max_consecutive_errors}): {e}")
+            
+            # If too many consecutive errors, something is critically wrong
+            if consecutive_errors >= max_consecutive_errors:
+                print("❌ Critical: Too many consecutive simulator errors. Stopping simulator.")
+                break
+            
+            time.sleep(10)  # Wait longer before retry after error
 
 
 def main(scenario='htid'):
@@ -208,9 +219,8 @@ def main(scenario='htid'):
     simulator_thread.start()
     print("✅ Background simulator started")
 
-    # Write service config to file so it can be loaded
-    import yaml
-    service_config_path = Path('service_config.yaml')
+    # Write service config to a demo-specific file so it can be loaded
+    service_config_path = Path('demo_service_config.yaml')
     with open(service_config_path, 'w') as f:
         yaml.dump(service_config, f, default_flow_style=False)
 
@@ -224,8 +234,6 @@ def main(scenario='htid'):
     def demo_index():
         """Demo landing page for NSW Health"""
         return render_template("demo_index.html")
-
-    app = web_server.app
 
     port = config_dict['web_server']['port']
     host = config_dict['web_server']['host']
@@ -242,13 +250,55 @@ def main(scenario='htid'):
     print("\n🎭 Live data simulation is running in the background")
     print("=" * 60 + "\n")
 
-    # Run Flask app
-    app.run(
-        host=host,
-        port=port,
-        debug=False,
-        threaded=True
+    return web_server.app
+
+
+# Module-level app initialization for Gunicorn
+def create_app(scenario=None):
+    """Create and configure the Flask app for production deployment"""
+    if scenario is None:
+        scenario = os.environ.get('DEMO_SCENARIO', 'htid')
+    
+    # Load configurations for scenario
+    config_dict = load_demo_config(scenario)
+    service_config = load_demo_service_config(scenario)
+
+    # Create config object
+    config = DemoConfig(config_dict)
+
+    # Initialize database
+    db = Database(config.database_path, wal_mode=config.wal_mode)
+    setup_demo_data(db, config_dict)
+
+    # Start background simulator in separate thread
+    simulator_thread = threading.Thread(
+        target=run_background_simulator,
+        args=(db, config_dict, service_config),
+        daemon=True
     )
+    simulator_thread.start()
+
+    # Write service config to a demo-specific file so it can be loaded
+    service_config_path = Path('demo_service_config.yaml')
+    with open(service_config_path, 'w') as f:
+        yaml.dump(service_config, f, default_flow_style=False)
+
+    # Create web server using standard initialization
+    web_server = StatusWebServer(config, db)
+
+    # Override index route to use demo template
+    from flask import render_template
+
+    @web_server.app.route("/")
+    def demo_index():
+        """Demo landing page for NSW Health"""
+        return render_template("demo_index.html")
+
+    return web_server.app
+
+
+# Create app instance for Gunicorn
+app = create_app()
 
 
 if __name__ == '__main__':
@@ -263,4 +313,16 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    main(scenario=args.scenario)
+    # Run with Flask development server when executed directly
+    app = main(scenario=args.scenario)
+    
+    config_dict = load_demo_config(args.scenario)
+    port = config_dict['web_server']['port']
+    host = config_dict['web_server']['host']
+    
+    app.run(
+        host=host,
+        port=port,
+        debug=False,
+        threaded=True
+    )

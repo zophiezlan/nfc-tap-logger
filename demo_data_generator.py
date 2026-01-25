@@ -6,8 +6,8 @@ Simulates realistic festival drug checking activity
 
 import random
 import time
-from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from datetime import datetime
+from typing import Dict, Any
 
 
 class DemoDataGenerator:
@@ -103,7 +103,6 @@ class DemoDataGenerator:
         """
         Get arrival rate multiplier based on festival hour pattern from scenario
         """
-        import time
         if not hasattr(self, 'start_time'):
             self.start_time = time.time()
 
@@ -287,8 +286,8 @@ class DemoDataGenerator:
             if current_idx < len(self.stages) - 1:
                 return self.stages[current_idx + 1]
         except (ValueError, IndexError):
-            pass
-        return None
+            # If the current_stage is not in the workflow, treat as having no next stage
+            return None
 
     def _abandon_random_participant(self):
         """Simulate a participant abandoning the queue"""
