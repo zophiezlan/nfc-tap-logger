@@ -19,7 +19,7 @@ def mock_config():
     config.device_id = "test-pi"
     config.stage = "TEST"
     config.session_id = "test-session"
-    config.admin_password = "admin123"
+    config.admin_password = "test-password-123"
     config.admin_session_timeout_minutes = 60
     return config
 

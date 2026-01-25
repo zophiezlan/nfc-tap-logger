@@ -33,7 +33,15 @@ Drug checking services at festivals need data to optimize flow, measure impact, 
 - **🔧 [Troubleshooting](docs/TROUBLESHOOTING.md)** - Fix common issues
 - **💻 [Contributing](CONTRIBUTING.md)** - For developers
 
-## What's New (v2.5)
+## What's New (v2.5+)
+
+**🔐 UI-First Admin Access (NEW!):**
+
+- **Password-Protected Control Panel** - Secure admin authentication for control panel access
+- **No SSH During Shift** - All administrative functions accessible via web UI
+- **Shared Admin Access** - All staff members can use the same password to access admin functions
+- **Session Management** - Auto-logout after 60 minutes of inactivity (configurable)
+- **Mobile-Friendly Login** - Clean, responsive login interface for any device
 
 **🛡️ Human Error Handling & Adaptation:**
 
@@ -337,6 +345,17 @@ See the [Operations Guide](docs/OPERATIONS.md) for detailed guidance on interpre
 
 **Administrative interface for system management** - No SSH required!
 
+**Authentication Required:** The control panel now requires password authentication to protect administrative functions.
+
+**First Time Setup:**
+1. Set your admin password in `config.yaml`:
+   ```yaml
+   web_server:
+     admin:
+       password: "your-secure-password-here"
+   ```
+2. All staff members can use this password to access admin functions during shift
+
 Execute common tasks through a web interface:
 
 - **Service Management:** Start/stop/restart tap-station service
@@ -352,8 +371,13 @@ Execute common tasks through a web interface:
 - Safety confirmations for destructive operations
 - Quick troubleshooting during events
 - One-click data export and backup
+- All staff members can be admins via UI
 
-**Security:** Keep your Pi on a private network. Only share control panel URL with trusted administrators.
+**Security:** 
+- Password-protected admin access
+- Session-based authentication with timeout
+- Keep your Pi on a private network
+- Share admin password only with trusted staff
 
 ---
 
