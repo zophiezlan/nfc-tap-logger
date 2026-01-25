@@ -421,7 +421,8 @@ class StageValidator:
         
         normalized = WorkflowStages.normalize(stage)
         
-        if normalized == "UNKNOWN":
+        # Check if the normalized stage is in the valid list
+        if normalized not in WorkflowStages.ALL_STAGES:
             raise ValueError(f"Unknown stage: {stage}. Valid stages: {', '.join(WorkflowStages.ALL_STAGES)}")
         
         return normalized
