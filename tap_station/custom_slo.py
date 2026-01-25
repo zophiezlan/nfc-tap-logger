@@ -20,7 +20,7 @@ Service Design Principles:
 import logging
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Union
+from typing import Dict, List, Optional, Any, Callable, Union, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 import re
@@ -100,10 +100,6 @@ class SLOTarget:
             "value": self.value,
             "warning_threshold": self.warning_threshold
         }
-
-
-# Import Tuple from typing
-from typing import Tuple
 
 
 @dataclass
