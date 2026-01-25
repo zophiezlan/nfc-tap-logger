@@ -480,8 +480,8 @@ class ServiceOrchestrator(ConfigurationSubscriber):
         # Get SLO summary
         slo_summary = self._slo_manager.get_slo_summary(session_id)
 
-        # Get current thresholds (ensure thresholds system is loaded/updated)
-        self._threshold_manager.get_all_thresholds()
+        # Ensure thresholds are loaded (return value intentionally ignored)
+        _ = self._threshold_manager.get_all_thresholds()
 
         # Get integration health
         integration_health = self._hooks_manager.get_health_status()

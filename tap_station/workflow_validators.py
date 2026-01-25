@@ -822,7 +822,7 @@ def load_validators_from_config(
                 except ValueError:
                     logger.warning(
                         "Invalid validation severity %r for validator %r; keeping existing severity.",
-                        v_config.get("severity"),
+                        v_config["severity"],
                         validator_id,
                     )
             configured += 1
