@@ -732,8 +732,9 @@
         // Use textContent for title to prevent XSS
         document.getElementById('modalHeader').textContent = title;
         
-        // For body, we control the HTML content via template literals, but still be careful
-        // In this case, we're only injecting scenarioInfo.command which is from our own data
+        // Note: Using innerHTML here is safe because the body content is controlled by us
+        // (scenario data from scenarioData object) and never includes user input.
+        // The command string is hardcoded in the scenarioData object.
         document.getElementById('modalBody').innerHTML = body;
         
         modal.classList.add('active');

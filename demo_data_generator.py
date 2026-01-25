@@ -286,7 +286,9 @@ class DemoDataGenerator:
             if current_idx < len(self.stages) - 1:
                 return self.stages[current_idx + 1]
         except (ValueError, IndexError):
-            # If the current_stage is not in the workflow, treat as having no next stage
+            # If the current_stage is not in the workflow, treat as having no next stage.
+            # This can occur if stage IDs are modified in service_config or if a participant
+            # has a stage value that doesn't match any workflow stage (data corruption).
             return None
 
     def _abandon_random_participant(self):

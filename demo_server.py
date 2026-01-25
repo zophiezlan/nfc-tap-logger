@@ -279,6 +279,9 @@ def create_app(scenario=None):
 
 
 # Create app instance for Gunicorn
+# Note: The scenario is determined from DEMO_SCENARIO environment variable at import time.
+# For multi-scenario deployments, each scenario should be deployed to a separate service
+# instance with its own DEMO_SCENARIO environment variable.
 app = create_app()
 
 
