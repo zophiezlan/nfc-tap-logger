@@ -382,6 +382,43 @@
         </p>
       </div>
 
+      <!-- Quick Start Guide -->
+      <div class="intro-card" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; border-left: 4px solid #667eea;">
+        <h2 style="color: #667eea; margin-bottom: 20px;">🚀 How to Explore This Demo</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+            <h4 style="color: #10b981; margin-bottom: 10px;">Step 1: Understand the Scenarios</h4>
+            <p style="font-size: 0.9em; line-height: 1.5; color: #d1d5db;">
+              Scroll down to see the <strong>three festival scenarios</strong> based on real deployments.
+              Compare HTID (success) vs Lost Paradise (understaffed crisis) vs Lost Paradise (properly staffed).
+            </p>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+            <h4 style="color: #f59e0b; margin-bottom: 10px;">Step 2: Explore the Views</h4>
+            <p style="font-size: 0.9em; line-height: 1.5; color: #d1d5db;">
+              Each view serves a different purpose:<br>
+              <strong>Public Display</strong> - What participants see<br>
+              <strong>Dashboard</strong> - Staff metrics & analytics<br>
+              <strong>Monitor</strong> - Real-time queue status<br>
+              <strong>Control</strong> - Admin operations
+            </p>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+            <h4 style="color: #667eea; margin-bottom: 10px;">Step 3: Watch the Simulation</h4>
+            <p style="font-size: 0.9em; line-height: 1.5; color: #d1d5db;">
+              The demo simulates realistic festival flow - participants joining, being tested, having result
+              conversations, and exiting. Watch the Dashboard to see metrics change in real-time.
+            </p>
+          </div>
+        </div>
+        <div style="margin-top: 20px; padding: 15px; background: rgba(102,126,234,0.1); border-radius: 8px; border-left: 3px solid #667eea;">
+          <strong style="color: #667eea;">💡 Pro Tip:</strong>
+          <span style="color: #d1d5db;">Use the navigation bar at the top of each page to quickly switch between views.
+          Compare the <strong>Lost Paradise (Understaffed)</strong> scenario vs <strong>Lost Paradise (12/12)</strong> to see how
+          proper resourcing transforms the service.</span>
+        </div>
+      </div>
+
       <div class="stats-bar">
         <div class="stat">
           <div class="stat-value" id="active-count">-</div>
@@ -435,14 +472,14 @@
             <div class="card-subtitle">SINGLE DAY FESTIVAL</div>
             <h3>HTID (Hardstyle Til I Die)</h3>
             <p style="margin-bottom: 15px;">
-              <strong>Manageable demand</strong> - 6 hour operation, moderate arrivals, service met demand
+              <strong>Manageable demand</strong> - 6 hours, quiet start then builds, service met demand
             </p>
             <div style="background: #f7f9fc; padding: 15px; border-radius: 8px; text-align: left; margin: 10px 0; font-size: 0.9em;">
               <div style="margin: 5px 0;"><strong>Staff:</strong> 6 peers, 6 chemists</div>
-              <div style="margin: 5px 0;"><strong>Served:</strong> 70 groups, 110 samples</div>
-              <div style="margin: 5px 0;"><strong>Peak queue:</strong> ~15 groups</div>
-              <div style="margin: 5px 0;"><strong>Max wait:</strong> 30 minutes</div>
-              <div style="margin: 5px 0; color: #059669;"><strong>✓ Outcome:</strong> Success - good experience</div>
+              <div style="margin: 5px 0;"><strong>Served:</strong> ~70 groups, ~110 samples</div>
+              <div style="margin: 5px 0;"><strong>Queue pattern:</strong> Quiet first hour, peaks ~15 at hour 3, tapers off</div>
+              <div style="margin: 5px 0;"><strong>Max wait:</strong> ~25 minutes at peak</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>✓ Outcome:</strong> Success - baseline for what works</div>
             </div>
             <span class="btn" style="background: #10b981;">View This Scenario →</span>
           </button>
@@ -452,31 +489,31 @@
             <div class="card-subtitle">MULTI-DAY FESTIVAL - ACTUAL</div>
             <h3>Lost Paradise (Understaffed)</h3>
             <p style="margin-bottom: 15px;">
-              <strong>CRITICAL capacity crisis</strong> - Same staffing, way more demand. Line out the door, 3hr waits
+              <strong>CRITICAL capacity crisis</strong> - Same 6/6 staffing, but 4x demand. Line out the door before opening!
             </p>
             <div style="background: #fef2f2; padding: 15px; border-radius: 8px; text-align: left; margin: 10px 0; font-size: 0.9em;">
-              <div style="margin: 5px 0;"><strong>Staff:</strong> 6 peers, 6 chemists (SAME!)</div>
-              <div style="margin: 5px 0;"><strong>Served:</strong> 150 groups, 300 samples (2 days)</div>
-              <div style="margin: 5px 0; color: #dc2626;"><strong>Peak queue:</strong> 60+ groups (out the door)</div>
-              <div style="margin: 5px 0; color: #dc2626;"><strong>Max wait:</strong> 3 HOURS</div>
-              <div style="margin: 5px 0; color: #dc2626;"><strong>✗ Outcome:</strong> Many turned away, staff burnout</div>
+              <div style="margin: 5px 0;"><strong>Staff:</strong> 6 peers, 6 chemists (SAME AS HTID!)</div>
+              <div style="margin: 5px 0;"><strong>Served:</strong> ~150 groups, ~300 samples (2 days × 6hr)</div>
+              <div style="margin: 5px 0; color: #dc2626;"><strong>Queue:</strong> Line out the door before opening, stayed full ENTIRE service</div>
+              <div style="margin: 5px 0; color: #dc2626;"><strong>Max wait:</strong> 3 HOURS (absolute troopers)</div>
+              <div style="margin: 5px 0; color: #dc2626;"><strong>✗ Outcome:</strong> Many left - couldn't handle demand</div>
             </div>
             <span class="btn" style="background: #dc2626;">View This Scenario →</span>
           </button>
 
           <button class="view-card scenario-card" data-scenario="lost_paradise_ideal" style="border: 3px solid transparent; background: #1a1a1a; width: 100%; text-align: left; cursor: pointer;" aria-label="Lost Paradise Proper Staffing scenario">
             <div class="card-icon">🌟</div>
-            <div class="card-subtitle">MULTI-DAY FESTIVAL - IDEAL</div>
-            <h3>Lost Paradise (Proper Staffing)</h3>
+            <div class="card-subtitle">MULTI-DAY FESTIVAL - SOLUTION</div>
+            <h3>Lost Paradise (Full Service 12/12)</h3>
             <p style="margin-bottom: 15px;">
-              <strong>PROPER resourcing</strong> - Same demand, doubled staff. Everyone served, <30min waits
+              <strong>PROPER resourcing</strong> - Same demand, doubled staff. Everyone served, quality conversations possible
             </p>
             <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; text-align: left; margin: 10px 0; font-size: 0.9em;">
               <div style="margin: 5px 0;"><strong>Staff:</strong> 12 peers, 12 chemists (DOUBLED!)</div>
-              <div style="margin: 5px 0;"><strong>Capacity:</strong> 250+ groups, 500+ samples</div>
-              <div style="margin: 5px 0; color: #059669;"><strong>Peak queue:</strong> ~20 groups (manageable)</div>
-              <div style="margin: 5px 0; color: #059669;"><strong>Max wait:</strong> 45 minutes</div>
-              <div style="margin: 5px 0; color: #059669;"><strong>✓ Outcome:</strong> Success - meets demand, quality service</div>
+              <div style="margin: 5px 0;"><strong>Capacity:</strong> ~280 groups, ~500 samples (2 days × 6hr)</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>Queue:</strong> Manageable throughout, ~20 max</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>Max wait:</strong> ~40 minutes (reasonable)</div>
+              <div style="margin: 5px 0; color: #059669;"><strong>✓ Outcome:</strong> Success - quality harm reduction service</div>
             </div>
             <span class="btn" style="background: #0066cc;">View This Scenario →</span>
           </button>
@@ -556,13 +593,40 @@
       </div>
 
       <div class="intro-card" style="margin-top: 40px;">
-        <h2>💡 Demo Features</h2>
-        <p><strong>Live Data Simulation:</strong> The system continuously generates realistic participant activity based on actual festival data. Simulates quiet start (hour 1), peak queue of ~15 groups (hours 2-3), and quiet finish (hour 6) - matching real-world patterns.</p>
-        <p><strong>Realistic Service Times:</strong> Based on actual HTID deployment data - 5min peer intake, 8min chemist testing, 10min results discussion (with variance up to 30+ mins for complex conversations).</p>
-        <p><strong>Proven Throughput:</strong> Calibrated to real-world capacity: ~12 groups/hour average with 6 peer workers and 6 chemists serving 70 groups over 6 hours.</p>
-        <p><strong>No Hardware Required:</strong> Running in mock mode - no physical NFC readers needed for this demo</p>
-        <p><strong>Fully Configurable:</strong> Service workflow, alerts, capacity limits, and UI messages can all be customized via YAML configuration</p>
-        <p><strong>Export Ready:</strong> All data can be exported to CSV for reporting and accountability purposes</p>
+        <h2>📋 Scenario Comparison Summary</h2>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.9em;">
+            <thead>
+              <tr style="background: #f3f4f6; text-align: left;">
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb;">Metric</th>
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; color: #10b981;">🎵 HTID</th>
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; color: #dc2626;">🌴 LP Actual</th>
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; color: #0066cc;">🌟 LP Ideal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Staff</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">6 peers, 6 chemists</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">6 peers, 6 chemists</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">12 peers, 12 chemists</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Duration</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">1 day × 6hr</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">2 days × 6hr</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">2 days × 6hr</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Groups Served</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~70</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~150</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~280</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Samples Tested</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~110</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~300</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~500</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Max Queue</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~15</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #dc2626;"><strong>60+</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~20</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Max Wait</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~25 min</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #dc2626;"><strong>3 HOURS</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~40 min</td></tr>
+              <tr><td style="padding: 10px;"><strong>Abandonment</strong></td><td style="padding: 10px;">2%</td><td style="padding: 10px; color: #dc2626;"><strong>30%</strong></td><td style="padding: 10px;">5%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="intro-card" style="margin-top: 20px; background: #f0f9ff; border-left: 4px solid #0066cc;">
+        <h2 style="color: #0066cc;">⚙️ For NSW Health Staff: Configuration & Reset</h2>
+        <p><strong>This demo is fully configurable.</strong> You can:</p>
+        <ul style="margin: 10px 0 15px 20px; line-height: 1.8;">
+          <li><strong>Switch scenarios:</strong> Run <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">python demo_server.py --scenario [name]</code> to switch between htid, lost_paradise_actual, or lost_paradise_ideal</li>
+          <li><strong>Reset data:</strong> Restart the server to reset all simulation data to initial state</li>
+          <li><strong>Adjust parameters:</strong> Edit <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">festival_scenarios.py</code> to modify staffing, arrival patterns, service times, etc.</li>
+          <li><strong>Export data:</strong> Use the Dashboard export buttons to download CSV reports</li>
+        </ul>
+        <p style="font-size: 0.9em; color: #666;"><strong>Service times based on real operations:</strong> 5min peer intake → 8min chemist testing → 10min results chat (can be 5-30min for complex conversations). Total ~23 min average journey.</p>
       </div>
 
       <div class="footer">
@@ -587,29 +651,32 @@
       // Detect which scenario is running by checking API
       let currentScenario = 'htid'; // Default
 
-      // Scenario metadata
+      // Scenario metadata - based on real NSW festival deployments
       const scenarioData = {
         'htid': {
           name: '🎵 HTID (Hardstyle Til I Die)',
           emoji: '🎵',
-          description: 'Single-day festival - Manageable demand, service met expectations',
+          description: 'Single-day festival - Baseline success. Quiet start, builds to ~15 queue at hour 3, tapers off. Service met demand.',
           staff: '6 peers, 6 chemists',
+          served: '~70 groups, ~110 samples',
           outcome: 'SUCCESS',
           command: 'python demo_server.py --scenario htid'
         },
         'lost_paradise_actual': {
           name: '🌴 Lost Paradise (Actual - Understaffed)',
           emoji: '🌴',
-          description: 'Multi-day festival - CRITICAL capacity crisis with same staffing',
+          description: 'Multi-day festival - THE PROBLEM. Same 6/6 staff but 4x demand. Line out the door before opening, 3hr waits, many left.',
           staff: '6 peers, 6 chemists (SAME AS HTID!)',
+          served: '~150 groups, ~300 samples (2 days)',
           outcome: 'CAPACITY CRISIS',
           command: 'python demo_server.py --scenario lost_paradise_actual'
         },
         'lost_paradise_ideal': {
-          name: '🌟 Lost Paradise (Ideal - Proper Staffing)',
+          name: '🌟 Lost Paradise (Full Service 12/12)',
           emoji: '🌟',
-          description: 'Multi-day festival - Doubled staff, everyone served',
+          description: 'Multi-day festival - THE SOLUTION. Doubled staff handles the demand. Reasonable waits, quality conversations.',
           staff: '12 peers, 12 chemists (DOUBLED!)',
+          served: '~280 groups, ~500 samples (2 days)',
           outcome: 'SUCCESS',
           command: 'python demo_server.py --scenario lost_paradise_ideal'
         }
