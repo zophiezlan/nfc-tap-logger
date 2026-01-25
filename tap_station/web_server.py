@@ -22,6 +22,9 @@ from functools import wraps
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, current_app
 from datetime import datetime, timezone, timedelta
 
+# Import utilities
+from .datetime_utils import parse_timestamp, from_iso
+
 # Import service configuration integration
 try:
     from .service_integration import get_service_integration
@@ -310,16 +313,9 @@ class StatusWebServer:
                             errors += 1
                             continue
 
-                        # Handle timestamp
+                        # Handle timestamp using centralized function
                         ts_val = event.get("timestamp_ms") or event.get("timestampMs")
-                        timestamp = None
-                        if ts_val:
-                            try:
-                                timestamp = datetime.fromtimestamp(
-                                    int(ts_val) / 1000, tz=timezone.utc
-                                )
-                            except (ValueError, TypeError, OSError):
-                                pass
+                        timestamp = parse_timestamp(ts_val, default_to_now=False)
 
                         # Log event
                         success = self.db.log_event(
