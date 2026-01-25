@@ -3,9 +3,17 @@
 import sqlite3
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 import logging
+
+from .constants import (
+    WorkflowStages,
+    DatabaseDefaults,
+    get_workflow_transitions,
+)
+from .datetime_utils import utc_now, from_iso, to_iso, minutes_since
+from .validation import TokenValidator, StageValidator
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +89,34 @@ class Database:
         """
         )
 
+        # Create audit table for deleted events
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS deleted_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                original_event_id INTEGER NOT NULL,
+                token_id TEXT NOT NULL,
+                uid TEXT NOT NULL,
+                stage TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                deleted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_by TEXT NOT NULL,
+                deletion_reason TEXT,
+                original_created_at TEXT
+            )
+        """
+        )
+
+        # Create index for deleted events lookups
+        self.conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_deleted_session_token
+            ON deleted_events(session_id, token_id)
+        """
+        )
+
         self.conn.commit()
         logger.info("Database tables initialized")
 
@@ -93,6 +129,7 @@ class Database:
         session_id: str,
         timestamp: Optional[datetime] = None,
         allow_out_of_order: bool = False,
+        skip_duplicate_check: bool = False,
     ) -> dict:
         """
         Log an NFC tap event with sequence validation
@@ -105,6 +142,7 @@ class Database:
             session_id: Session ID for this deployment
             timestamp: Event timestamp (defaults to now)
             allow_out_of_order: If True, allow out-of-sequence taps (for manual corrections)
+            skip_duplicate_check: If True, skip duplicate checking (for manual corrections)
 
         Returns:
             Dict with status and details:
@@ -114,7 +152,7 @@ class Database:
             - warning: Human-readable warning message if applicable
         """
         if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = utc_now()
 
         result = {
             "success": False,
@@ -123,8 +161,30 @@ class Database:
             "warning": None,
         }
 
+        # Input validation
+        try:
+            # Validate token_id format
+            if not TokenValidator.is_valid_token_id(token_id):
+                logger.warning(f"Invalid token_id format: {token_id}")
+                result["warning"] = f"Invalid token ID format: {token_id}"
+                # Still allow it to proceed for backward compatibility
+            
+            # Validate and normalize stage
+            try:
+                stage = StageValidator.validate_stage_or_raise(stage)
+            except ValueError as e:
+                logger.error(f"Invalid stage: {e}")
+                result["warning"] = str(e)
+                return result
+                
+        except Exception as e:
+            logger.error(f"Validation error: {e}")
+            result["warning"] = f"Validation error: {str(e)}"
+            return result
+
         # Check for duplicate (same token, same stage, same session)
-        if self._is_duplicate(token_id, stage, session_id):
+        # Skip this check for manual corrections where staff intentionally add events
+        if not skip_duplicate_check and self._is_duplicate(token_id, stage, session_id):
             logger.warning(f"Duplicate tap detected: token={token_id}, stage={stage}")
             result["duplicate"] = True
             result["warning"] = f"Card already tapped at {stage}"
@@ -170,7 +230,8 @@ class Database:
             return result
 
     def _is_duplicate(
-        self, token_id: str, stage: str, session_id: str, grace_minutes: int = 5
+        self, token_id: str, stage: str, session_id: str,
+        grace_minutes: int = DatabaseDefaults.GRACE_PERIOD_MINUTES
     ) -> bool:
         """
         Check if this token has already been logged at this stage in this session
@@ -201,21 +262,16 @@ class Database:
         if not result:
             return False  # No previous tap, not a duplicate
 
-        # Check if within grace period
-        last_tap_time = datetime.fromisoformat(result["timestamp"])
-        if last_tap_time.tzinfo is None:
-            last_tap_time = last_tap_time.replace(tzinfo=timezone.utc)
-
-        now = datetime.now(timezone.utc)
-        minutes_since = (now - last_tap_time).total_seconds() / 60
+        # Check if within grace period using datetime utilities
+        mins_elapsed = minutes_since(result["timestamp"])
 
         # If within grace period, allow it (not a duplicate)
         # This helps with accidental taps at wrong station
-        if minutes_since <= grace_minutes:
+        if mins_elapsed <= grace_minutes:
             logger.info(
                 f"Tap within {grace_minutes}min grace period: "
                 f"token={token_id}, stage={stage}, "
-                f"last_tap={minutes_since:.1f}min ago - allowing correction"
+                f"last_tap={mins_elapsed:.1f}min ago - allowing correction"
             )
             return False
 
@@ -248,62 +304,9 @@ class Database:
 
         existing_stages = [row["stage"] for row in cursor.fetchall()]
 
-        # If no existing stages, any stage is valid (handles late joins)
-        if not existing_stages:
-            # But warn if starting with EXIT or SERVICE_START
-            if stage == "EXIT":
-                return {
-                    "valid": True,  # Allow but warn
-                    "reason": "Card tapped at EXIT without QUEUE_JOIN - possible missed entry tap",
-                    "suggestion": "Verify participant actually used service",
-                }
-            elif stage == "SERVICE_START":
-                return {
-                    "valid": True,  # Allow but warn
-                    "reason": "Card tapped at SERVICE_START without QUEUE_JOIN - possible missed entry tap",
-                    "suggestion": "Add QUEUE_JOIN event if needed",
-                }
-            return {"valid": True, "reason": "First tap for this card"}
-
-        # Define valid state transitions
-        # QUEUE_JOIN can be followed by: SERVICE_START, EXIT, SUBSTANCE_RETURNED
-        # SERVICE_START can be followed by: EXIT, SUBSTANCE_RETURNED
-        # SUBSTANCE_RETURNED can be followed by: EXIT
-        # EXIT is terminal
-
-        last_stage = existing_stages[-1]
-
-        # If already exited, no more taps should happen
-        if "EXIT" in existing_stages:
-            return {
-                "valid": False,
-                "reason": "Card already exited - tapping again may indicate: reused card, or participant returned for second service",
-                "suggestion": "Check if this is a new visit (should use new card/session)",
-            }
-
-        # Validate transition from last stage
-        valid_transitions = {
-            "QUEUE_JOIN": ["SERVICE_START", "EXIT", "SUBSTANCE_RETURNED"],
-            "SERVICE_START": ["SUBSTANCE_RETURNED", "EXIT"],
-            "SUBSTANCE_RETURNED": ["EXIT"],
-        }
-
-        if last_stage in valid_transitions:
-            if stage in valid_transitions[last_stage]:
-                return {"valid": True, "reason": "Valid transition"}
-            else:
-                return {
-                    "valid": False,
-                    "reason": f"Invalid transition: {last_stage} -> {stage}. Expected one of: {', '.join(valid_transitions[last_stage])}",
-                    "suggestion": f"Participant may be at wrong station or using wrong card",
-                }
-
-        # Unknown last stage - allow but warn
-        return {
-            "valid": True,
-            "reason": f"Unknown stage sequence: {last_stage} -> {stage}",
-            "suggestion": "Check service configuration",
-        }
+        # Use centralized workflow transitions for validation
+        transitions = get_workflow_transitions()
+        return transitions.validate_sequence(existing_stages, stage)
 
     def get_recent_events(self, limit: int = 10) -> List[Dict[str, Any]]:
         """
@@ -347,20 +350,25 @@ class Database:
 
         try:
             # 1. Forgotten exit taps (>30 min without exit)
+            stuck_threshold = DatabaseDefaults.STUCK_THRESHOLD_MINUTES
+            high_severity_threshold = DatabaseDefaults.ANOMALY_HIGH_THRESHOLD_MINUTES
+            # Use SQLite concatenation to safely build time offset from parameter
             sql = """
                 SELECT q.token_id, q.timestamp,
                        CAST((julianday('now') - julianday(q.timestamp)) * 1440 AS INTEGER) as minutes_stuck
                 FROM events q
                 LEFT JOIN events e ON q.token_id = e.token_id
                                    AND q.session_id = e.session_id
-                                   AND e.stage = 'EXIT'
-                WHERE q.stage = 'QUEUE_JOIN'
+                                   AND e.stage = ?
+                WHERE q.stage = ?
                     AND q.session_id = ?
                     AND e.id IS NULL
-                    AND q.timestamp < datetime('now', '-30 minutes')
+                    AND q.timestamp < datetime('now', '-' || ? || ' minutes')
                 ORDER BY q.timestamp ASC
             """
-            cursor = self.conn.execute(sql, (session_id,))
+            cursor = self.conn.execute(
+                sql, (WorkflowStages.EXIT, WorkflowStages.QUEUE_JOIN, session_id, str(stuck_threshold))
+            )
 
             for row in cursor.fetchall():
                 anomalies["forgotten_exit_taps"].append(
@@ -368,12 +376,229 @@ class Database:
                         "token_id": row["token_id"],
                         "queue_join_time": row["timestamp"],
                         "minutes_stuck": row["minutes_stuck"],
-                        "severity": "high" if row["minutes_stuck"] > 120 else "medium",
+                        "severity": "high" if row["minutes_stuck"] > high_severity_threshold else "medium",
                         "suggestion": "Participant may have left without tapping exit, or lost card",
                     }
                 )
         except Exception as e:
             logger.error(f"Error detecting forgotten exit taps: {e}")
+
+        try:
+            # 2. Stuck in service (>45 min at SERVICE_START without completion)
+            service_stuck_threshold = 45  # Configurable threshold
+            sql = """
+                SELECT s.token_id, s.timestamp,
+                       CAST((julianday('now') - julianday(s.timestamp)) * 1440 AS INTEGER) as minutes_stuck
+                FROM events s
+                LEFT JOIN events e ON s.token_id = e.token_id
+                                   AND s.session_id = e.session_id
+                                   AND e.stage IN (?, ?)
+                                   AND datetime(e.timestamp) > datetime(s.timestamp)
+                WHERE s.stage = ?
+                    AND s.session_id = ?
+                    AND e.id IS NULL
+                    AND s.timestamp < datetime('now', '-' || ? || ' minutes')
+                ORDER BY s.timestamp ASC
+            """
+            cursor = self.conn.execute(
+                sql, (WorkflowStages.EXIT, WorkflowStages.SUBSTANCE_RETURNED, 
+                      WorkflowStages.SERVICE_START, session_id, str(service_stuck_threshold))
+            )
+
+            for row in cursor.fetchall():
+                anomalies["stuck_in_service"].append(
+                    {
+                        "token_id": row["token_id"],
+                        "service_start_time": row["timestamp"],
+                        "minutes_stuck": row["minutes_stuck"],
+                        "severity": "high" if row["minutes_stuck"] > 90 else "medium",
+                        "suggestion": "Service may be taking unusually long, or participant forgot to tap exit",
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error detecting stuck in service: {e}")
+
+        try:
+            # 3. Long service times (>2× median service time)
+            sql = """
+                WITH service_times AS (
+                    SELECT 
+                        j.token_id,
+                        j.timestamp as join_time,
+                        e.timestamp as exit_time,
+                        CAST((julianday(e.timestamp) - julianday(j.timestamp)) * 1440 AS INTEGER) as service_minutes
+                    FROM events j
+                    JOIN events e ON j.token_id = e.token_id
+                                  AND j.session_id = e.session_id
+                                  AND e.stage = ?
+                    WHERE j.stage = ?
+                        AND j.session_id = ?
+                        AND datetime(e.timestamp) > datetime(j.timestamp)
+                ),
+                median_calc AS (
+                    SELECT AVG(service_minutes) as median_service
+                    FROM (
+                        SELECT service_minutes
+                        FROM service_times
+                        ORDER BY service_minutes
+                        LIMIT 2 - (SELECT COUNT(*) FROM service_times) % 2
+                        OFFSET (SELECT (COUNT(*) - 1) / 2 FROM service_times)
+                    )
+                )
+                SELECT st.token_id, st.join_time, st.exit_time, st.service_minutes, mc.median_service
+                FROM service_times st, median_calc mc
+                WHERE st.service_minutes > (mc.median_service * 2)
+                    AND mc.median_service > 0
+                ORDER BY st.service_minutes DESC
+            """
+            cursor = self.conn.execute(sql, (WorkflowStages.EXIT, WorkflowStages.QUEUE_JOIN, session_id))
+
+            for row in cursor.fetchall():
+                anomalies["long_service_times"].append(
+                    {
+                        "token_id": row["token_id"],
+                        "join_time": row["join_time"],
+                        "exit_time": row["exit_time"],
+                        "service_minutes": row["service_minutes"],
+                        "median_service": row["median_service"],
+                        "severity": "low",
+                        "suggestion": f"Service time ({row['service_minutes']}min) is >2× median ({row['median_service']:.1f}min)",
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error detecting long service times: {e}")
+
+        try:
+            # 4. Rapid-fire duplicate taps (<2 min apart, same stage)
+            rapid_threshold = 2  # Minutes
+            sql = """
+                SELECT e1.token_id, e1.stage, e1.timestamp as first_tap,
+                       e2.timestamp as second_tap,
+                       CAST((julianday(e2.timestamp) - julianday(e1.timestamp)) * 1440 AS REAL) as minutes_between
+                FROM events e1
+                JOIN events e2 ON e1.token_id = e2.token_id
+                                AND e1.session_id = e2.session_id
+                                AND e1.stage = e2.stage
+                                AND e2.id > e1.id
+                WHERE e1.session_id = ?
+                    AND datetime(e2.timestamp) BETWEEN datetime(e1.timestamp) 
+                        AND datetime(e1.timestamp, '+' || ? || ' minutes')
+                ORDER BY e1.timestamp DESC
+            """
+            cursor = self.conn.execute(sql, (session_id, str(rapid_threshold)))
+
+            for row in cursor.fetchall():
+                anomalies["rapid_fire_taps"].append(
+                    {
+                        "token_id": row["token_id"],
+                        "stage": row["stage"],
+                        "first_tap": row["first_tap"],
+                        "second_tap": row["second_tap"],
+                        "seconds_between": round(row["minutes_between"] * 60, 1),
+                        "severity": "low",
+                        "suggestion": "Participant may have tapped multiple times accidentally",
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error detecting rapid-fire taps: {e}")
+
+        try:
+            # 5. Incomplete journeys (tokens with odd number of required taps)
+            sql = """
+                SELECT token_id, 
+                       GROUP_CONCAT(stage, ' → ') as journey,
+                       COUNT(*) as tap_count,
+                       MAX(timestamp) as last_tap
+                FROM events
+                WHERE session_id = ?
+                GROUP BY token_id
+                HAVING MAX(CASE WHEN stage = ? THEN 1 ELSE 0 END) = 0
+                ORDER BY datetime(last_tap) DESC
+            """
+            cursor = self.conn.execute(sql, (session_id, WorkflowStages.EXIT))
+
+            for row in cursor.fetchall():
+                anomalies["incomplete_journeys"].append(
+                    {
+                        "token_id": row["token_id"],
+                        "journey": row["journey"],
+                        "tap_count": row["tap_count"],
+                        "last_tap": row["last_tap"],
+                        "severity": "medium",
+                        "suggestion": "Journey incomplete - missing EXIT tap",
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error detecting incomplete journeys: {e}")
+
+        try:
+            # 6. Out-of-order events (already detected during logging, query for recent ones)
+            # This tracks events that were logged with warnings due to sequence violations
+            # Note: We don't have a separate flag column, so we detect by checking sequence
+            sql = """
+                SELECT e.token_id, e.stage, e.timestamp, e.device_id,
+                       (SELECT GROUP_CONCAT(stage, ' → ')
+                        FROM (SELECT stage FROM events 
+                              WHERE token_id = e.token_id 
+                                AND session_id = e.session_id
+                                AND datetime(timestamp) <= datetime(e.timestamp)
+                              ORDER BY datetime(timestamp), id)
+                       ) as sequence_so_far
+                FROM events e
+                WHERE e.session_id = ?
+                    AND e.timestamp > datetime('now', '-1 hour')
+                ORDER BY e.timestamp DESC
+            """
+            cursor = self.conn.execute(sql, (session_id,))
+            
+            workflow = get_workflow_transitions()
+            for row in cursor.fetchall():
+                # Parse sequence and check validity
+                stages = row["sequence_so_far"].split(" → ") if row["sequence_so_far"] else []
+                if len(stages) > 1:
+                    # Check if the last transition was valid
+                    prev_stage = stages[-2]
+                    curr_stage = stages[-1]
+                    
+                    if not workflow.is_valid_transition(prev_stage, curr_stage):
+                        anomalies["out_of_order_events"].append(
+                            {
+                                "token_id": row["token_id"],
+                                "stage": row["stage"],
+                                "timestamp": row["timestamp"],
+                                "sequence": row["sequence_so_far"],
+                                "severity": "medium",
+                                "suggestion": f"Invalid transition: {prev_stage} → {curr_stage}",
+                            }
+                        )
+        except Exception as e:
+            logger.error(f"Error detecting out-of-order events: {e}")
+
+        # Calculate summary statistics BEFORE adding to anomalies dict
+        # to avoid counting the summary dict itself
+        summary = {
+            "total_anomalies": sum(len(v) for v in anomalies.values() if isinstance(v, list)),
+            "high_severity": sum(
+                1 for category in anomalies.values()
+                if isinstance(category, list)
+                for item in category
+                if isinstance(item, dict) and item.get("severity") == "high"
+            ),
+            "medium_severity": sum(
+                1 for category in anomalies.values()
+                if isinstance(category, list)
+                for item in category
+                if isinstance(item, dict) and item.get("severity") == "medium"
+            ),
+            "low_severity": sum(
+                1 for category in anomalies.values()
+                if isinstance(category, list)
+                for item in category
+                if isinstance(item, dict) and item.get("severity") == "low"
+            ),
+        }
+        # Add summary after calculation to avoid counting it
+        anomalies["summary"] = summary
 
         return anomalies
 
@@ -430,6 +655,7 @@ class Database:
         )
 
         # Use allow_out_of_order=True to bypass sequence validation
+        # Use skip_duplicate_check=True to allow staff to intentionally add duplicate corrections
         result = self.log_event(
             token_id=token_id,
             uid=uid,
@@ -438,6 +664,7 @@ class Database:
             session_id=session_id,
             timestamp=timestamp,
             allow_out_of_order=True,
+            skip_duplicate_check=True,
         )
 
         if result["success"]:
@@ -456,7 +683,7 @@ class Database:
         reason: str,
     ) -> dict:
         """
-        Remove an incorrect event (for staff corrections)
+        Remove an incorrect event with full audit trail
 
         Args:
             event_id: ID of event to remove
@@ -486,6 +713,28 @@ class Database:
                 f"stage={event['stage']}, operator={operator_id}, reason={reason}"
             )
 
+            # Archive to deleted_events table before deletion
+            self.conn.execute(
+                """
+                INSERT INTO deleted_events 
+                (original_event_id, token_id, uid, stage, timestamp, device_id, 
+                 session_id, deleted_by, deletion_reason, original_created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event["id"],
+                    event["token_id"],
+                    event["uid"],
+                    event["stage"],
+                    event["timestamp"],
+                    event["device_id"],
+                    event["session_id"],
+                    operator_id,
+                    reason,
+                    event["created_at"],
+                ),
+            )
+
             # Delete the event
             self.conn.execute(
                 "DELETE FROM events WHERE id = ?",
@@ -493,7 +742,7 @@ class Database:
             )
             self.conn.commit()
 
-            logger.info(f"✓ Event {event_id} removed successfully")
+            logger.info(f"✓ Event {event_id} removed and archived to deleted_events table")
 
             return {
                 "success": True,

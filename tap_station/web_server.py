@@ -5,7 +5,8 @@ Provides:
 - /health endpoint for monitoring
 - /check?token=XXX endpoint for participant status
 - /api/status/<token> API endpoint
-- /control endpoint for system administration
+- /control endpoint for system administration (requires authentication)
+- /login endpoint for admin authentication
 """
 
 import sys
@@ -13,8 +14,13 @@ import logging
 import subprocess
 import os
 import shutil
-from flask import Flask, render_template, jsonify, request
-from datetime import datetime, timezone
+import time
+import secrets
+from collections import defaultdict
+from threading import Lock
+from functools import wraps
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, current_app
+from datetime import datetime, timezone, timedelta
 
 # Import service configuration integration
 try:
@@ -27,6 +33,121 @@ except ImportError:
     logger.warning("Service configuration not available, using defaults")
 
 logger = logging.getLogger(__name__)
+
+
+# Simple rate limiting implementation
+class RateLimiter:
+    """Simple in-memory rate limiter for API endpoints"""
+    
+    def __init__(self, max_requests: int = 10, window_seconds: int = 60):
+        """
+        Initialize rate limiter
+        
+        Args:
+            max_requests: Maximum requests allowed per window
+            window_seconds: Time window in seconds
+        """
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.requests = defaultdict(list)
+        self.lock = Lock()
+    
+    def is_allowed(self, key: str) -> bool:
+        """
+        Check if request is allowed
+        
+        Args:
+            key: Identifier (e.g., IP address)
+            
+        Returns:
+            True if request is allowed
+        """
+        now = time.time()
+        with self.lock:
+            # Clean up old requests
+            self.requests[key] = [
+                req_time for req_time in self.requests[key]
+                if now - req_time < self.window_seconds
+            ]
+            
+            # Check if under limit
+            if len(self.requests[key]) < self.max_requests:
+                self.requests[key].append(now)
+                return True
+            
+            return False
+    
+    def get_remaining(self, key: str) -> int:
+        """Get number of remaining requests in current window"""
+        now = time.time()
+        with self.lock:
+            # Clean up old requests
+            self.requests[key] = [
+                req_time for req_time in self.requests[key]
+                if now - req_time < self.window_seconds
+            ]
+            return max(0, self.max_requests - len(self.requests[key]))
+
+
+def require_admin_auth(f):
+    """
+    Decorator to require admin authentication for control panel routes
+    
+    Checks if user is logged in via session. If not, redirects to login page.
+    Also checks session timeout and auto-logs out inactive sessions.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if user is authenticated
+        if not session.get('admin_authenticated'):
+            return redirect(url_for('login', next=request.url))
+        
+        # Check session timeout
+        last_activity = session.get('last_activity')
+        if last_activity:
+            try:
+                last_activity_time = datetime.fromisoformat(last_activity)
+                # Get timeout from Flask app config (set during init)
+                timeout_minutes = current_app.config.get('ADMIN_SESSION_TIMEOUT_MINUTES', 60)
+                if datetime.now(timezone.utc) - last_activity_time > timedelta(minutes=timeout_minutes):
+                    # Session timed out
+                    session.clear()
+                    return redirect(url_for('login', next=request.url, error='Session timed out. Please login again.'))
+            except (ValueError, TypeError):
+                # Invalid timestamp, clear session
+                session.clear()
+                return redirect(url_for('login'))
+        
+        # Update last activity time
+        session['last_activity'] = datetime.now(timezone.utc).isoformat()
+        
+        return f(*args, **kwargs)
+    
+    return decorated_function
+
+
+def rate_limit(limiter: RateLimiter):
+    """
+    Decorator to apply rate limiting to Flask routes
+    
+    Args:
+        limiter: RateLimiter instance
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Use IP address as key
+            key = request.remote_addr or 'unknown'
+            
+            if not limiter.is_allowed(key):
+                return jsonify({
+                    "success": False,
+                    "error": "Rate limit exceeded. Please try again later.",
+                }), 429
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 
 class StatusWebServer:
@@ -43,6 +164,23 @@ class StatusWebServer:
         self.config = config
         self.db = database
         self.app = Flask(__name__)
+        
+        # Configure Flask session for admin authentication
+        # Generate a secure random secret key for session encryption
+        self.app.config['SECRET_KEY'] = secrets.token_hex(32)
+        self.app.config['SESSION_COOKIE_HTTPONLY'] = True
+        self.app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+        
+        # Store admin password and timeout from config
+        self.app.config['ADMIN_PASSWORD'] = config.admin_password
+        self.app.config['ADMIN_SESSION_TIMEOUT_MINUTES'] = config.admin_session_timeout_minutes
+        
+        # Initialize rate limiters for different endpoint types
+        # Control endpoints (manual-event, remove-event): 10 requests/minute
+        self.control_limiter = RateLimiter(max_requests=10, window_seconds=60)
+        # Anomaly endpoint: 30 requests/minute (higher since it's read-only)
+        self.anomaly_limiter = RateLimiter(max_requests=30, window_seconds=60)
 
         # Load service configuration
         if SERVICE_CONFIG_AVAILABLE:
@@ -78,7 +216,7 @@ class StatusWebServer:
                             "stage": self.config.stage,
                             "session": self.config.session_id,
                             "total_events": count,
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                     ),
                     200,
@@ -91,7 +229,7 @@ class StatusWebServer:
                         {
                             "status": "error",
                             "error": str(e),
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                     ),
                     500,
@@ -302,7 +440,7 @@ class StatusWebServer:
                     "session_id": self.config.session_id,
                     "total_events": self.db.get_event_count(self.config.session_id),
                     "recent_events": self.db.get_recent_events(10),
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
                 return jsonify(stats), 200
 
@@ -413,7 +551,49 @@ class StatusWebServer:
                 session=self.config.session_id,
             )
 
+        @self.app.route("/login", methods=["GET", "POST"])
+        def login():
+            """Admin login page and authentication"""
+            if request.method == "POST":
+                password = request.form.get("password", "").strip()
+                
+                # Verify password
+                if password == self.app.config.get('ADMIN_PASSWORD'):
+                    # Set session as authenticated
+                    session.permanent = True
+                    session['admin_authenticated'] = True
+                    session['last_activity'] = datetime.now(timezone.utc).isoformat()
+                    session['login_time'] = datetime.now(timezone.utc).isoformat()
+                    
+                    # Redirect to original destination or control panel
+                    next_url = request.args.get('next')
+                    if next_url and next_url.startswith('/'):
+                        return redirect(next_url)
+                    return redirect(url_for('control'))
+                else:
+                    # Invalid password
+                    return render_template(
+                        "login.html",
+                        session=self.config.session_id,
+                        error="Invalid password. Please try again."
+                    )
+            
+            # GET request - show login form
+            error = request.args.get('error')
+            return render_template(
+                "login.html",
+                session=self.config.session_id,
+                error=error
+            )
+
+        @self.app.route("/logout")
+        def logout():
+            """Logout admin user"""
+            session.clear()
+            return redirect(url_for('login', error='You have been logged out.'))
+
         @self.app.route("/control")
+        @require_admin_auth
         def control():
             """Control panel for system administration"""
             return render_template(
@@ -434,6 +614,7 @@ class StatusWebServer:
             )
 
         @self.app.route("/api/control/status")
+        @require_admin_auth
         def api_control_status():
             """Get system status for control panel"""
             try:
@@ -444,6 +625,7 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/execute", methods=["POST"])
+        @require_admin_auth
         def api_control_execute():
             """Execute a control command"""
             try:
@@ -464,6 +646,7 @@ class StatusWebServer:
                 return jsonify({"success": False, "error": str(e)}), 500
 
         @self.app.route("/api/control/force-exit", methods=["POST"])
+        @require_admin_auth
         def api_force_exit():
             """Force exit for stuck cards"""
             try:
@@ -484,6 +667,7 @@ class StatusWebServer:
                 return jsonify({"success": False, "error": str(e)}), 500
 
         @self.app.route("/api/control/stuck-cards")
+        @require_admin_auth
         def api_stuck_cards():
             """Get list of stuck cards (in queue >2 hours)"""
             try:
@@ -494,33 +678,18 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/anomalies")
+        @require_admin_auth
+        @rate_limit(self.anomaly_limiter)
         def api_anomalies():
             """Get real-time anomaly detection for human errors"""
             try:
                 anomalies = self.db.get_anomalies(self.config.session_id)
 
-                # Calculate summary counts
-                summary = {
-                    "total_anomalies": sum(len(v) for v in anomalies.values()),
-                    "high_severity": sum(
-                        1
-                        for category in anomalies.values()
-                        for item in category
-                        if item.get("severity") == "high"
-                    ),
-                    "medium_severity": sum(
-                        1
-                        for category in anomalies.values()
-                        for item in category
-                        if item.get("severity") == "medium"
-                    ),
-                }
-
                 return (
                     jsonify(
                         {
                             "anomalies": anomalies,
-                            "summary": summary,
+                            "summary": anomalies.get("summary", {}),
                             "session_id": self.config.session_id,
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
@@ -532,6 +701,8 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/manual-event", methods=["POST"])
+        @require_admin_auth
+        @rate_limit(self.control_limiter)
         def api_manual_event():
             """Add a manual event for missed taps"""
             try:
@@ -551,17 +722,67 @@ class StatusWebServer:
                         400,
                     )
 
-                # Parse timestamp
+                # Parse timestamp with comprehensive error handling
                 try:
-                    timestamp = datetime.fromisoformat(data["timestamp"])
-                    if timestamp.tzinfo is None:
-                        timestamp = timestamp.replace(tzinfo=timezone.utc)
-                except ValueError as e:
+                    timestamp_str = data["timestamp"]
+                    
+                    # Try ISO format first
+                    try:
+                        timestamp = datetime.fromisoformat(timestamp_str)
+                        if timestamp.tzinfo is None:
+                            timestamp = timestamp.replace(tzinfo=timezone.utc)
+                    except (ValueError, AttributeError):
+                        # Try parsing as Unix timestamp (seconds or milliseconds)
+                        try:
+                            ts_value = float(timestamp_str)
+                            # If value is very large, assume milliseconds
+                            if ts_value > 1e10:
+                                ts_value = ts_value / 1000
+                            timestamp = datetime.fromtimestamp(ts_value, tz=timezone.utc)
+                        except (ValueError, OSError) as e:
+                            return (
+                                jsonify(
+                                    {
+                                        "success": False,
+                                        "error": f"Invalid timestamp format. Expected ISO 8601 string (YYYY-MM-DDTHH:MM:SS) or Unix timestamp. Got: {timestamp_str}",
+                                    }
+                                ),
+                                400,
+                            )
+                    
+                    # Validate timestamp is reasonable (not too far in past or future)
+                    now = datetime.now(timezone.utc)
+                    max_age_days = 30
+                    max_future_hours = 1
+                    
+                    if timestamp < now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=max_age_days):
+                        return (
+                            jsonify(
+                                {
+                                    "success": False,
+                                    "error": f"Timestamp is more than {max_age_days} days in the past",
+                                }
+                            ),
+                            400,
+                        )
+                    
+                    if timestamp > now + timedelta(hours=max_future_hours):
+                        return (
+                            jsonify(
+                                {
+                                    "success": False,
+                                    "error": f"Timestamp is more than {max_future_hours} hours in the future",
+                                }
+                            ),
+                            400,
+                        )
+                        
+                except KeyError:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": f"Invalid timestamp format: {e}",
+                                "error": "Missing required field: timestamp",
                             }
                         ),
                         400,
@@ -604,40 +825,75 @@ class StatusWebServer:
                 return jsonify({"success": False, "error": str(e)}), 500
 
         @self.app.route("/api/control/remove-event", methods=["POST"])
+        @require_admin_auth
+        @rate_limit(self.control_limiter)
         def api_remove_event():
             """Remove an incorrect event"""
             try:
                 data = request.get_json()
+                
+                if not data:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Request body must be JSON",
+                            }
+                        ),
+                        400,
+                    )
 
                 # Validate required fields
-                if "event_id" not in data:
+                required = ["event_id", "operator_id", "reason"]
+                missing = [f for f in required if f not in data]
+                if missing:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": "event_id is required",
+                                "error": f"Missing required fields: {', '.join(missing)}",
                             }
                         ),
                         400,
                     )
-
-                if "operator_id" not in data:
+                
+                # Validate event_id is an integer
+                try:
+                    event_id = int(data["event_id"])
+                    if event_id <= 0:
+                        raise ValueError("event_id must be positive")
+                except (ValueError, TypeError) as e:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": "operator_id is required",
+                                "error": f"Invalid event_id: must be a positive integer",
                             }
                         ),
                         400,
                     )
-
-                if "reason" not in data:
+                
+                # Validate operator_id is non-empty
+                operator_id = str(data["operator_id"]).strip()
+                if not operator_id:
                     return (
                         jsonify(
                             {
                                 "success": False,
-                                "error": "reason is required",
+                                "error": "operator_id cannot be empty",
+                            }
+                        ),
+                        400,
+                    )
+                
+                # Validate reason is non-empty
+                reason = str(data["reason"]).strip()
+                if not reason:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "reason cannot be empty",
                             }
                         ),
                         400,
@@ -645,9 +901,9 @@ class StatusWebServer:
 
                 # Remove event
                 result = self.db.remove_event(
-                    event_id=data["event_id"],
-                    operator_id=data["operator_id"],
-                    reason=data["reason"],
+                    event_id=event_id,
+                    operator_id=operator_id,
+                    reason=reason,
                 )
 
                 if result["success"]:
@@ -760,6 +1016,7 @@ class StatusWebServer:
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/backup-database")
+        @require_admin_auth
         def api_backup_database():
             """Download full database backup"""
             try:
@@ -860,6 +1117,7 @@ class StatusWebServer:
                     return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/control/hardware-status")
+        @require_admin_auth
         def api_hardware_status():
             """Get hardware component status"""
             try:
@@ -1018,7 +1276,7 @@ class StatusWebServer:
             "device_id": self.config.device_id,
             "stage": self.config.stage,
             "session_id": session_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "stats": {
                 "today_events": today_events,
                 "last_hour_events": last_hour_events,
@@ -1292,8 +1550,9 @@ class StatusWebServer:
 
         # Check for potential abandonments (people in queue > threshold hours)
         stuck_hours = self.svc.get_stuck_cards_threshold_hours() if self.svc else 2
+        # Use SQLite concatenation to safely build time offset from parameter
         cursor = self.db.conn.execute(
-            f"""
+            """
             SELECT COUNT(*) as count
             FROM events q
             LEFT JOIN events e
@@ -1303,9 +1562,9 @@ class StatusWebServer:
             WHERE q.stage = 'QUEUE_JOIN'
                 AND q.session_id = ?
                 AND e.id IS NULL
-                AND q.timestamp < datetime('now', '-{stuck_hours} hours')
+                AND q.timestamp < datetime('now', '-' || ? || ' hours')
         """,
-            (session_id,),
+            (session_id, str(stuck_hours)),
         )
         stuck_count = cursor.fetchone()["count"]
         if stuck_count > 0:

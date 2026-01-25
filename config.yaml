@@ -93,3 +93,15 @@ web_server:
   # Bind host and port
   host: "0.0.0.0"
   port: 8080
+
+  # Admin authentication for control panel
+  # Set a password to protect administrative functions
+  # All staff members can use this password during shift
+  admin:
+    # Password for accessing control panel
+    # IMPORTANT: Change this before deployment!
+    # Use a strong password (min 12 characters, mix of letters/numbers/symbols)
+    password: "CHANGE-ME-BEFORE-DEPLOYMENT"
+    
+    # Session timeout in minutes (auto-logout after inactivity)
+    session_timeout_minutes: 60
