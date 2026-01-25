@@ -574,25 +574,30 @@ class Database:
         except Exception as e:
             logger.error(f"Error detecting out-of-order events: {e}")
 
-        # Calculate summary statistics
+        # Calculate summary statistics BEFORE adding to anomalies dict
+        # to avoid counting the summary dict itself
         summary = {
-            "total_anomalies": sum(len(v) for v in anomalies.values()),
+            "total_anomalies": sum(len(v) for v in anomalies.values() if isinstance(v, list)),
             "high_severity": sum(
                 1 for category in anomalies.values()
+                if isinstance(category, list)
                 for item in category
-                if item.get("severity") == "high"
+                if isinstance(item, dict) and item.get("severity") == "high"
             ),
             "medium_severity": sum(
                 1 for category in anomalies.values()
+                if isinstance(category, list)
                 for item in category
-                if item.get("severity") == "medium"
+                if isinstance(item, dict) and item.get("severity") == "medium"
             ),
             "low_severity": sum(
                 1 for category in anomalies.values()
+                if isinstance(category, list)
                 for item in category
-                if item.get("severity") == "low"
+                if isinstance(item, dict) and item.get("severity") == "low"
             ),
         }
+        # Add summary after calculation to avoid counting it
         anomalies["summary"] = summary
 
         return anomalies

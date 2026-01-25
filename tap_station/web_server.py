@@ -18,7 +18,7 @@ from collections import defaultdict
 from threading import Lock
 from functools import wraps
 from flask import Flask, render_template, jsonify, request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Import service configuration integration
 try:
@@ -657,7 +657,7 @@ class StatusWebServer:
                     max_age_days = 30
                     max_future_hours = 1
                     
-                    if timestamp < now.replace(hour=0, minute=0, second=0, microsecond=0) - __import__('datetime').timedelta(days=max_age_days):
+                    if timestamp < now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=max_age_days):
                         return (
                             jsonify(
                                 {
@@ -668,7 +668,7 @@ class StatusWebServer:
                             400,
                         )
                     
-                    if timestamp > now + __import__('datetime').timedelta(hours=max_future_hours):
+                    if timestamp > now + timedelta(hours=max_future_hours):
                         return (
                             jsonify(
                                 {
