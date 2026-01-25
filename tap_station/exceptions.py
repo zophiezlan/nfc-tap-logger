@@ -5,6 +5,8 @@ This module defines custom exceptions for the tap station system,
 providing better error handling and clearer error messages.
 """
 
+from typing import Any
+
 
 class TapStationError(Exception):
     """Base exception for all tap station errors"""
@@ -160,7 +162,4 @@ class HardwareError(TapStationError):
 class GPIOError(HardwareError):
     """Raised when GPIO operations fail"""
     pass
-
-
-from typing import Any
 
