@@ -6,6 +6,46 @@ Quick reference for the web-based control panel.
 
 ---
 
+## Authentication
+
+**NEW!** The control panel now requires authentication to access administrative functions.
+
+### First Time Setup
+
+1. Set your admin password in `config.yaml`:
+
+```yaml
+web_server:
+  admin:
+    password: "your-secure-password-here"
+    session_timeout_minutes: 60
+```
+
+2. Restart the web server or tap-station service for changes to take effect.
+
+### Accessing the Control Panel
+
+1. Navigate to `http://<pi-ip-address>:8080/control`
+2. You'll be redirected to the login page
+3. Enter the admin password configured in `config.yaml`
+4. Click "Access Control Panel"
+
+### During Shift Operations
+
+- **All staff members** can use the same admin password to access the control panel
+- No SSH access needed - everything is done through the web UI
+- Sessions remain active for 60 minutes of inactivity (configurable)
+- Use the "Logout" button in the header when done
+
+### Security Notes
+
+- The admin password is shared among all staff members during shift
+- Sessions are encrypted and timeout after inactivity
+- Keep your Pi on a private network (not internet-facing)
+- Change the default password before your event
+
+---
+
 ## System Status
 
 Real-time indicators shown at top of control panel:
