@@ -7,7 +7,7 @@ event data, and other input validation needs.
 
 import re
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 
@@ -227,18 +227,39 @@ class EventValidator:
         try:
             if isinstance(timestamp, (int, float)):
                 # Assume milliseconds since epoch
-                datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc)
+                parsed_dt = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc)
             elif isinstance(timestamp, str):
                 if timestamp.isdigit():
-                    datetime.fromtimestamp(int(timestamp) / 1000, tz=timezone.utc)
+                    parsed_dt = datetime.fromtimestamp(int(timestamp) / 1000, tz=timezone.utc)
                 else:
-                    datetime.fromisoformat(timestamp)
+                    parsed_dt = datetime.fromisoformat(timestamp)
+                    if parsed_dt.tzinfo is None:
+                        parsed_dt = parsed_dt.replace(tzinfo=timezone.utc)
             else:
                 return ValidationResult(
                     valid=False,
                     error="Timestamp must be ISO string or milliseconds since epoch"
                 )
-            return ValidationResult(valid=True)
+
+            # Validate reasonable time range (not too far in past or future)
+            now = datetime.now(timezone.utc)
+            max_age_hours = 24  # Accept events up to 24 hours old
+            max_future_minutes = 5  # Accept events up to 5 minutes in future
+
+            min_valid = now - timedelta(hours=max_age_hours)
+            max_valid = now + timedelta(minutes=max_future_minutes)
+
+            timestamp_warnings = []
+            if parsed_dt < min_valid:
+                timestamp_warnings.append(
+                    f"Timestamp is more than {max_age_hours} hours in the past"
+                )
+            elif parsed_dt > max_valid:
+                timestamp_warnings.append(
+                    f"Timestamp is more than {max_future_minutes} minutes in the future"
+                )
+
+            return ValidationResult(valid=True, warnings=timestamp_warnings if timestamp_warnings else None)
         except (ValueError, OSError) as e:
             return ValidationResult(
                 valid=False,

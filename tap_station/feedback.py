@@ -66,6 +66,9 @@ class FeedbackController:
             if self._gpio.setup_output(self.gpio_buzzer, initial_state=False):
                 logger.info(f"Buzzer enabled on GPIO {self.gpio_buzzer}")
             else:
+                logger.warning(
+                    f"Failed to setup buzzer on GPIO {self.gpio_buzzer} - buzzer disabled"
+                )
                 self.buzzer_enabled = False
 
         if self.led_enabled:
@@ -76,6 +79,9 @@ class FeedbackController:
                     f"LEDs enabled on GPIO {self.gpio_led_green}, {self.gpio_led_red}"
                 )
             else:
+                logger.warning(
+                    f"Failed to setup LEDs on GPIO {self.gpio_led_green}/{self.gpio_led_red} - LEDs disabled"
+                )
                 self.led_enabled = False
 
     def _beep_pattern(self, pattern: List[float]):
