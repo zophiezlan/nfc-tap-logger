@@ -163,14 +163,112 @@
           background: white;
         }
         .actions,
-        .refresh-info {
+        .refresh-info,
+        .demo-nav {
           display: none;
         }
+      }
+
+      /* Demo Navigation Bar */
+      .demo-nav {
+        background: #1a1a2e;
+        padding: 8px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 13px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+      }
+
+      .demo-nav-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .demo-nav-scenario {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        color: white;
+      }
+
+      .demo-nav-scenario.success {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+      }
+
+      .demo-nav-scenario.crisis {
+        background: rgba(220, 38, 38, 0.2);
+        color: #ef4444;
+      }
+
+      .demo-nav-links {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+
+      .demo-nav-links a {
+        color: #9ca3af;
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: all 0.2s;
+      }
+
+      .demo-nav-links a:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .demo-nav-links a.active {
+        background: rgba(102, 126, 234, 0.3);
+        color: #667eea;
+        font-weight: 600;
+      }
+
+      .demo-nav-home {
+        background: rgba(255, 255, 255, 0.1);
+        color: white !important;
+        padding: 6px 14px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+
+      .demo-nav-home:hover {
+        background: rgba(255, 255, 255, 0.2);
       }
     </style>
   </head>
   <body>
     <div class="container">
+      <!-- Demo Navigation -->
+      <div class="demo-nav" id="demo-nav">
+        <div class="demo-nav-left">
+          <div class="demo-nav-scenario" id="scenario-badge">
+            <span id="scenario-emoji"></span>
+            <span id="scenario-name">Loading...</span>
+          </div>
+          <div class="demo-nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/public">Public Display</a>
+            <a href="/monitor">Monitor</a>
+            <a href="/control">Control</a>
+            <a href="/shift" class="active">Shift Summary</a>
+          </div>
+        </div>
+        <a href="/" class="demo-nav-home">← Demo Home</a>
+      </div>
+
       <div class="header">
         <h1>Shift Summary</h1>
         <div class="subtitle">Session: {{ session }}</div>
@@ -290,6 +388,41 @@
 
       // Load on page load
       loadShiftSummary();
+
+      // Demo scenario detection for navigation
+      const scenarioMeta = {
+        'htid': { emoji: '🎵', name: 'HTID', outcome: 'success' },
+        'lost-paradise-actual': { emoji: '🌴', name: 'Lost Paradise (Understaffed)', outcome: 'crisis' },
+        'lost-paradise-ideal': { emoji: '🌟', name: 'Lost Paradise (12/12)', outcome: 'success' }
+      };
+
+      async function detectScenarioNav() {
+        try {
+          const response = await fetch('/health');
+          const data = await response.json();
+          const sessionId = data?.session || '';
+
+          let scenario = null;
+          if (sessionId.includes('htid')) {
+            scenario = scenarioMeta['htid'];
+          } else if (sessionId.includes('lost-paradise-actual')) {
+            scenario = scenarioMeta['lost-paradise-actual'];
+          } else if (sessionId.includes('lost-paradise-ideal')) {
+            scenario = scenarioMeta['lost-paradise-ideal'];
+          }
+
+          if (scenario) {
+            document.getElementById('scenario-emoji').textContent = scenario.emoji;
+            document.getElementById('scenario-name').textContent = scenario.name;
+            const badge = document.getElementById('scenario-badge');
+            badge.classList.add(scenario.outcome);
+          }
+        } catch (e) {
+          console.log('Could not detect scenario for nav');
+        }
+      }
+
+      detectScenarioNav();
     </script>
   </body>
 </html>

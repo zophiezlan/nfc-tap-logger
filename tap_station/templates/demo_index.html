@@ -382,6 +382,43 @@
         </p>
       </div>
 
+      <!-- Quick Start Guide -->
+      <div class="intro-card" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; border-left: 4px solid #667eea;">
+        <h2 style="color: #667eea; margin-bottom: 20px;">🚀 How to Explore This Demo</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+            <h4 style="color: #10b981; margin-bottom: 10px;">Step 1: Understand the Scenarios</h4>
+            <p style="font-size: 0.9em; line-height: 1.5; color: #d1d5db;">
+              Scroll down to see the <strong>three festival scenarios</strong> based on real deployments.
+              Compare HTID (success) vs Lost Paradise (understaffed crisis) vs Lost Paradise (properly staffed).
+            </p>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+            <h4 style="color: #f59e0b; margin-bottom: 10px;">Step 2: Explore the Views</h4>
+            <p style="font-size: 0.9em; line-height: 1.5; color: #d1d5db;">
+              Each view serves a different purpose:<br>
+              <strong>Public Display</strong> - What participants see<br>
+              <strong>Dashboard</strong> - Staff metrics & analytics<br>
+              <strong>Monitor</strong> - Real-time queue status<br>
+              <strong>Control</strong> - Admin operations
+            </p>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+            <h4 style="color: #667eea; margin-bottom: 10px;">Step 3: Watch the Simulation</h4>
+            <p style="font-size: 0.9em; line-height: 1.5; color: #d1d5db;">
+              The demo simulates realistic festival flow - participants joining, being tested, having result
+              conversations, and exiting. Watch the Dashboard to see metrics change in real-time.
+            </p>
+          </div>
+        </div>
+        <div style="margin-top: 20px; padding: 15px; background: rgba(102,126,234,0.1); border-radius: 8px; border-left: 3px solid #667eea;">
+          <strong style="color: #667eea;">💡 Pro Tip:</strong>
+          <span style="color: #d1d5db;">Use the navigation bar at the top of each page to quickly switch between views.
+          Compare the <strong>Lost Paradise (Understaffed)</strong> scenario vs <strong>Lost Paradise (12/12)</strong> to see how
+          proper resourcing transforms the service.</span>
+        </div>
+      </div>
+
       <div class="stats-bar">
         <div class="stat">
           <div class="stat-value" id="active-count">-</div>
@@ -556,18 +593,40 @@
       </div>
 
       <div class="intro-card" style="margin-top: 40px;">
-        <h2>💡 Demo Features</h2>
-        <p><strong>Three Scenarios Based on Real Deployments:</strong></p>
+        <h2>📋 Scenario Comparison Summary</h2>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.9em;">
+            <thead>
+              <tr style="background: #f3f4f6; text-align: left;">
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb;">Metric</th>
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; color: #10b981;">🎵 HTID</th>
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; color: #dc2626;">🌴 LP Actual</th>
+                <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; color: #0066cc;">🌟 LP Ideal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Staff</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">6 peers, 6 chemists</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">6 peers, 6 chemists</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">12 peers, 12 chemists</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Duration</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">1 day × 6hr</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">2 days × 6hr</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">2 days × 6hr</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Groups Served</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~70</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~150</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~280</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Samples Tested</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~110</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~300</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~500</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Max Queue</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~15</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #dc2626;"><strong>60+</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~20</td></tr>
+              <tr><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Max Wait</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~25 min</td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #dc2626;"><strong>3 HOURS</strong></td><td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">~40 min</td></tr>
+              <tr><td style="padding: 10px;"><strong>Abandonment</strong></td><td style="padding: 10px;">2%</td><td style="padding: 10px; color: #dc2626;"><strong>30%</strong></td><td style="padding: 10px;">5%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="intro-card" style="margin-top: 20px; background: #f0f9ff; border-left: 4px solid #0066cc;">
+        <h2 style="color: #0066cc;">⚙️ For NSW Health Staff: Configuration & Reset</h2>
+        <p><strong>This demo is fully configurable.</strong> You can:</p>
         <ul style="margin: 10px 0 15px 20px; line-height: 1.8;">
-          <li><strong>HTID</strong> - Baseline success: 6/6 staff handles ~70 groups comfortably. Quiet first hour, peaks mid-service, tapers off.</li>
-          <li><strong>Lost Paradise (Actual)</strong> - The problem: Same 6/6 staff faces 4x demand. Line before opening, 3hr waits, many leave.</li>
-          <li><strong>Lost Paradise (Ideal)</strong> - The solution: 12/12 staff handles the same demand with reasonable waits.</li>
+          <li><strong>Switch scenarios:</strong> Run <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">python demo_server.py --scenario [name]</code> to switch between htid, lost_paradise_actual, or lost_paradise_ideal</li>
+          <li><strong>Reset data:</strong> Restart the server to reset all simulation data to initial state</li>
+          <li><strong>Adjust parameters:</strong> Edit <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">festival_scenarios.py</code> to modify staffing, arrival patterns, service times, etc.</li>
+          <li><strong>Export data:</strong> Use the Dashboard export buttons to download CSV reports</li>
         </ul>
-        <p><strong>Realistic Service Times:</strong> 5min peer intake, 7-10min chemist testing (avg 8), 10min results chat (can be 5-30min). Total journey ~23 min average.</p>
-        <p><strong>Realistic Group Dynamics:</strong> Most people come in groups of 2-3 with 1-3 substances each. Capped to 2 samples/group under pressure.</p>
-        <p><strong>Configurable & Resettable:</strong> Each scenario can be reset and reconfigured. Staff can explore different parameters to understand system behavior.</p>
-        <p><strong>No Hardware Required:</strong> Running in mock mode - no physical NFC readers needed for this demo</p>
-        <p><strong>Export Ready:</strong> All data can be exported to CSV for reporting and accountability purposes</p>
+        <p style="font-size: 0.9em; color: #666;"><strong>Service times based on real operations:</strong> 5min peer intake → 8min chemist testing → 10min results chat (can be 5-30min for complex conversations). Total ~23 min average journey.</p>
       </div>
 
       <div class="footer">

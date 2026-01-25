@@ -135,6 +135,53 @@
         font-size: 0.9rem;
       }
 
+      .staff-nav {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        display: flex;
+        gap: 8px;
+        opacity: 0.3;
+        transition: opacity 0.3s;
+      }
+
+      .staff-nav:hover {
+        opacity: 1;
+      }
+
+      .staff-nav a {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+
+      .staff-nav a:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .staff-nav .scenario-badge {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .staff-nav .scenario-badge.success {
+        background: rgba(16, 185, 129, 0.3);
+      }
+
+      .staff-nav .scenario-badge.crisis {
+        background: rgba(220, 38, 38, 0.3);
+      }
+
       .service-closed {
         background: rgba(239, 68, 68, 0.2);
         padding: 1.5rem;
@@ -198,6 +245,16 @@
       <div class="footer">
         <span id="refresh-text">Updates every 5 seconds</span> • Session: <span id="session-id">--</span>
       </div>
+    </div>
+
+    <!-- Staff-only navigation (subtle, bottom-right corner) -->
+    <div class="staff-nav">
+      <div class="scenario-badge" id="scenario-badge">
+        <span id="scenario-emoji"></span>
+        <span id="scenario-name"></span>
+      </div>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/">Demo Home</a>
     </div>
 
     <script>
@@ -293,6 +350,41 @@
 
       // Auto-refresh (interval will be updated by ServiceConfig.init())
       window.publicDisplayInterval = setInterval(updateDisplay, refreshInterval);
+
+      // Demo scenario detection for staff navigation
+      const scenarioMeta = {
+        'htid': { emoji: '🎵', name: 'HTID', outcome: 'success' },
+        'lost-paradise-actual': { emoji: '🌴', name: 'Understaffed', outcome: 'crisis' },
+        'lost-paradise-ideal': { emoji: '🌟', name: '12/12 Ideal', outcome: 'success' }
+      };
+
+      async function detectScenarioNav() {
+        try {
+          const response = await fetch('/health');
+          const data = await response.json();
+          const sessionId = data?.session || '';
+
+          let scenario = null;
+          if (sessionId.includes('htid')) {
+            scenario = scenarioMeta['htid'];
+          } else if (sessionId.includes('lost-paradise-actual')) {
+            scenario = scenarioMeta['lost-paradise-actual'];
+          } else if (sessionId.includes('lost-paradise-ideal')) {
+            scenario = scenarioMeta['lost-paradise-ideal'];
+          }
+
+          if (scenario) {
+            document.getElementById('scenario-emoji').textContent = scenario.emoji;
+            document.getElementById('scenario-name').textContent = scenario.name;
+            const badge = document.getElementById('scenario-badge');
+            badge.classList.add(scenario.outcome);
+          }
+        } catch (e) {
+          console.log('Could not detect scenario for nav');
+        }
+      }
+
+      detectScenarioNav();
     </script>
   </body>
 </html>
