@@ -299,7 +299,8 @@ class Database:
             # 1. Forgotten exit taps (>30 min without exit)
             stuck_threshold = DatabaseDefaults.STUCK_THRESHOLD_MINUTES
             high_severity_threshold = DatabaseDefaults.ANOMALY_HIGH_THRESHOLD_MINUTES
-            sql = f"""
+            # Use SQLite concatenation to safely build time offset from parameter
+            sql = """
                 SELECT q.token_id, q.timestamp,
                        CAST((julianday('now') - julianday(q.timestamp)) * 1440 AS INTEGER) as minutes_stuck
                 FROM events q
@@ -309,11 +310,11 @@ class Database:
                 WHERE q.stage = ?
                     AND q.session_id = ?
                     AND e.id IS NULL
-                    AND q.timestamp < datetime('now', '-{stuck_threshold} minutes')
+                    AND q.timestamp < datetime('now', '-' || ? || ' minutes')
                 ORDER BY q.timestamp ASC
             """
             cursor = self.conn.execute(
-                sql, (WorkflowStages.EXIT, WorkflowStages.QUEUE_JOIN, session_id)
+                sql, (WorkflowStages.EXIT, WorkflowStages.QUEUE_JOIN, session_id, str(stuck_threshold))
             )
 
             for row in cursor.fetchall():

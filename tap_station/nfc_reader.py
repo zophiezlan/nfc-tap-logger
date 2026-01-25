@@ -114,7 +114,10 @@ class NFCReader:
                     if not token_id:
                         # Fall back to using UID as token ID
                         token_id = uid_hex[:8]  # Use first 8 chars of UID
-                        logger.debug(f"No token ID on card, using UID: {token_id}")
+                        logger.warning(
+                            f"Card appears uninitialized (no token ID found), "
+                            f"using UID prefix: {token_id}"
+                        )
 
                     logger.info(f"Card read: UID={uid_hex}, Token={token_id}")
                     return (uid_hex, token_id)
@@ -188,7 +191,8 @@ class NFCReader:
                     if not chunk:
                         break
                     raw_data.extend(chunk)
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to read page {page}: {e}")
                     break
 
             if not raw_data:
@@ -242,8 +246,8 @@ class NFCReader:
                 match = re.search(r"Token\s+([A-Za-z0-9]+)", text)
                 if match:
                     return match.group(1)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Text pattern search failed: {e}")
 
             # 3. Legacy Fallback (Plain ASCII at page 4)
             # Only if it doesn't look like NDEF (header 0x03)

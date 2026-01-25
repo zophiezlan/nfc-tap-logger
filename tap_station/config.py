@@ -1,11 +1,19 @@
 """Configuration loader for tap station"""
 
 import os
+import logging
 import yaml
-from typing import Any, Dict, Tuple, Callable, Optional
+from typing import Any, Dict, Tuple, Callable, Optional, List
 
 from .constants import WorkflowStages
 
+logger = logging.getLogger(__name__)
+
+# Required configuration fields that must be explicitly set
+_REQUIRED_FIELDS = ["station.device_id", "station.stage", "station.session_id"]
+
+# Valid GPIO pin numbers for Raspberry Pi (BCM numbering)
+_VALID_GPIO_PINS = set(range(0, 28))
 
 # Configuration schema: maps attribute names to (config_path, default_value, type_converter)
 # type_converter is optional - if None, returns value as-is
@@ -96,6 +104,80 @@ class Config:
         # Cache for computed values
         self._cache: Dict[str, Any] = {}
 
+        # Validate configuration on load
+        self._validate_config()
+
+    def _validate_config(self) -> None:
+        """
+        Validate configuration values on load.
+        Logs warnings for missing required fields or invalid values.
+        """
+        config_warnings: List[str] = []
+
+        # Get default device_id from schema for comparison
+        default_device_id = _CONFIG_SCHEMA["device_id"][1]
+
+        # Check required fields
+        for field in _REQUIRED_FIELDS:
+            value = self.get(field)
+            if value is None or value == "":
+                config_warnings.append(f"Required field '{field}' is missing or empty")
+            elif field == "station.device_id" and value == default_device_id:
+                config_warnings.append(
+                    f"Field '{field}' uses default value '{default_device_id}' - "
+                    "please set a unique device ID"
+                )
+
+        # Validate GPIO pins if feedback is enabled
+        if self.get("feedback.buzzer_enabled", False):
+            buzzer_pin = self.get("feedback.gpio.buzzer", 17)
+            if buzzer_pin not in _VALID_GPIO_PINS:
+                config_warnings.append(
+                    f"Invalid buzzer GPIO pin {buzzer_pin} - "
+                    f"must be 0-27 (BCM numbering)"
+                )
+
+        if self.get("feedback.led_enabled", False):
+            for led_name, default in [("led_green", 27), ("led_red", 22)]:
+                led_pin = self.get(f"feedback.gpio.{led_name}", default)
+                if led_pin not in _VALID_GPIO_PINS:
+                    config_warnings.append(
+                        f"Invalid {led_name} GPIO pin {led_pin} - "
+                        f"must be 0-27 (BCM numbering)"
+                    )
+
+        # Validate numeric ranges
+        nfc_timeout = self.get("nfc.timeout", 2)
+        if not (1 <= nfc_timeout <= 30):
+            config_warnings.append(
+                f"NFC timeout {nfc_timeout}s outside recommended range (1-30s)"
+            )
+
+        debounce = self.get("nfc.debounce_seconds", 1.0)
+        if not (0.1 <= debounce <= 10.0):
+            config_warnings.append(
+                f"Debounce {debounce}s outside recommended range (0.1-10s)"
+            )
+
+        web_port = self.get("web_server.port", 8080)
+        if not (1024 <= web_port <= 65535):
+            config_warnings.append(
+                f"Web server port {web_port} outside valid range (1024-65535)"
+            )
+
+        # Validate log level
+        log_level = self.get("logging.level", "INFO")
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if log_level.upper() not in valid_levels:
+            config_warnings.append(
+                f"Invalid log level '{log_level}' - "
+                f"must be one of: {', '.join(valid_levels)}"
+            )
+
+        # Log all warnings
+        for warning in config_warnings:
+            logger.warning(f"Configuration: {warning}")
+
     def get(self, key_path: str, default: Any = None) -> Any:
         """
         Get configuration value using dot notation
@@ -142,7 +224,11 @@ class Config:
             if type_converter is not None and value is not None:
                 try:
                     value = type_converter(value)
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as e:
+                    logger.warning(
+                        f"Configuration: Failed to convert '{name}' value '{value}' "
+                        f"to {type_converter.__name__}, using default: {default}"
+                    )
                     value = default
 
             # Cache the result

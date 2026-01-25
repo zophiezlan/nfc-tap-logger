@@ -78,7 +78,7 @@ class StatusWebServer:
                             "stage": self.config.stage,
                             "session": self.config.session_id,
                             "total_events": count,
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                     ),
                     200,
@@ -91,7 +91,7 @@ class StatusWebServer:
                         {
                             "status": "error",
                             "error": str(e),
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                     ),
                     500,
@@ -302,7 +302,7 @@ class StatusWebServer:
                     "session_id": self.config.session_id,
                     "total_events": self.db.get_event_count(self.config.session_id),
                     "recent_events": self.db.get_recent_events(10),
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
                 return jsonify(stats), 200
 
@@ -1018,7 +1018,7 @@ class StatusWebServer:
             "device_id": self.config.device_id,
             "stage": self.config.stage,
             "session_id": session_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "stats": {
                 "today_events": today_events,
                 "last_hour_events": last_hour_events,
@@ -1292,8 +1292,9 @@ class StatusWebServer:
 
         # Check for potential abandonments (people in queue > threshold hours)
         stuck_hours = self.svc.get_stuck_cards_threshold_hours() if self.svc else 2
+        # Use SQLite concatenation to safely build time offset from parameter
         cursor = self.db.conn.execute(
-            f"""
+            """
             SELECT COUNT(*) as count
             FROM events q
             LEFT JOIN events e
@@ -1303,9 +1304,9 @@ class StatusWebServer:
             WHERE q.stage = 'QUEUE_JOIN'
                 AND q.session_id = ?
                 AND e.id IS NULL
-                AND q.timestamp < datetime('now', '-{stuck_hours} hours')
+                AND q.timestamp < datetime('now', '-' || ? || ' hours')
         """,
-            (session_id,),
+            (session_id, str(stuck_hours)),
         )
         stuck_count = cursor.fetchone()["count"]
         if stuck_count > 0:
