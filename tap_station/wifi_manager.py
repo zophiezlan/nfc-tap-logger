@@ -13,7 +13,8 @@ import logging
 import subprocess
 import time
 import re
-from typing import List, Dict, Optional, Tuple
+import os
+from typing import List, Dict, Optional
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -202,7 +203,7 @@ class WiFiManager:
         try:
             logger.info(f"Attempting to connect to '{ssid}'...")
 
-            # Create temporary wpa_supplicant config
+            # Create temporary wpa_supplicant config with restricted permissions
             wpa_config = f"""
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
@@ -216,24 +217,35 @@ network={{
 """
 
             config_path = Path("/tmp/wpa_temp.conf")
-            config_path.write_text(wpa_config)
+            # Create with restricted permissions (owner read/write only)
+            old_umask = os.umask(0o077)
+            try:
+                config_path.write_text(wpa_config)
+            finally:
+                os.umask(old_umask)
 
-            # Use wpa_cli to add network
+            # Use wpa_cli to add network - use list args to prevent command injection
             commands = [
-                f"remove_network all",
-                f"add_network",
-                f"set_network 0 ssid \"{ssid}\"",
-                f"set_network 0 psk \"{password}\"",
-                f"enable_network 0",
-                f"save_config"
+                ["remove_network", "all"],
+                ["add_network"],
+                ["set_network", "0", "ssid", f'"{ssid}"'],
+                ["set_network", "0", "psk", f'"{password}"'],
+                ["enable_network", "0"],
+                ["save_config"]
             ]
 
             for cmd in commands:
                 subprocess.run(
-                    ["sudo", "wpa_cli", "-i", "wlan0"] + cmd.split(),
+                    ["sudo", "wpa_cli", "-i", "wlan0"] + cmd,
                     capture_output=True,
                     timeout=5
                 )
+
+            # Clean up temporary config file
+            try:
+                config_path.unlink()
+            except Exception as e:
+                logger.warning(f"Could not delete temporary config file: {e}")
 
             # Wait for connection
             for i in range(timeout):
@@ -326,11 +338,19 @@ network={{
             })
             self.networks.sort(key=lambda x: x['priority'])
 
-            # Append to config file
+            # Append to config file with restricted permissions
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(self.config_file, 'a') as f:
-                f.write(f"\n{ssid}|{password}|{priority}\n")
+            # Set restrictive umask before writing
+            old_umask = os.umask(0o077)
+            try:
+                with open(self.config_file, 'a') as f:
+                    f.write(f"\n{ssid}|{password}|{priority}\n")
+                
+                # Ensure the file has correct permissions (0600)
+                os.chmod(self.config_file, 0o600)
+            finally:
+                os.umask(old_umask)
 
             logger.info(f"Added network '{ssid}' with priority {priority}")
             return True

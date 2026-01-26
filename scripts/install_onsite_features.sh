@@ -114,7 +114,6 @@ cat > "$SUDOERS_FILE" << EOF
 # Allow tap-station user to manage network without password
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /sbin/shutdown
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart tap-station
-$ACTUAL_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart tap-dashboard
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop tap-station
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /bin/systemctl start tap-station
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /sbin/iwlist
@@ -136,9 +135,9 @@ DEVICE_ID=$(grep "device_id:" "$INSTALL_DIR/config.yaml" | head -1 | sed 's/.*de
 
 if [ -n "$DEVICE_ID" ]; then
     # Generate hostname from device_id
-    if [[ "$DEVICE_ID" =~ queue|join ]]; then
+    if [[ "$DEVICE_ID" =~ (queue|join) ]]; then
         HOSTNAME="tapstation-queue"
-    elif [[ "$DEVICE_ID" =~ exit|leave ]]; then
+    elif [[ "$DEVICE_ID" =~ (exit|leave) ]]; then
         HOSTNAME="tapstation-exit"
     else
         HOSTNAME="tapstation-$(echo $DEVICE_ID | tr '[:upper:]' '[:lower:]' | tr '_' '-')"

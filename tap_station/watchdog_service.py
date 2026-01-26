@@ -12,9 +12,7 @@ import logging
 import time
 import subprocess
 import requests
-from typing import Optional, Callable
 from datetime import datetime, timedelta
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -128,41 +126,26 @@ class WatchdogService:
         """
         Restart web server component
 
-        Note: This assumes web server runs in a separate systemd service
-        For integrated mode, this would need to send a signal to reload
+        Note: The web server is integrated into the main tap-station service,
+        so we cannot restart it independently. This method logs the issue
+        but does not attempt a restart to avoid disrupting the entire service.
 
         Returns:
-            True if restart successful
+            False - restart not available for integrated web server
         """
-        logger.warning("Restarting web server...")
+        logger.warning(
+            "Web server health check failed. Web server is integrated into "
+            "tap-station service and cannot be restarted independently. "
+            "Consider restarting the entire tap-station service if issues persist."
+        )
 
-        try:
-            # Record restart attempt
-            self.restart_history.append(datetime.now())
-
-            # Try to restart via systemd
-            result = subprocess.run(
-                ["sudo", "systemctl", "restart", "tap-dashboard"],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-
-            if result.returncode == 0:
-                logger.info("Web server restarted successfully")
-                self.web_consecutive_failures = 0
-                return True
-            else:
-                logger.error(f"Web server restart failed: {result.stderr}")
-                return False
-
-        except subprocess.TimeoutExpired:
-            logger.error("Web server restart timeout")
-            return False
-
-        except Exception as e:
-            logger.error(f"Error restarting web server: {e}")
-            return False
+        # Record restart attempt (even though we don't actually restart)
+        self.restart_history.append(datetime.now())
+        
+        # Reset failure count to avoid spam
+        self.web_consecutive_failures = 0
+        
+        return False
 
     def get_status(self) -> dict:
         """
