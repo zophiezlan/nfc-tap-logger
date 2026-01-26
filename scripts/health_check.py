@@ -6,8 +6,8 @@ Quick system status check for NFC Tap Logger.
 Shows hardware status, service status, disk space, and recent activity.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import subprocess
 from datetime import datetime
 from pathlib import Path
+
 from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
@@ -54,7 +55,9 @@ class HealthCheck:
         self.print_header("Configuration")
 
         config_exists = Path("config.yaml").exists()
-        self.check_status("Configuration file exists", config_exists, level="error")
+        self.check_status(
+            "Configuration file exists", config_exists, level="error"
+        )
 
         if config_exists:
             try:
@@ -80,14 +83,18 @@ class HealthCheck:
                     print(f"  Session ID: {config['session_id']}")
 
             except Exception as e:
-                self.check_status("Config file parsing", False, str(e), level="error")
+                self.check_status(
+                    "Config file parsing", False, str(e), level="error"
+                )
 
     def check_i2c(self):
         """Check I2C hardware"""
         self.print_header("I2C Hardware")
 
         # Check I2C device
-        i2c_exists = os.path.exists("/dev/i2c-1") or os.path.exists("/dev/i2c-0")
+        i2c_exists = os.path.exists("/dev/i2c-1") or os.path.exists(
+            "/dev/i2c-0"
+        )
         self.check_status("I2C device exists", i2c_exists, level="error")
 
         if not i2c_exists:
@@ -105,7 +112,9 @@ class HealthCheck:
             )
 
             pn532_found = "24" in result.stdout
-            self.check_status("PN532 detected at 0x24", pn532_found, level="error")
+            self.check_status(
+                "PN532 detected at 0x24", pn532_found, level="error"
+            )
 
             if not pn532_found:
                 print("  Check PN532 wiring and I2C mode")
@@ -154,10 +163,15 @@ class HealthCheck:
 
         except ImportError:
             self.check_status(
-                "pn532pi installed", False, "Run: pip install pn532pi", level="error"
+                "pn532pi installed",
+                False,
+                "Run: pip install pn532pi",
+                level="error",
             )
         except Exception as e:
-            self.check_status("PN532 initialization", False, str(e), level="error")
+            self.check_status(
+                "PN532 initialization", False, str(e), level="error"
+            )
 
     def check_gpio(self):
         """Check GPIO/buzzer"""
@@ -177,7 +191,10 @@ class HealthCheck:
 
         except ImportError:
             self.check_status(
-                "RPi.GPIO available", False, "Not on Raspberry Pi", level="warning"
+                "RPi.GPIO available",
+                False,
+                "Not on Raspberry Pi",
+                level="warning",
             )
         except Exception as e:
             self.check_status("GPIO access", False, str(e), level="warning")
@@ -207,36 +224,36 @@ class HealthCheck:
                 )
 
                 # Get recent events
-                cursor = db.conn.execute(
-                    """
+                cursor = db.conn.execute("""
                     SELECT COUNT(*) FROM events
                     WHERE timestamp > datetime('now', '-1 hour')
-                """
-                )
+                """)
                 recent_count = cursor.fetchone()[0]
                 print(f"  Events in last hour: {recent_count}")
 
                 # Get today's events
-                cursor = db.conn.execute(
-                    """
+                cursor = db.conn.execute("""
                     SELECT COUNT(*) FROM events
                     WHERE date(timestamp) = date('now')
-                """
-                )
+                """)
                 today_count = cursor.fetchone()[0]
                 print(f"  Events today: {today_count}")
 
                 db.close()
 
             except Exception as e:
-                self.check_status("Database accessible", False, str(e), level="error")
+                self.check_status(
+                    "Database accessible", False, str(e), level="error"
+                )
 
     def check_disk(self):
         """Check disk space"""
         self.print_header("Disk Space")
 
         try:
-            result = subprocess.run(["df", "-h", "."], capture_output=True, text=True)
+            result = subprocess.run(
+                ["df", "-h", "."], capture_output=True, text=True
+            )
             lines = result.stdout.strip().split("\n")
 
             if len(lines) >= 2:
@@ -258,7 +275,9 @@ class HealthCheck:
                 )
 
         except Exception as e:
-            self.check_status("Disk space check", False, str(e), level="warning")
+            self.check_status(
+                "Disk space check", False, str(e), level="warning"
+            )
 
     def check_power(self):
         """Check power/temperature"""
@@ -294,9 +313,15 @@ class HealthCheck:
             temp_c = float(temp_str.rstrip("'C"))
 
             temp_ok = temp_c < 80
-            level = "error" if temp_c >= 80 else "warning" if temp_c >= 70 else "info"
+            level = (
+                "error"
+                if temp_c >= 80
+                else "warning" if temp_c >= 70 else "info"
+            )
 
-            self.check_status("Temperature normal", temp_ok, f"{temp_c}°C", level=level)
+            self.check_status(
+                "Temperature normal", temp_ok, f"{temp_c}°C", level=level
+            )
 
         except Exception as e:
             self.check_status("Temperature check", False, str(e), level="info")
@@ -331,7 +356,9 @@ class HealthCheck:
 
         except FileNotFoundError:
             print("  Service not installed")
-            print("  To install: sudo cp tap-station.service /etc/systemd/system/")
+            print(
+                "  To install: sudo cp tap-station.service /etc/systemd/system/"
+            )
             print("              sudo systemctl enable tap-station")
         except Exception as e:
             self.check_status("Service check", False, str(e), level="info")
@@ -407,9 +434,13 @@ def main():
     """Entry point for health check"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="System health check dashboard")
+    parser = argparse.ArgumentParser(
+        description="System health check dashboard"
+    )
     parser.add_argument(
-        "--quick", action="store_true", help="Quick check (skip optional tests)"
+        "--quick",
+        action="store_true",
+        help="Quick check (skip optional tests)",
     )
 
     args = parser.parse_args()

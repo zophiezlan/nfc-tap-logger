@@ -84,11 +84,11 @@ workflow:
     - id: "QUEUE_JOIN"
       label: "Joined Queue"
       order: 1
-      
+
     - id: "SERVICE_START"
       label: "Service Started"
       order: 2
-      
+
     - id: "EXIT"
       label: "Service Complete"
       order: 3
@@ -119,7 +119,7 @@ Queue Metrics:
   Average Queue Wait: 32 minutes
   Average Service Time: 12 minutes
   Average Total Time: 44 minutes
-  
+
 Current Status:
   Estimated Wait for New Arrivals: 45 minutes
   Longest Current Wait: 58 minutes (Token 042)
@@ -132,7 +132,7 @@ Current Status:
 ```
 Queue Metrics:
   Average Total Time: 44 minutes
-  
+
 Current Status:
   Estimated Wait for New Arrivals: 45 minutes
   Longest Current Wait: 58 minutes
@@ -257,6 +257,7 @@ Current Status:
 - Total time shows complete participant experience
 
 **Example report:**
+
 > "During peak hours (8-10pm), participants experienced an average 45-minute queue wait before being seen. Once service began, the average consultation time was 12 minutes. Total time from arrival to departure averaged 57 minutes. We served 186 participants over 8 hours (23 per hour)."
 
 ## Common Misconceptions
@@ -282,9 +283,9 @@ Enable SERVICE_START stage:
 ```yaml
 workflow:
   stages:
-    - {id: "QUEUE_JOIN", order: 1}
-    - {id: "SERVICE_START", order: 2}
-    - {id: "EXIT", order: 3}
+    - { id: "QUEUE_JOIN", order: 1 }
+    - { id: "SERVICE_START", order: 2 }
+    - { id: "EXIT", order: 3 }
 ```
 
 ### 2. Train Staff on SERVICE_START
@@ -316,8 +317,8 @@ Why? People care about how long until they're helped, not how long the service t
 # service_config.yaml
 alerts:
   wait_time:
-    warning_minutes: 45   # Queue wait approaching high
-    critical_minutes: 90  # Queue wait critically high
+    warning_minutes: 45 # Queue wait approaching high
+    critical_minutes: 90 # Queue wait critically high
 ```
 
 ### 5. Review Both Metrics After Events
@@ -372,13 +373,13 @@ capacity:
 **Results:**
 
 | Time Period | Queue Wait | Service Time | Total Time | People Served |
-|-------------|-----------|--------------|------------|---------------|
-| 12pm-2pm    | 8 min     | 7 min        | 15 min     | 28            |
-| 2pm-4pm     | 15 min    | 8 min        | 23 min     | 31            |
-| 4pm-6pm     | 28 min    | 9 min        | 37 min     | 29            |
-| 6pm-8pm     | 52 min    | 8 min        | 60 min     | 26            |
-| 8pm-10pm    | 78 min    | 8 min        | 86 min     | 22            |
-| 10pm-11pm   | 35 min    | 9 min        | 44 min     | 18            |
+| ----------- | ---------- | ------------ | ---------- | ------------- |
+| 12pm-2pm    | 8 min      | 7 min        | 15 min     | 28            |
+| 2pm-4pm     | 15 min     | 8 min        | 23 min     | 31            |
+| 4pm-6pm     | 28 min     | 9 min        | 37 min     | 29            |
+| 6pm-8pm     | 52 min     | 8 min        | 60 min     | 26            |
+| 8pm-10pm    | 78 min     | 8 min        | 86 min     | 22            |
+| 10pm-11pm   | 35 min     | 9 min        | 44 min     | 18            |
 
 **Insights:**
 

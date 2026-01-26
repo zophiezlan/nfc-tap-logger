@@ -33,8 +33,8 @@ Cards can now be automatically initialized when first tapped. The system:
 
 ```yaml
 nfc:
-  auto_init_cards: false          # Enable/disable auto-init
-  auto_init_start_id: 1          # Starting token ID
+  auto_init_cards: false # Enable/disable auto-init
+  auto_init_start_id: 1 # Starting token ID
 ```
 
 **Database Schema:**
@@ -94,7 +94,7 @@ def get_next_auto_init_token_id(self, session_id: str, start_id: int = 1):
 
 ```yaml
 auto_init_cards: true
-auto_init_start_id: 100  # Start from 100
+auto_init_start_id: 100 # Start from 100
 ```
 
 - Pre-initialized cards (001-099) work normally
@@ -107,7 +107,7 @@ auto_init_start_id: 100  # Start from 100
 ✅ **Flexibility**: Add cards during event as needed  
 ✅ **Lost Card Handling**: Sequential numbering continues without gaps  
 ✅ **Reduced Errors**: No manual card-number sync issues  
-✅ **Mixed Cards**: Can use both pre-initialized and blank cards  
+✅ **Mixed Cards**: Can use both pre-initialized and blank cards
 
 ### Testing
 
@@ -191,7 +191,7 @@ capacity:
   # This is the time spent actively being served (SERVICE_START → EXIT)
   # NOT the total time including queue wait (QUEUE_JOIN → EXIT)
   avg_service_minutes: 5
-  
+
   # Default wait time estimate when no data is available (minutes)
   # This is the queue wait time (time before being served)
   default_wait_estimate: 20
@@ -215,7 +215,7 @@ capacity:
 ✅ **Clarity**: Clear distinction between waiting and being served  
 ✅ **Better Communication**: Staff know which metric to communicate  
 ✅ **Improved Planning**: Separate metrics for different purposes  
-✅ **Operational Insights**: Identify queue vs. service bottlenecks  
+✅ **Operational Insights**: Identify queue vs. service bottlenecks
 
 ## Files Changed
 
@@ -279,7 +279,7 @@ capacity:
 
 ```yaml
 auto_init_cards: true
-auto_init_start_id: 100  # Keep 001-099 for pre-init
+auto_init_start_id: 100 # Keep 001-099 for pre-init
 ```
 
 ## Performance Impact
@@ -316,7 +316,7 @@ Both features are production-ready:
 ✅ Wait time docs: Clarifies existing functionality  
 ✅ Zero breaking changes  
 ✅ All tests passing  
-✅ Comprehensive documentation  
+✅ Comprehensive documentation
 
 The implementation addresses the original requirements:
 

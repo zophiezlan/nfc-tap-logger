@@ -14,13 +14,13 @@ Features:
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Any, Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Set
 
-from .datetime_utils import utc_now, from_iso
 from .constants import WorkflowStages
+from .datetime_utils import from_iso, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -68,14 +68,17 @@ class SequenceValidationResult:
     def has_errors(self) -> bool:
         """Check if there are any error-level issues"""
         return any(
-            i.severity in (ValidationSeverity.ERROR, ValidationSeverity.CRITICAL)
+            i.severity
+            in (ValidationSeverity.ERROR, ValidationSeverity.CRITICAL)
             for i in self.issues
         )
 
     @property
     def has_warnings(self) -> bool:
         """Check if there are any warning-level issues"""
-        return any(i.severity == ValidationSeverity.WARNING for i in self.issues)
+        return any(
+            i.severity == ValidationSeverity.WARNING for i in self.issues
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
@@ -216,7 +219,9 @@ class SequenceValidator:
         """
         self._stages = self._build_stage_map(stages)
         self._stage_order = {s.id: s.order for s in self._stages.values()}
-        logger.info(f"Sequence validator reconfigured with {len(stages)} stages")
+        logger.info(
+            f"Sequence validator reconfigured with {len(stages)} stages"
+        )
 
     def set_terminal_stages(self, stages: Set[str]) -> None:
         """Set which stages are terminal (no transitions after)"""
@@ -332,7 +337,9 @@ class SequenceValidator:
                         )
                     )
                 else:
-                    required_skipped = [s for s in skipped if self._stages[s].required]
+                    required_skipped = [
+                        s for s in skipped if self._stages[s].required
+                    ]
                     issues.append(
                         ValidationIssue(
                             severity=ValidationSeverity.WARNING,
@@ -361,12 +368,17 @@ class SequenceValidator:
             and context.get("to_timestamp")
         ):
             timing_issues = self._validate_timing(
-                from_stage, to_stage, context["from_timestamp"], context["to_timestamp"]
+                from_stage,
+                to_stage,
+                context["from_timestamp"],
+                context["to_timestamp"],
             )
             issues.extend(timing_issues)
 
         return SequenceValidationResult(
-            valid=not any(i.severity == ValidationSeverity.ERROR for i in issues),
+            valid=not any(
+                i.severity == ValidationSeverity.ERROR for i in issues
+            ),
             issues=issues,
             suggestions=suggestions,
         )
@@ -402,7 +414,9 @@ class SequenceValidator:
                 context["from_timestamp"] = timestamps[i - 1]
                 context["to_timestamp"] = timestamps[i]
 
-            result = self.validate_transition(stages[i - 1], stages[i], context)
+            result = self.validate_transition(
+                stages[i - 1], stages[i], context
+            )
             all_issues.extend(result.issues)
             all_suggestions.extend(result.suggestions)
 
@@ -438,7 +452,9 @@ class SequenceValidator:
                 )
             )
 
-        valid = not any(i.severity == ValidationSeverity.ERROR for i in all_issues)
+        valid = not any(
+            i.severity == ValidationSeverity.ERROR for i in all_issues
+        )
         return SequenceValidationResult(
             valid=valid, issues=all_issues, suggestions=all_suggestions
         )
@@ -472,7 +488,9 @@ class SequenceValidator:
         # Fall back to all stages with higher order
         current_order = self._stage_order.get(last_stage, 0)
         return [
-            s_id for s_id, order in self._stage_order.items() if order > current_order
+            s_id
+            for s_id, order in self._stage_order.items()
+            if order > current_order
         ]
 
     def _get_skipped_stages(self, from_stage: str, to_stage: str) -> List[str]:
@@ -487,7 +505,11 @@ class SequenceValidator:
         ]
 
     def _validate_timing(
-        self, from_stage: str, to_stage: str, from_time: datetime, to_time: datetime
+        self,
+        from_stage: str,
+        to_stage: str,
+        from_time: datetime,
+        to_time: datetime,
     ) -> List[ValidationIssue]:
         """Validate timing between stages"""
         issues = []
@@ -498,7 +520,10 @@ class SequenceValidator:
 
         duration = (to_time - from_time).total_seconds() / 60  # minutes
 
-        if from_def.min_duration_minutes and duration < from_def.min_duration_minutes:
+        if (
+            from_def.min_duration_minutes
+            and duration < from_def.min_duration_minutes
+        ):
             issues.append(
                 ValidationIssue(
                     severity=ValidationSeverity.WARNING,
@@ -513,7 +538,10 @@ class SequenceValidator:
                 )
             )
 
-        if from_def.max_duration_minutes and duration > from_def.max_duration_minutes:
+        if (
+            from_def.max_duration_minutes
+            and duration > from_def.max_duration_minutes
+        ):
             issues.append(
                 ValidationIssue(
                     severity=ValidationSeverity.WARNING,

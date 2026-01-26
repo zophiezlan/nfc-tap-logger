@@ -9,9 +9,9 @@ Extracted from database.py to improve separation of concerns.
 
 import logging
 import sqlite3
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from .constants import WorkflowStages, DatabaseDefaults
+from .constants import DatabaseDefaults, WorkflowStages
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,10 @@ class AnomalyDetector:
         return anomalies
 
     def _detect_forgotten_exit_taps(
-        self, conn: sqlite3.Connection, session_id: str, anomalies: Dict[str, List]
+        self,
+        conn: sqlite3.Connection,
+        session_id: str,
+        anomalies: Dict[str, List],
     ) -> None:
         """
         Detect cards that joined queue but never exited.
@@ -123,17 +126,23 @@ class AnomalyDetector:
                         "minutes_stuck": row["minutes_stuck"],
                         "severity": (
                             "high"
-                            if row["minutes_stuck"] > self.high_severity_threshold
+                            if row["minutes_stuck"]
+                            > self.high_severity_threshold
                             else "medium"
                         ),
                         "suggestion": "Participant may have left without tapping exit, or lost card",
                     }
                 )
         except Exception as e:
-            logger.error(f"Error detecting forgotten exit taps: {e}", exc_info=True)
+            logger.error(
+                f"Error detecting forgotten exit taps: {e}", exc_info=True
+            )
 
     def _detect_stuck_in_service(
-        self, conn: sqlite3.Connection, session_id: str, anomalies: Dict[str, List]
+        self,
+        conn: sqlite3.Connection,
+        session_id: str,
+        anomalies: Dict[str, List],
     ) -> None:
         """
         Detect cards stuck at SERVICE_START without completion.
@@ -175,15 +184,22 @@ class AnomalyDetector:
                         "token_id": row["token_id"],
                         "service_start_time": row["timestamp"],
                         "minutes_stuck": row["minutes_stuck"],
-                        "severity": "high" if row["minutes_stuck"] > 90 else "medium",
+                        "severity": (
+                            "high" if row["minutes_stuck"] > 90 else "medium"
+                        ),
                         "suggestion": "Service may be taking unusually long, or participant forgot to tap exit",
                     }
                 )
         except Exception as e:
-            logger.error(f"Error detecting stuck in service: {e}", exc_info=True)
+            logger.error(
+                f"Error detecting stuck in service: {e}", exc_info=True
+            )
 
     def _detect_long_service_times(
-        self, conn: sqlite3.Connection, session_id: str, anomalies: Dict[str, List]
+        self,
+        conn: sqlite3.Connection,
+        session_id: str,
+        anomalies: Dict[str, List],
     ) -> None:
         """
         Detect service times >2× median service time.
@@ -226,7 +242,8 @@ class AnomalyDetector:
                 ORDER BY st.service_minutes DESC
             """
             cursor = conn.execute(
-                sql, (WorkflowStages.EXIT, WorkflowStages.QUEUE_JOIN, session_id)
+                sql,
+                (WorkflowStages.EXIT, WorkflowStages.QUEUE_JOIN, session_id),
             )
 
             for row in cursor.fetchall():
@@ -242,10 +259,15 @@ class AnomalyDetector:
                     }
                 )
         except Exception as e:
-            logger.error(f"Error detecting long service times: {e}", exc_info=True)
+            logger.error(
+                f"Error detecting long service times: {e}", exc_info=True
+            )
 
     def _detect_rapid_fire_taps(
-        self, conn: sqlite3.Connection, session_id: str, anomalies: Dict[str, List]
+        self,
+        conn: sqlite3.Connection,
+        session_id: str,
+        anomalies: Dict[str, List],
     ) -> None:
         """
         Detect rapid duplicate taps (<2 min apart, same stage).
@@ -270,7 +292,9 @@ class AnomalyDetector:
                         AND datetime(e1.timestamp, '+' || ? || ' minutes')
                 ORDER BY e1.timestamp DESC
             """
-            cursor = conn.execute(sql, (session_id, str(self.rapid_tap_threshold)))
+            cursor = conn.execute(
+                sql, (session_id, str(self.rapid_tap_threshold))
+            )
 
             for row in cursor.fetchall():
                 anomalies["rapid_fire_taps"].append(
@@ -279,10 +303,14 @@ class AnomalyDetector:
                         "stage": row["stage"],
                         "first_tap": row["first_tap"],
                         "second_tap": row["second_tap"],
-                        "seconds_between": round(row["minutes_between"] * 60, 1),
+                        "seconds_between": round(
+                            row["minutes_between"] * 60, 1
+                        ),
                         "severity": "low",
                         "suggestion": "Participant may have tapped multiple times accidentally",
                     }
                 )
         except Exception as e:
-            logger.error(f"Error detecting rapid-fire taps: {e}", exc_info=True)
+            logger.error(
+                f"Error detecting rapid-fire taps: {e}", exc_info=True
+            )

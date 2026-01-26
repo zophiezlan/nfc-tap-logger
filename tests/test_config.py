@@ -1,8 +1,10 @@
 """Tests for configuration loader"""
 
-import pytest
-import tempfile
 import os
+import tempfile
+
+import pytest
+
 from tap_station.config import Config
 
 
@@ -35,7 +37,9 @@ logging:
   level: "DEBUG"
 """
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         f.write(config_content)
         config_path = f.name
 
@@ -68,7 +72,9 @@ station:
   device_id: "test"
 """
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         f.write(config_content)
         config_path = f.name
 
@@ -105,7 +111,9 @@ station:
     value: 42
 """
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         f.write(config_content)
         config_path = f.name
 

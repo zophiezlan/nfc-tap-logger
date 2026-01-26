@@ -5,10 +5,10 @@ This module provides mock implementations of hardware-dependent classes,
 allowing tests to run without physical hardware.
 """
 
-import time
 import logging
-from typing import Optional, Tuple, List, Dict, Any
+import time
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +256,9 @@ class MockDatabase:
 
     def get_event_count(self, session_id: Optional[str] = None) -> int:
         if session_id:
-            return len([e for e in self.events if e["session_id"] == session_id])
+            return len(
+                [e for e in self.events if e["session_id"] == session_id]
+            )
         return len(self.events)
 
     def get_anomalies(self, session_id: str) -> Dict[str, Any]:

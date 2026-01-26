@@ -6,14 +6,16 @@ Interactive first-run configuration for NFC Tap Logger.
 Guides user through device setup, tests hardware, and creates config.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import yaml
 from pathlib import Path
+
+import yaml
+
 from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
@@ -80,7 +82,9 @@ def test_nfc_reader():
         )
 
         if response == "y":
-            print("\nPlease tap an NFC card on the reader (15 second timeout)...")
+            print(
+                "\nPlease tap an NFC card on the reader (15 second timeout)..."
+            )
             result = reader.wait_for_card(timeout=15)
 
             if result:
@@ -148,7 +152,11 @@ def test_buzzer():
 def create_config(device_id, stage, session_id, buzzer_enabled):
     """Create configuration file with correct nested schema"""
     config = {
-        "station": {"device_id": device_id, "stage": stage, "session_id": session_id},
+        "station": {
+            "device_id": device_id,
+            "stage": stage,
+            "session_id": session_id,
+        },
         "database": {"path": "data/events.db", "wal_mode": True},
         "nfc": {
             "i2c_bus": 1,
@@ -205,14 +213,20 @@ def main():
 
     print("Each tap station needs a unique device ID and stage name.")
     print("\nExample setup:")
-    print("  Station 1 (queue entrance): device_id='station-1', stage='QUEUE_JOIN'")
+    print(
+        "  Station 1 (queue entrance): device_id='station-1', stage='QUEUE_JOIN'"
+    )
     print("  Station 2 (queue exit):     device_id='station-2', stage='EXIT'")
 
-    device_id = get_input("\nEnter device ID (e.g., 'station-1')", default="station-1")
+    device_id = get_input(
+        "\nEnter device ID (e.g., 'station-1')", default="station-1"
+    )
 
     stage_options = ["QUEUE_JOIN", "EXIT", "CHECKPOINT"]
     print(f"\nAvailable stages: {', '.join(stage_options)}")
-    stage = get_input("Enter stage", default="QUEUE_JOIN", options=stage_options + [""])
+    stage = get_input(
+        "Enter stage", default="QUEUE_JOIN", options=stage_options + [""]
+    )
 
     if not stage:
         stage = get_input("Enter custom stage name")
@@ -220,7 +234,8 @@ def main():
     print("\nSession ID groups data from a single event.")
     print("Use the same session ID for all stations at the same event.")
     session_id = get_input(
-        "Enter session ID (e.g., 'event-2026-01-16')", default="event-2026-01-16"
+        "Enter session ID (e.g., 'event-2026-01-16')",
+        default="event-2026-01-16",
     )
 
     print("\n" + "─" * 60)
@@ -230,7 +245,9 @@ def main():
     print(f"  Session ID: {session_id}")
     print("─" * 60)
 
-    confirm = get_input("\nIs this correct? (y/n)", default="y", options=["y", "n"])
+    confirm = get_input(
+        "\nIs this correct? (y/n)", default="y", options=["y", "n"]
+    )
     if confirm != "y":
         print("Setup cancelled. Run this wizard again to start over.")
         return 1
@@ -242,7 +259,9 @@ def main():
 
     if not nfc_ok:
         print("\n⚠ Warning: NFC reader test failed!")
-        response = get_input("Continue anyway? (y/n)", default="n", options=["y", "n"])
+        response = get_input(
+            "Continue anyway? (y/n)", default="n", options=["y", "n"]
+        )
         if response != "y":
             print("\nSetup cancelled.")
             print("\nTo fix NFC issues:")

@@ -6,13 +6,13 @@ and resetting I2C bus. Used by all scripts that access the NFC reader to ensure
 clean state before operation.
 """
 
-import os
-import sys
-import subprocess
-import time
-import signal
 import logging
-from typing import Tuple, List, Optional
+import os
+import signal
+import subprocess
+import sys
+import time
+from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,9 @@ class NFCCleanupManager:
         processes = self._find_nfc_processes()
         if processes:
             issues_found.append("processes")
-            messages.append(f"⚠️  Found {len(processes)} process(es) using NFC reader")
+            messages.append(
+                f"⚠️  Found {len(processes)} process(es) using NFC reader"
+            )
 
             if self.auto_fix:
                 killed = self._cleanup_processes(processes)
@@ -97,18 +99,24 @@ class NFCCleanupManager:
                 if self.auto_fix and reset_i2c and self.require_sudo:
                     success = self._reset_i2c_bus()
                     if success:
-                        messages.append("✓ I2C bus reset, re-checking PN532...")
+                        messages.append(
+                            "✓ I2C bus reset, re-checking PN532..."
+                        )
                         time.sleep(1)
                         pn532_ok, pn532_msg = self._check_pn532()
                         if pn532_ok:
                             messages.append("✓ PN532 now detected")
                         else:
-                            messages.append(f"✗ PN532 still not detected: {pn532_msg}")
+                            messages.append(
+                                f"✗ PN532 still not detected: {pn532_msg}"
+                            )
                             return False, messages
 
         # If we found issues but didn't auto-fix, return failure
         if issues_found and not self.auto_fix:
-            messages.append("\nRun with auto_fix=True or manually fix the issues above")
+            messages.append(
+                "\nRun with auto_fix=True or manually fix the issues above"
+            )
             return False, messages
 
         # Success if no remaining issues
@@ -129,7 +137,9 @@ class NFCCleanupManager:
                 timeout=5,
             )
             is_active = result.stdout.strip() == "active"
-            return is_active, "Service is active" if is_active else "Service is stopped"
+            return is_active, (
+                "Service is active" if is_active else "Service is stopped"
+            )
         except FileNotFoundError:
             # systemctl not available (not a systemd system)
             return False, "systemctl not available"
@@ -143,7 +153,9 @@ class NFCCleanupManager:
             # Try with sudo first
             cmd = ["sudo", "systemctl", "stop", "tap-station"]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=10
+            )
 
             if result.returncode == 0:
                 # Give it time to fully stop
@@ -200,7 +212,9 @@ class NFCCleanupManager:
                             try:
                                 pid = int(pid_str)
                             except ValueError:
-                                logger.debug(f"Skipping invalid PID: {pid_str}")
+                                logger.debug(
+                                    f"Skipping invalid PID: {pid_str}"
+                                )
                                 continue
 
                             # Skip current process
@@ -210,7 +224,9 @@ class NFCCleanupManager:
                             # Get command line
                             try:
                                 with open(f"/proc/{pid}/cmdline", "r") as f:
-                                    cmdline = f.read().replace("\x00", " ").strip()
+                                    cmdline = (
+                                        f.read().replace("\x00", " ").strip()
+                                    )
                                     processes.append((pid, cmdline))
                             except (FileNotFoundError, PermissionError):
                                 # Process might have exited or we don't have permission
@@ -248,7 +264,9 @@ class NFCCleanupManager:
                 # Process already exited
                 pass
             except PermissionError:
-                logger.warning(f"No permission to kill PID {pid} (may need sudo)")
+                logger.warning(
+                    f"No permission to kill PID {pid} (may need sudo)"
+                )
             except Exception as e:
                 logger.error(f"Error killing PID {pid}: {e}")
 
@@ -295,7 +313,10 @@ class NFCCleanupManager:
                 if "24" in result.stdout:
                     return True, f"PN532 detected at 0x24 on bus {i2c_bus}"
                 else:
-                    return False, f"PN532 not detected at 0x24 on bus {i2c_bus}"
+                    return (
+                        False,
+                        f"PN532 not detected at 0x24 on bus {i2c_bus}",
+                    )
             else:
                 return False, f"Error running i2cdetect: {result.stderr}"
 

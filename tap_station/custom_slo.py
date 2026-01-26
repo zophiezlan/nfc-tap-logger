@@ -19,10 +19,10 @@ Service Design Principles:
 
 import logging
 import sqlite3
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 from .datetime_utils import utc_now
 
@@ -31,15 +31,17 @@ logger = logging.getLogger(__name__)
 
 class SLOMetricType(Enum):
     """Types of SLO metrics"""
+
     PERCENTAGE = "percentage"  # Value between 0-100
-    COUNT = "count"            # Integer count
-    DURATION = "duration"      # Time in minutes
-    RATE = "rate"              # Per-hour rate
-    RATIO = "ratio"            # Ratio (0-1)
+    COUNT = "count"  # Integer count
+    DURATION = "duration"  # Time in minutes
+    RATE = "rate"  # Per-hour rate
+    RATIO = "ratio"  # Ratio (0-1)
 
 
 class SLOStatus(Enum):
     """SLO compliance status"""
+
     MET = "met"
     AT_RISK = "at_risk"
     BREACHED = "breached"
@@ -48,6 +50,7 @@ class SLOStatus(Enum):
 
 class SLOAggregation(Enum):
     """Aggregation methods for SLO calculations"""
+
     AVERAGE = "average"
     PERCENTILE = "percentile"
     SUM = "sum"
@@ -59,9 +62,12 @@ class SLOAggregation(Enum):
 @dataclass
 class SLOTarget:
     """Defines an SLO target"""
+
     operator: str  # ">=", "<=", ">", "<", "=="
     value: float
-    warning_threshold: Optional[float] = None  # Warning when approaching target
+    warning_threshold: Optional[float] = (
+        None  # Warning when approaching target
+    )
 
     def evaluate(self, current_value: float) -> Tuple[bool, SLOStatus]:
         """Evaluate if current value meets the target"""
@@ -97,7 +103,7 @@ class SLOTarget:
         return {
             "operator": self.operator,
             "value": self.value,
-            "warning_threshold": self.warning_threshold
+            "warning_threshold": self.warning_threshold,
         }
 
 
@@ -111,6 +117,7 @@ class CustomSLODefinition:
     2. SQL queries for custom calculations
     3. Composite metrics combining multiple values
     """
+
     id: str
     name: str
     description: str
@@ -142,13 +149,14 @@ class CustomSLODefinition:
             "unit": self.unit,
             "tags": self.tags,
             "enabled": self.enabled,
-            "weight": self.weight
+            "weight": self.weight,
         }
 
 
 @dataclass
 class SLOResult:
     """Result of an SLO evaluation"""
+
     slo_id: str
     slo_name: str
     target_value: float
@@ -170,13 +178,14 @@ class SLOResult:
             "compliance_percentage": self.compliance_percentage,
             "window_hours": self.window_hours,
             "evaluated_at": self.evaluated_at.isoformat(),
-            "details": self.details
+            "details": self.details,
         }
 
 
 @dataclass
 class SLOBudget:
     """Tracks SLO error budget"""
+
     slo_id: str
     total_budget_minutes: float
     remaining_budget_minutes: float
@@ -189,11 +198,21 @@ class SLOBudget:
             "slo_id": self.slo_id,
             "total_budget_minutes": self.total_budget_minutes,
             "remaining_budget_minutes": self.remaining_budget_minutes,
-            "remaining_percentage": (self.remaining_budget_minutes / self.total_budget_minutes * 100)
-                if self.total_budget_minutes > 0 else 100,
+            "remaining_percentage": (
+                (
+                    self.remaining_budget_minutes
+                    / self.total_budget_minutes
+                    * 100
+                )
+                if self.total_budget_minutes > 0
+                else 100
+            ),
             "burn_rate": self.burn_rate,
-            "estimated_exhaustion": self.estimated_exhaustion.isoformat()
-                if self.estimated_exhaustion else None
+            "estimated_exhaustion": (
+                self.estimated_exhaustion.isoformat()
+                if self.estimated_exhaustion
+                else None
+            ),
         }
 
 
@@ -225,9 +244,7 @@ class CustomSLOManager:
     }
 
     def __init__(
-        self,
-        conn: sqlite3.Connection,
-        target_wait_minutes: int = 30
+        self, conn: sqlite3.Connection, target_wait_minutes: int = 30
     ):
         """
         Initialize the custom SLO manager.
@@ -253,7 +270,7 @@ class CustomSLOManager:
                 window_hours=4,
                 metric_id="wait_under_target",
                 unit="%",
-                tags=["participant_experience", "core"]
+                tags=["participant_experience", "core"],
             ),
             CustomSLODefinition(
                 id="completion_rate_slo",
@@ -264,7 +281,7 @@ class CustomSLOManager:
                 window_hours=24,
                 metric_id="completion_rate",
                 unit="%",
-                tags=["participant_experience", "core"]
+                tags=["participant_experience", "core"],
             ),
             CustomSLODefinition(
                 id="throughput_slo",
@@ -275,7 +292,7 @@ class CustomSLOManager:
                 window_hours=4,
                 metric_id="throughput_hourly",
                 unit="%",
-                tags=["operational", "core"]
+                tags=["operational", "core"],
             ),
             CustomSLODefinition(
                 id="p90_wait_slo",
@@ -286,7 +303,7 @@ class CustomSLOManager:
                 window_hours=4,
                 metric_id="wait_time_p90",
                 unit="minutes",
-                tags=["participant_experience"]
+                tags=["participant_experience"],
             ),
         ]
 
@@ -303,7 +320,9 @@ class CustomSLOManager:
         self._slos[slo.id] = slo
         logger.info(f"Defined SLO: {slo.id} ({slo.name})")
 
-    def define_slo_from_dict(self, config: Dict[str, Any]) -> CustomSLODefinition:
+    def define_slo_from_dict(
+        self, config: Dict[str, Any]
+    ) -> CustomSLODefinition:
         """
         Define an SLO from a configuration dictionary.
 
@@ -316,7 +335,7 @@ class CustomSLOManager:
         target = SLOTarget(
             operator=config.get("target_operator", ">="),
             value=config.get("target_value", 95.0),
-            warning_threshold=config.get("warning_threshold")
+            warning_threshold=config.get("warning_threshold"),
         )
 
         slo = CustomSLODefinition(
@@ -333,7 +352,7 @@ class CustomSLOManager:
             unit=config.get("unit", ""),
             tags=config.get("tags", []),
             enabled=config.get("enabled", True),
-            weight=config.get("weight", 1.0)
+            weight=config.get("weight", 1.0),
         )
 
         self.define_slo(slo)
@@ -352,9 +371,7 @@ class CustomSLOManager:
         return self._slos.get(slo_id)
 
     def list_slos(
-        self,
-        tags: Optional[List[str]] = None,
-        enabled_only: bool = True
+        self, tags: Optional[List[str]] = None, enabled_only: bool = True
     ) -> List[CustomSLODefinition]:
         """
         List SLO definitions.
@@ -377,9 +394,7 @@ class CustomSLOManager:
         return slos
 
     def evaluate_slo(
-        self,
-        slo_id: str,
-        session_id: str
+        self, slo_id: str, session_id: str
     ) -> Optional[SLOResult]:
         """
         Evaluate a single SLO.
@@ -406,16 +421,24 @@ class CustomSLOManager:
                 compliance_percentage=0,
                 window_hours=slo.window_hours,
                 evaluated_at=utc_now(),
-                details={"error": "Could not calculate metric"}
+                details={"error": "Could not calculate metric"},
             )
 
         is_met, status = slo.target.evaluate(current_value)
 
         # Calculate compliance percentage
         if slo.target.operator in (">=", ">"):
-            compliance = min(100, (current_value / slo.target.value) * 100) if slo.target.value > 0 else 100
+            compliance = (
+                min(100, (current_value / slo.target.value) * 100)
+                if slo.target.value > 0
+                else 100
+            )
         else:
-            compliance = min(100, (slo.target.value / current_value) * 100) if current_value > 0 else 100
+            compliance = (
+                min(100, (slo.target.value / current_value) * 100)
+                if current_value > 0
+                else 100
+            )
 
         return SLOResult(
             slo_id=slo_id,
@@ -429,14 +452,12 @@ class CustomSLOManager:
             details={
                 "unit": slo.unit,
                 "description": slo.description,
-                "target_operator": slo.target.operator
-            }
+                "target_operator": slo.target.operator,
+            },
         )
 
     def evaluate_all_slos(
-        self,
-        session_id: str,
-        tags: Optional[List[str]] = None
+        self, session_id: str, tags: Optional[List[str]] = None
     ) -> Dict[str, SLOResult]:
         """
         Evaluate all matching SLOs.
@@ -458,10 +479,7 @@ class CustomSLOManager:
 
         return results
 
-    def get_slo_summary(
-        self,
-        session_id: str
-    ) -> Dict[str, Any]:
+    def get_slo_summary(self, session_id: str) -> Dict[str, Any]:
         """
         Get a summary of all SLO status.
 
@@ -477,7 +495,7 @@ class CustomSLOManager:
             SLOStatus.MET: 0,
             SLOStatus.AT_RISK: 0,
             SLOStatus.BREACHED: 0,
-            SLOStatus.UNKNOWN: 0
+            SLOStatus.UNKNOWN: 0,
         }
 
         for result in results.values():
@@ -502,15 +520,19 @@ class CustomSLOManager:
             "at_risk": status_counts[SLOStatus.AT_RISK],
             "breached": status_counts[SLOStatus.BREACHED],
             "unknown": status_counts[SLOStatus.UNKNOWN],
-            "compliance_rate": (status_counts[SLOStatus.MET] / total * 100) if total > 0 else 100,
-            "results": {k: v.to_dict() for k, v in results.items()}
+            "compliance_rate": (
+                (status_counts[SLOStatus.MET] / total * 100)
+                if total > 0
+                else 100
+            ),
+            "results": {k: v.to_dict() for k, v in results.items()},
         }
 
     def calculate_error_budget(
         self,
         slo_id: str,
         session_id: str,
-        budget_period_hours: int = 168  # 1 week
+        budget_period_hours: int = 168,  # 1 week
     ) -> Optional[SLOBudget]:
         """
         Calculate the error budget for an SLO.
@@ -532,8 +554,14 @@ class CustomSLOManager:
 
         # For a 95% SLO over 168 hours, error budget is 5% = 8.4 hours
         # This is simplified - real implementation would track actual violations
-        error_budget_fraction = 1 - (slo.target.value / 100) if slo.metric_type == SLOMetricType.PERCENTAGE else 0.05
-        total_budget = budget_period_hours * 60 * error_budget_fraction  # In minutes
+        error_budget_fraction = (
+            1 - (slo.target.value / 100)
+            if slo.metric_type == SLOMetricType.PERCENTAGE
+            else 0.05
+        )
+        total_budget = (
+            budget_period_hours * 60 * error_budget_fraction
+        )  # In minutes
 
         # Estimate consumed budget from recent violations
         result = self.evaluate_slo(slo_id, session_id)
@@ -554,37 +582,38 @@ class CustomSLOManager:
         estimated_exhaustion = None
         if burn_rate > 0 and remaining_budget > 0:
             hours_until_exhaustion = remaining_budget / burn_rate / 60
-            estimated_exhaustion = utc_now() + timedelta(hours=hours_until_exhaustion)
+            estimated_exhaustion = utc_now() + timedelta(
+                hours=hours_until_exhaustion
+            )
 
         return SLOBudget(
             slo_id=slo_id,
             total_budget_minutes=total_budget,
             remaining_budget_minutes=remaining_budget,
             burn_rate=burn_rate,
-            estimated_exhaustion=estimated_exhaustion
+            estimated_exhaustion=estimated_exhaustion,
         )
 
     def _calculate_metric(
-        self,
-        slo: CustomSLODefinition,
-        session_id: str
+        self, slo: CustomSLODefinition, session_id: str
     ) -> Optional[float]:
         """Calculate the metric value for an SLO"""
         # If custom SQL query is provided, use it
         if slo.query:
-            return self._execute_custom_query(slo.query, session_id, slo.window_hours)
+            return self._execute_custom_query(
+                slo.query, session_id, slo.window_hours
+            )
 
         # Otherwise use built-in metric
         if slo.metric_id:
-            return self._calculate_builtin_metric(slo.metric_id, session_id, slo.window_hours)
+            return self._calculate_builtin_metric(
+                slo.metric_id, session_id, slo.window_hours
+            )
 
         return None
 
     def _execute_custom_query(
-        self,
-        query: str,
-        session_id: str,
-        window_hours: int
+        self, query: str, session_id: str, window_hours: int
     ) -> Optional[float]:
         """Execute a custom SQL query for metric calculation"""
         try:
@@ -607,34 +636,41 @@ class CustomSLOManager:
             return None
 
     def _calculate_builtin_metric(
-        self,
-        metric_id: str,
-        session_id: str,
-        window_hours: int
+        self, metric_id: str, session_id: str, window_hours: int
     ) -> Optional[float]:
         """Calculate a built-in metric"""
         try:
             if metric_id == "wait_time_avg":
                 return self._calc_wait_time_avg(session_id, window_hours)
             elif metric_id == "wait_time_p50":
-                return self._calc_wait_time_percentile(session_id, window_hours, 50)
+                return self._calc_wait_time_percentile(
+                    session_id, window_hours, 50
+                )
             elif metric_id == "wait_time_p90":
-                return self._calc_wait_time_percentile(session_id, window_hours, 90)
+                return self._calc_wait_time_percentile(
+                    session_id, window_hours, 90
+                )
             elif metric_id == "wait_time_p95":
-                return self._calc_wait_time_percentile(session_id, window_hours, 95)
+                return self._calc_wait_time_percentile(
+                    session_id, window_hours, 95
+                )
             elif metric_id == "wait_under_target":
                 return self._calc_wait_under_target(session_id, window_hours)
             elif metric_id == "completion_rate":
                 return self._calc_completion_rate(session_id, window_hours)
             elif metric_id == "abandonment_rate":
-                completion = self._calc_completion_rate(session_id, window_hours)
+                completion = self._calc_completion_rate(
+                    session_id, window_hours
+                )
                 return 100 - completion if completion is not None else None
             elif metric_id == "throughput_hourly":
                 return self._calc_throughput(session_id, window_hours)
             elif metric_id == "service_time_avg":
                 return self._calc_service_time_avg(session_id, window_hours)
             elif metric_id == "substance_return_rate":
-                return self._calc_substance_return_rate(session_id, window_hours)
+                return self._calc_substance_return_rate(
+                    session_id, window_hours
+                )
             else:
                 logger.warning(f"Unknown built-in metric: {metric_id}")
                 return None
@@ -643,9 +679,12 @@ class CustomSLOManager:
             logger.error(f"Error calculating metric {metric_id}: {e}")
             return None
 
-    def _calc_wait_time_avg(self, session_id: str, window_hours: int) -> Optional[float]:
+    def _calc_wait_time_avg(
+        self, session_id: str, window_hours: int
+    ) -> Optional[float]:
         """Calculate average wait time"""
-        cursor = self._conn.execute("""
+        cursor = self._conn.execute(
+            """
             SELECT AVG(CAST((julianday(e.timestamp) - julianday(q.timestamp)) * 1440 AS REAL)) as avg_wait
             FROM events q
             JOIN events e ON q.token_id = e.token_id AND q.session_id = e.session_id
@@ -653,18 +692,18 @@ class CustomSLOManager:
                 AND datetime(e.timestamp) > datetime(q.timestamp)
             WHERE q.stage = 'QUEUE_JOIN' AND q.session_id = ?
                 AND datetime(q.timestamp) > datetime('now', '-' || ? || ' hours')
-        """, (session_id, window_hours))
+        """,
+            (session_id, window_hours),
+        )
         row = cursor.fetchone()
         return row["avg_wait"] if row and row["avg_wait"] else 0
 
     def _calc_wait_time_percentile(
-        self,
-        session_id: str,
-        window_hours: int,
-        percentile: int
+        self, session_id: str, window_hours: int, percentile: int
     ) -> Optional[float]:
         """Calculate percentile wait time"""
-        cursor = self._conn.execute("""
+        cursor = self._conn.execute(
+            """
             WITH wait_times AS (
                 SELECT CAST((julianday(e.timestamp) - julianday(q.timestamp)) * 1440 AS REAL) as wait,
                        ROW_NUMBER() OVER (ORDER BY (julianday(e.timestamp) - julianday(q.timestamp))) as rn,
@@ -677,13 +716,18 @@ class CustomSLOManager:
                     AND datetime(q.timestamp) > datetime('now', '-' || ? || ' hours')
             )
             SELECT wait FROM wait_times WHERE rn >= CAST(total * ? / 100.0 AS INTEGER) LIMIT 1
-        """, (session_id, window_hours, percentile))
+        """,
+            (session_id, window_hours, percentile),
+        )
         row = cursor.fetchone()
         return row["wait"] if row and row["wait"] else 0
 
-    def _calc_wait_under_target(self, session_id: str, window_hours: int) -> Optional[float]:
+    def _calc_wait_under_target(
+        self, session_id: str, window_hours: int
+    ) -> Optional[float]:
         """Calculate percentage of waits under target"""
-        cursor = self._conn.execute("""
+        cursor = self._conn.execute(
+            """
             WITH wait_times AS (
                 SELECT CAST((julianday(e.timestamp) - julianday(q.timestamp)) * 1440 AS REAL) as wait
                 FROM events q
@@ -696,13 +740,18 @@ class CustomSLOManager:
             SELECT CAST(SUM(CASE WHEN wait <= ? THEN 1 ELSE 0 END) AS REAL) * 100.0 /
                    NULLIF(COUNT(*), 0) as pct_under
             FROM wait_times
-        """, (session_id, window_hours, self._target_wait))
+        """,
+            (session_id, window_hours, self._target_wait),
+        )
         row = cursor.fetchone()
         return row["pct_under"] if row and row["pct_under"] else 100
 
-    def _calc_completion_rate(self, session_id: str, window_hours: int) -> Optional[float]:
+    def _calc_completion_rate(
+        self, session_id: str, window_hours: int
+    ) -> Optional[float]:
         """Calculate journey completion rate"""
-        cursor = self._conn.execute("""
+        cursor = self._conn.execute(
+            """
             WITH journeys AS (
                 SELECT token_id,
                        MAX(CASE WHEN stage = 'QUEUE_JOIN' THEN 1 ELSE 0 END) as joined,
@@ -713,37 +762,54 @@ class CustomSLOManager:
             )
             SELECT CAST(SUM(exited) AS REAL) * 100.0 / NULLIF(SUM(joined), 0) as completion
             FROM journeys
-        """, (session_id, window_hours))
+        """,
+            (session_id, window_hours),
+        )
         row = cursor.fetchone()
         return row["completion"] if row and row["completion"] else 100
 
-    def _calc_throughput(self, session_id: str, window_hours: int) -> Optional[float]:
+    def _calc_throughput(
+        self, session_id: str, window_hours: int
+    ) -> Optional[float]:
         """Calculate hourly throughput"""
-        cursor = self._conn.execute("""
+        cursor = self._conn.execute(
+            """
             SELECT COUNT(*) * 1.0 / ? as hourly_throughput
             FROM events
             WHERE stage = 'EXIT' AND session_id = ?
                 AND datetime(timestamp) > datetime('now', '-' || ? || ' hours')
-        """, (window_hours, session_id, window_hours))
+        """,
+            (window_hours, session_id, window_hours),
+        )
         row = cursor.fetchone()
-        return row["hourly_throughput"] if row and row["hourly_throughput"] else 0
+        return (
+            row["hourly_throughput"] if row and row["hourly_throughput"] else 0
+        )
 
-    def _calc_service_time_avg(self, session_id: str, window_hours: int) -> Optional[float]:
+    def _calc_service_time_avg(
+        self, session_id: str, window_hours: int
+    ) -> Optional[float]:
         """Calculate average service time"""
-        cursor = self._conn.execute("""
+        cursor = self._conn.execute(
+            """
             SELECT AVG(CAST((julianday(e.timestamp) - julianday(s.timestamp)) * 1440 AS REAL)) as avg_svc
             FROM events s
             JOIN events e ON s.token_id = e.token_id AND s.session_id = e.session_id
                 AND e.stage = 'EXIT' AND datetime(e.timestamp) > datetime(s.timestamp)
             WHERE s.stage = 'SERVICE_START' AND s.session_id = ?
                 AND datetime(s.timestamp) > datetime('now', '-' || ? || ' hours')
-        """, (session_id, window_hours))
+        """,
+            (session_id, window_hours),
+        )
         row = cursor.fetchone()
         return row["avg_svc"] if row and row["avg_svc"] else 0
 
-    def _calc_substance_return_rate(self, session_id: str, window_hours: int) -> Optional[float]:
+    def _calc_substance_return_rate(
+        self, session_id: str, window_hours: int
+    ) -> Optional[float]:
         """Calculate substance return rate"""
-        cursor = self._conn.execute("""
+        cursor = self._conn.execute(
+            """
             WITH services AS (
                 SELECT token_id,
                        MAX(CASE WHEN stage = 'SERVICE_START' THEN 1 ELSE 0 END) as started,
@@ -754,7 +820,9 @@ class CustomSLOManager:
             )
             SELECT CAST(SUM(returned) AS REAL) * 100.0 / NULLIF(SUM(started), 0) as return_rate
             FROM services WHERE started = 1
-        """, (session_id, window_hours))
+        """,
+            (session_id, window_hours),
+        )
         row = cursor.fetchone()
         return row["return_rate"] if row and row["return_rate"] else 100
 
@@ -763,9 +831,9 @@ class CustomSLOManager:
 # Configuration Loading Helpers
 # =============================================================================
 
+
 def load_slos_from_config(
-    config: Dict[str, Any],
-    manager: CustomSLOManager
+    config: Dict[str, Any], manager: CustomSLOManager
 ) -> int:
     """
     Load SLO definitions from a configuration dictionary.
@@ -777,7 +845,9 @@ def load_slos_from_config(
     Returns:
         Number of SLOs loaded
     """
-    slo_configs = config.get("slos", config.get("service_level_objectives", []))
+    slo_configs = config.get(
+        "slos", config.get("service_level_objectives", [])
+    )
     loaded = 0
 
     for slo_config in slo_configs:
@@ -785,7 +855,9 @@ def load_slos_from_config(
             manager.define_slo_from_dict(slo_config)
             loaded += 1
         except Exception as e:
-            logger.error(f"Error loading SLO {slo_config.get('id', 'unknown')}: {e}")
+            logger.error(
+                f"Error loading SLO {slo_config.get('id', 'unknown')}: {e}"
+            )
 
     return loaded
 

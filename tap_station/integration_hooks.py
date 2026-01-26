@@ -22,29 +22,30 @@ Service Design Principles:
 - Observable integration status
 """
 
-import logging
-import json
 import hashlib
 import hmac
-import threading
+import json
+import logging
 import queue
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, field
-from enum import Enum
-import urllib.request
-import urllib.error
-import time
 import sqlite3
+import threading
+import time
+import urllib.error
+import urllib.request
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
-from .datetime_utils import utc_now
 from .constants import DeliveryStatus
+from .datetime_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
 
 class IntegrationEventType(Enum):
     """Types of events that can trigger integrations"""
+
     # Participant events
     QUEUE_JOIN = "queue_join"
     SERVICE_START = "service_start"
@@ -74,6 +75,7 @@ class IntegrationEventType(Enum):
 @dataclass
 class IntegrationEvent:
     """An event to be delivered to integrations"""
+
     id: str
     event_type: IntegrationEventType
     timestamp: datetime
@@ -93,7 +95,7 @@ class IntegrationEvent:
             "source": self.source,
             "version": self.version,
             "correlation_id": self.correlation_id,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
     def to_json(self) -> str:
@@ -104,6 +106,7 @@ class IntegrationEvent:
 @dataclass
 class WebhookConfig:
     """Configuration for a webhook endpoint"""
+
     id: str
     name: str
     url: str
@@ -130,13 +133,14 @@ class WebhookConfig:
             "has_secret": bool(self.secret),
             "timeout_seconds": self.timeout_seconds,
             "max_retries": self.max_retries,
-            "batch_size": self.batch_size
+            "batch_size": self.batch_size,
         }
 
 
 @dataclass
 class DeliveryResult:
     """Result of an event delivery attempt"""
+
     webhook_id: str
     event_id: str
     status: DeliveryStatus
@@ -157,13 +161,14 @@ class DeliveryResult:
             "timestamp": self.timestamp.isoformat(),
             "response_code": self.response_code,
             "error": self.error,
-            "duration_ms": self.duration_ms
+            "duration_ms": self.duration_ms,
         }
 
 
 @dataclass
 class IntegrationStats:
     """Statistics for an integration"""
+
     webhook_id: str
     total_events: int = 0
     delivered: int = 0
@@ -176,7 +181,11 @@ class IntegrationStats:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
-        success_rate = (self.delivered / self.total_events * 100) if self.total_events > 0 else 100
+        success_rate = (
+            (self.delivered / self.total_events * 100)
+            if self.total_events > 0
+            else 100
+        )
         return {
             "webhook_id": self.webhook_id,
             "total_events": self.total_events,
@@ -185,9 +194,13 @@ class IntegrationStats:
             "retried": self.retried,
             "success_rate": success_rate,
             "avg_latency_ms": self.avg_latency_ms,
-            "last_success": self.last_success.isoformat() if self.last_success else None,
-            "last_failure": self.last_failure.isoformat() if self.last_failure else None,
-            "last_error": self.last_error
+            "last_success": (
+                self.last_success.isoformat() if self.last_success else None
+            ),
+            "last_failure": (
+                self.last_failure.isoformat() if self.last_failure else None
+            ),
+            "last_error": self.last_error,
         }
 
 
@@ -195,7 +208,9 @@ class EventTransformer:
     """Transforms events before delivery"""
 
     @staticmethod
-    def transform(event: IntegrationEvent, transform_spec: Optional[str]) -> Dict[str, Any]:
+    def transform(
+        event: IntegrationEvent, transform_spec: Optional[str]
+    ) -> Dict[str, Any]:
         """
         Transform an event payload according to specification.
 
@@ -215,7 +230,7 @@ class EventTransformer:
             return {
                 "event_type": data["event_type"],
                 "timestamp": data["timestamp"],
-                "payload": data["payload"]
+                "payload": data["payload"],
             }
         elif transform_spec == "full":
             return data
@@ -230,7 +245,9 @@ class EventTransformer:
         for k, v in d.items():
             new_key = f"{parent_key}{sep}{k}" if parent_key else k
             if isinstance(v, dict):
-                items.extend(EventTransformer._flatten(v, new_key, sep).items())
+                items.extend(
+                    EventTransformer._flatten(v, new_key, sep).items()
+                )
             else:
                 items.append((new_key, v))
         return dict(items)
@@ -251,7 +268,7 @@ class IntegrationHooksManager:
     def __init__(
         self,
         conn: Optional[sqlite3.Connection] = None,
-        async_delivery: bool = True
+        async_delivery: bool = True,
     ):
         """
         Initialize the integration hooks manager.
@@ -285,7 +302,7 @@ class IntegrationHooksManager:
         self._delivery_thread = threading.Thread(
             target=self._delivery_worker,
             daemon=True,
-            name="integration-delivery"
+            name="integration-delivery",
         )
         self._delivery_thread.start()
         logger.info("Integration delivery thread started")
@@ -308,12 +325,12 @@ class IntegrationHooksManager:
     def shutdown(self) -> None:
         """Shutdown the delivery thread and drain pending events"""
         self._running = False
-        
+
         # Try to drain remaining events in the queue with a timeout
         if self._delivery_thread:
             deadline = time.time() + 5.0
             drained_count = 0
-            
+
             while time.time() < deadline:
                 try:
                     event, webhook_id = self._event_queue.get_nowait()
@@ -325,20 +342,26 @@ class IntegrationHooksManager:
                 except queue.Empty:
                     break
                 except Exception as e:
-                    logger.error(f"Error draining event queue during shutdown: {e}")
-            
+                    logger.error(
+                        f"Error draining event queue during shutdown: {e}"
+                    )
+
             # Log summary of shutdown
             try:
                 # Approximate remaining items (may not be exact in multithreaded context)
                 remaining = self._event_queue.qsize()
                 if remaining > 0:
-                    logger.warning(f"Shutdown: drained {drained_count} events, dropping approximately {remaining} remaining events")
+                    logger.warning(
+                        f"Shutdown: drained {drained_count} events, dropping approximately {remaining} remaining events"
+                    )
                 elif drained_count > 0:
-                    logger.info(f"Shutdown: drained {drained_count} events successfully")
+                    logger.info(
+                        f"Shutdown: drained {drained_count} events successfully"
+                    )
             except Exception:
                 # qsize() may not be available on all platforms
                 pass
-            
+
             self._delivery_thread.join(timeout=5.0)
             logger.info("Integration delivery thread stopped")
 
@@ -353,7 +376,9 @@ class IntegrationHooksManager:
         self._stats[config.id] = IntegrationStats(webhook_id=config.id)
         logger.info(f"Registered webhook: {config.id} ({config.name})")
 
-    def register_webhook_from_dict(self, config: Dict[str, Any]) -> WebhookConfig:
+    def register_webhook_from_dict(
+        self, config: Dict[str, Any]
+    ) -> WebhookConfig:
         """
         Register a webhook from configuration dictionary.
 
@@ -382,7 +407,7 @@ class IntegrationHooksManager:
             batch_size=config.get("batch_size", 1),
             batch_delay_seconds=config.get("batch_delay_seconds", 0),
             transform=config.get("transform"),
-            filter_expression=config.get("filter")
+            filter_expression=config.get("filter"),
         )
 
         self.register_webhook(webhook)
@@ -413,7 +438,7 @@ class IntegrationHooksManager:
     def register_handler(
         self,
         event_type: IntegrationEventType,
-        handler: Callable[[IntegrationEvent], None]
+        handler: Callable[[IntegrationEvent], None],
     ) -> None:
         """
         Register a custom event handler.
@@ -432,7 +457,7 @@ class IntegrationHooksManager:
         event_type: IntegrationEventType,
         payload: Dict[str, Any],
         correlation_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> IntegrationEvent:
         """
         Emit an integration event.
@@ -453,7 +478,7 @@ class IntegrationHooksManager:
             timestamp=utc_now(),
             payload=payload,
             correlation_id=correlation_id,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         # Invoke custom handlers
@@ -469,7 +494,7 @@ class IntegrationHooksManager:
         stage: str,
         token_id: str,
         session_id: str,
-        extra_data: Optional[Dict[str, Any]] = None
+        extra_data: Optional[Dict[str, Any]] = None,
     ) -> IntegrationEvent:
         """
         Convenience method to emit a tap event.
@@ -487,7 +512,7 @@ class IntegrationHooksManager:
             "QUEUE_JOIN": IntegrationEventType.QUEUE_JOIN,
             "SERVICE_START": IntegrationEventType.SERVICE_START,
             "SUBSTANCE_RETURNED": IntegrationEventType.SUBSTANCE_RETURNED,
-            "EXIT": IntegrationEventType.EXIT
+            "EXIT": IntegrationEventType.EXIT,
         }
 
         event_type = event_type_map.get(stage)
@@ -499,7 +524,7 @@ class IntegrationHooksManager:
             "stage": stage,
             "token_id": token_id,
             "session_id": session_id,
-            **(extra_data or {})
+            **(extra_data or {}),
         }
 
         return self.emit(event_type, payload, correlation_id=token_id)
@@ -509,7 +534,7 @@ class IntegrationHooksManager:
         alert_type: str,
         severity: str,
         message: str,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ) -> IntegrationEvent:
         """
         Emit an alert event.
@@ -527,7 +552,7 @@ class IntegrationHooksManager:
             "alert_type": alert_type,
             "severity": severity,
             "message": message,
-            "details": details or {}
+            "details": details or {},
         }
 
         return self.emit(IntegrationEventType.ALERT_TRIGGERED, payload)
@@ -543,7 +568,9 @@ class IntegrationHooksManager:
             try:
                 handler(event)
             except Exception as e:
-                logger.error(f"Handler error for {event.event_type.value}: {e}")
+                logger.error(
+                    f"Handler error for {event.event_type.value}: {e}"
+                )
 
     def _route_to_webhooks(self, event: IntegrationEvent) -> None:
         """Route event to matching webhooks"""
@@ -567,7 +594,9 @@ class IntegrationHooksManager:
             else:
                 self._deliver_to_webhook(event, webhook)
 
-    def _evaluate_filter(self, event: IntegrationEvent, filter_expr: str) -> bool:
+    def _evaluate_filter(
+        self, event: IntegrationEvent, filter_expr: str
+    ) -> bool:
         """
         Evaluate a filter expression against an event.
 
@@ -587,10 +616,7 @@ class IntegrationHooksManager:
             return True
 
     def _deliver_to_webhook(
-        self,
-        event: IntegrationEvent,
-        webhook: WebhookConfig,
-        attempt: int = 1
+        self, event: IntegrationEvent, webhook: WebhookConfig, attempt: int = 1
     ) -> DeliveryResult:
         """Deliver an event to a webhook"""
         stats = self._stats.get(webhook.id)
@@ -607,15 +633,13 @@ class IntegrationHooksManager:
             "User-Agent": "NFC-Tap-Logger/1.0",
             "X-Event-Type": event.event_type.value,
             "X-Event-ID": event.id,
-            **webhook.headers
+            **webhook.headers,
         }
 
         # Add HMAC signature if secret configured
         if webhook.secret:
             signature = hmac.new(
-                webhook.secret.encode(),
-                body,
-                hashlib.sha256
+                webhook.secret.encode(), body, hashlib.sha256
             ).hexdigest()
             headers["X-Signature"] = f"sha256={signature}"
 
@@ -625,20 +649,16 @@ class IntegrationHooksManager:
             event_id=event.id,
             status=DeliveryStatus.PENDING,
             attempt=attempt,
-            timestamp=utc_now()
+            timestamp=utc_now(),
         )
 
         try:
             request = urllib.request.Request(
-                webhook.url,
-                data=body,
-                headers=headers,
-                method="POST"
+                webhook.url, data=body, headers=headers, method="POST"
             )
 
             with urllib.request.urlopen(
-                request,
-                timeout=webhook.timeout_seconds
+                request, timeout=webhook.timeout_seconds
             ) as response:
                 result.response_code = response.getcode()
                 result.response_body = response.read().decode("utf-8")[:500]
@@ -650,9 +670,9 @@ class IntegrationHooksManager:
                     stats.last_success = utc_now()
                     # Update running average latency
                     stats.avg_latency_ms = (
-                        (stats.avg_latency_ms * (stats.delivered - 1) + result.duration_ms)
-                        / stats.delivered
-                    )
+                        stats.avg_latency_ms * (stats.delivered - 1)
+                        + result.duration_ms
+                    ) / stats.delivered
 
         except urllib.error.HTTPError as e:
             result.response_code = e.code
@@ -674,12 +694,17 @@ class IntegrationHooksManager:
                 stats.last_error = result.error
 
         # Retry if failed and attempts remaining
-        if result.status == DeliveryStatus.FAILED and attempt < webhook.max_retries:
+        if (
+            result.status == DeliveryStatus.FAILED
+            and attempt < webhook.max_retries
+        ):
             if stats:
                 stats.retried += 1
 
             result.status = DeliveryStatus.RETRYING
-            delay = webhook.retry_delay_seconds * (2 ** (attempt - 1))  # Exponential backoff
+            delay = webhook.retry_delay_seconds * (
+                2 ** (attempt - 1)
+            )  # Exponential backoff
             time.sleep(delay)
             return self._deliver_to_webhook(event, webhook, attempt + 1)
 
@@ -695,7 +720,9 @@ class IntegrationHooksManager:
         """Record delivery result in history"""
         self._delivery_history.append(result)
         if len(self._delivery_history) > self._max_history:
-            self._delivery_history = self._delivery_history[-self._max_history // 2:]
+            self._delivery_history = self._delivery_history[
+                -self._max_history // 2 :
+            ]
 
     def get_webhook(self, webhook_id: str) -> Optional[WebhookConfig]:
         """Get a webhook configuration"""
@@ -714,9 +741,7 @@ class IntegrationHooksManager:
         return {k: v.to_dict() for k, v in self._stats.items()}
 
     def get_recent_deliveries(
-        self,
-        webhook_id: Optional[str] = None,
-        limit: int = 100
+        self, webhook_id: Optional[str] = None, limit: int = 100
     ) -> List[Dict[str, Any]]:
         """Get recent delivery history"""
         history = self._delivery_history
@@ -742,7 +767,7 @@ class IntegrationHooksManager:
                 status=DeliveryStatus.FAILED,
                 attempt=1,
                 timestamp=utc_now(),
-                error="Webhook not found"
+                error="Webhook not found",
             )
 
         test_event = IntegrationEvent(
@@ -751,8 +776,8 @@ class IntegrationHooksManager:
             timestamp=utc_now(),
             payload={
                 "test": True,
-                "message": "Test event from NFC Tap Logger"
-            }
+                "message": "Test event from NFC Tap Logger",
+            },
         )
 
         return self._deliver_to_webhook(test_event, webhook)
@@ -767,11 +792,14 @@ class IntegrationHooksManager:
         total_failed = sum(s.failed for s in self._stats.values())
 
         # Calculate overall success rate
-        success_rate = (total_delivered / total_events * 100) if total_events > 0 else 100
+        success_rate = (
+            (total_delivered / total_events * 100) if total_events > 0 else 100
+        )
 
         # Identify unhealthy webhooks
         unhealthy = [
-            webhook_id for webhook_id, stats in self._stats.items()
+            webhook_id
+            for webhook_id, stats in self._stats.items()
             if stats.failed > stats.delivered * 0.1  # >10% failure rate
         ]
 
@@ -784,7 +812,9 @@ class IntegrationHooksManager:
             "total_failed": total_failed,
             "overall_success_rate": success_rate,
             "unhealthy_webhooks": unhealthy,
-            "queue_size": self._event_queue.qsize() if self._async_delivery else 0
+            "queue_size": (
+                self._event_queue.qsize() if self._async_delivery else 0
+            ),
         }
 
 
@@ -792,9 +822,9 @@ class IntegrationHooksManager:
 # Configuration Loading
 # =============================================================================
 
+
 def load_webhooks_from_config(
-    config: Dict[str, Any],
-    manager: IntegrationHooksManager
+    config: Dict[str, Any], manager: IntegrationHooksManager
 ) -> int:
     """
     Load webhook configurations from config dictionary.
@@ -806,7 +836,9 @@ def load_webhooks_from_config(
     Returns:
         Number of webhooks loaded
     """
-    webhook_configs = config.get("webhooks", config.get("integrations", {}).get("webhooks", []))
+    webhook_configs = config.get(
+        "webhooks", config.get("integrations", {}).get("webhooks", [])
+    )
     loaded = 0
 
     for webhook_config in webhook_configs:
@@ -816,7 +848,9 @@ def load_webhooks_from_config(
             manager.register_webhook_from_dict(webhook_config)
             loaded += 1
         except Exception as e:
-            logger.error(f"Error loading webhook {webhook_config.get('id', 'unknown')}: {e}")
+            logger.error(
+                f"Error loading webhook {webhook_config.get('id', 'unknown')}: {e}"
+            )
 
     return loaded
 
@@ -829,7 +863,7 @@ _hooks_manager: Optional[IntegrationHooksManager] = None
 
 
 def get_hooks_manager(
-    conn: Optional[sqlite3.Connection] = None
+    conn: Optional[sqlite3.Connection] = None,
 ) -> IntegrationHooksManager:
     """Get or create the global integration hooks manager"""
     global _hooks_manager
@@ -839,9 +873,7 @@ def get_hooks_manager(
 
 
 def emit_event(
-    event_type: IntegrationEventType,
-    payload: Dict[str, Any],
-    **kwargs
+    event_type: IntegrationEventType, payload: Dict[str, Any], **kwargs
 ) -> Optional[IntegrationEvent]:
     """Convenience function to emit an event"""
     if _hooks_manager:

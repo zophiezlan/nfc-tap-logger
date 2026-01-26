@@ -6,8 +6,8 @@ Provides seamless failover with automatic recovery.
 """
 
 import logging
-from typing import List, Optional, Callable
 from datetime import datetime
+from typing import Callable, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,9 @@ class FailoverManager:
         # State
         self.failover_active = False
         self.failover_start_time: Optional[datetime] = None
-        self.tap_counts = {stage: 0 for stage in [primary_stage] + fallback_stages}
+        self.tap_counts = {
+            stage: 0 for stage in [primary_stage] + fallback_stages
+        }
 
     @property
     def active_stages(self) -> List[str]:
@@ -124,7 +126,9 @@ class FailoverManager:
         """
         if stage in self.tap_counts:
             self.tap_counts[stage] += 1
-            logger.debug(f"Tap recorded for {stage}: {self.tap_counts[stage]} total")
+            logger.debug(
+                f"Tap recorded for {stage}: {self.tap_counts[stage]} total"
+            )
 
     def get_status(self) -> dict:
         """

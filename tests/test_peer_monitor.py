@@ -1,8 +1,10 @@
 """Tests for peer monitor"""
 
-import pytest
 import time
 from unittest.mock import Mock, patch
+
+import pytest
+
 from tap_station.peer_monitor import PeerMonitor
 
 
@@ -34,7 +36,9 @@ class TestPeerMonitor:
         mock_response.json.return_value = {"status": "ok"}
         mock_get.return_value = mock_response
 
-        monitor = PeerMonitor(peer_hostname="peer-station.local", check_interval=10)
+        monitor = PeerMonitor(
+            peer_hostname="peer-station.local", check_interval=10
+        )
 
         result = monitor.force_check()
 
@@ -51,7 +55,9 @@ class TestPeerMonitor:
         mock_get.side_effect = Exception("Connection refused")
 
         monitor = PeerMonitor(
-            peer_hostname="peer-station.local", check_interval=10, failure_threshold=2
+            peer_hostname="peer-station.local",
+            check_interval=10,
+            failure_threshold=2,
         )
 
         # First failure - not yet declared down
@@ -133,7 +139,9 @@ class TestPeerMonitor:
     def test_consecutive_failures_reset_on_success(self, mock_get):
         """Test that consecutive failures reset after success"""
         monitor = PeerMonitor(
-            peer_hostname="peer-station.local", check_interval=10, failure_threshold=3
+            peer_hostname="peer-station.local",
+            check_interval=10,
+            failure_threshold=3,
         )
 
         # Fail twice
@@ -158,7 +166,9 @@ class TestPeerMonitor:
     def test_get_status(self):
         """Test status reporting"""
         monitor = PeerMonitor(
-            peer_hostname="peer-station.local", check_interval=10, failure_threshold=3
+            peer_hostname="peer-station.local",
+            check_interval=10,
+            failure_threshold=3,
         )
 
         status = monitor.get_status()
@@ -195,7 +205,8 @@ class TestPeerMonitor:
         mock_get.return_value = mock_response
 
         monitor = PeerMonitor(
-            peer_hostname="peer-station.local", check_interval=0.1  # Check every 100ms
+            peer_hostname="peer-station.local",
+            check_interval=0.1,  # Check every 100ms
         )
 
         monitor.start()

@@ -5,10 +5,10 @@ Demo script showing substance return confirmation workflow
 This demonstrates how the system tracks substance custody and return.
 """
 
-import sys
 import os
+import sys
 import tempfile
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -193,7 +193,9 @@ def demo_substance_return_workflow():
                 print(f"   🚨 Token #{row['token_id']}")
                 print(f"      Service started: {row['timestamp'][:19]}")
                 print(f"      Status: AWAITING RETURN")
-                print(f"      Action: Staff should return substance immediately")
+                print(
+                    f"      Action: Staff should return substance immediately"
+                )
             print()
 
         print("💡 This alert would appear on the dashboard, allowing")

@@ -498,7 +498,11 @@ nfc-tap-logger/
 │   ├── service_manager.py   # Service control utility
 │   ├── dev_reset.py         # Development reset tool
 │   ├── setup_wizard.py      # Interactive configuration
-│   └── enable_i2c.sh        # I2C setup automation
+│   ├── enable_i2c.sh        # I2C setup automation
+│   ├── format.ps1           # Format code (Windows)
+│   ├── format.sh            # Format code (Linux/Mac)
+│   ├── format.bat           # Format code (Windows CMD)
+│   └── README_FORMATTING.md # Formatting guide
 ├── mobile_app/              # Progressive Web App
 │   ├── index.html           # App interface
 │   ├── app.js               # NFC scanning logic

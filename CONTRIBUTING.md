@@ -32,6 +32,9 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Install development dependencies (formatters, linters, etc.)
+pip install -r requirements-dev.txt
+
 # Copy example config
 cp config.yaml.example config.yaml
 
@@ -69,18 +72,69 @@ nfc-tap-logger/
 
 - Follow PEP 8
 - Use type hints where helpful
-- Max line length: 100 characters
+- Max line length: 79 characters (configured in `pyproject.toml`)
 - Use descriptive variable names
+- Sort imports with `isort`
 
-**Formatting:**
+**Markdown/YAML:**
+
+- Consistent formatting with `prettier`
+- Clear headings and structure
+- Code blocks with language tags
+
+### Automated Formatting
+
+**Format all code automatically:**
 
 ```bash
-# Format code
-black tap_station/ tests/ scripts/
+# Windows (PowerShell)
+.\scripts\format.ps1
+
+# Windows (Command Prompt)
+scripts\format.bat
+
+# Linux/Mac/WSL
+./scripts/format.sh
+```
+
+These scripts will:
+
+- Format Python files with `black` (line length: 79)
+- Sort imports with `isort` (compatible with black)
+- Format Markdown, YAML, JSON with `prettier`
+
+**Manual formatting:**
+
+```bash
+# Python only
+black . --line-length 79
+isort . --profile black --line-length 79
+
+# Markdown/YAML only
+prettier --write "**/*.{md,yaml,yml,json}"
+```
+
+**Check formatting without modifying:**
+
+```bash
+black . --check
+isort . --check-only
+prettier --check "**/*.{md,yaml,yml,json}"
+```
+
+See [scripts/README_FORMATTING.md](scripts/README_FORMATTING.md) for detailed formatting documentation.
+
+### Configuration Files
+
+- `pyproject.toml` - Python tool configuration (black, isort, pytest, mypy)
+- `.prettierrc.json` - Prettier configuration
+- `.prettierignore` - Files to exclude from prettier
 
 # Check style
+
 flake8 tap_station/ tests/ scripts/
-```
+
+````
 
 **Imports:**
 
@@ -97,7 +151,7 @@ import yaml
 # Local
 from tap_station.config import Config
 from tap_station.database import Database
-```
+````
 
 ### Documentation
 
@@ -198,7 +252,6 @@ def test_with_mock_nfc():
    ```
 
 2. **Make changes**
-
    - Write code
    - Add/update tests
    - Update documentation
@@ -319,12 +372,10 @@ Fixes #37
 **For maintainers:**
 
 1. **Version bump**
-
    - Update version in `setup.py` (if exists)
    - Update `README.md` version history
 
 2. **Changelog**
-
    - Document changes in README
    - Note breaking changes
 
@@ -477,7 +528,6 @@ def test_duplicate_tap_returns_false(mock_db):
    ```
 
 2. **Make your changes**
-
    - Write code following the style guide
    - Add tests for new functionality
    - Update documentation as needed
@@ -498,7 +548,6 @@ def test_duplicate_tap_returns_false(mock_db):
    ```
 
    Commit message guidelines:
-
    - Use present tense ("Add feature" not "Added feature")
    - Keep first line under 72 characters
    - Reference issues when applicable (#123)

@@ -7,7 +7,6 @@ the application, improving UX for all stakeholder groups.
 
 from typing import Dict
 
-
 # Mobile App Help Text
 MOBILE_HELP = {
     "session_id": {
@@ -137,7 +136,12 @@ CONFIG_HELP = {
         "field": "station.stage",
         "tooltip": "Which checkpoint this station represents in the workflow.",
         "required": True,
-        "options": ["QUEUE_JOIN", "SERVICE_START", "SUBSTANCE_RETURNED", "EXIT"],
+        "options": [
+            "QUEUE_JOIN",
+            "SERVICE_START",
+            "SUBSTANCE_RETURNED",
+            "EXIT",
+        ],
     },
     "session_id": {
         "field": "station.session_id",

@@ -1,12 +1,14 @@
 """Tests for auto-initialization of cards on first tap"""
 
+import os
+import tempfile
+
 import pytest
+import yaml
+
+from tap_station.config import Config
 from tap_station.database import Database
 from tap_station.nfc_reader import MockNFCReader
-from tap_station.config import Config
-import tempfile
-import os
-import yaml
 
 
 @pytest.fixture
@@ -87,9 +89,15 @@ class TestAutoInitDatabase:
 
     def test_get_next_token_id_sequential(self, temp_db):
         """Test that token IDs increment sequentially"""
-        _, token1 = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
-        _, token2 = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
-        _, token3 = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
+        _, token1 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
+        _, token2 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
+        _, token3 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
 
         assert token1 == "001"
         assert token2 == "002"
@@ -97,18 +105,30 @@ class TestAutoInitDatabase:
 
     def test_get_next_token_id_custom_start(self, temp_db):
         """Test starting from a custom token ID"""
-        _, token1 = temp_db.get_next_auto_init_token_id("test-session", start_id=100)
-        _, token2 = temp_db.get_next_auto_init_token_id("test-session", start_id=100)
+        _, token1 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=100
+        )
+        _, token2 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=100
+        )
 
         assert token1 == "100"
         assert token2 == "101"
 
     def test_get_next_token_id_multiple_sessions(self, temp_db):
         """Test that different sessions have independent counters"""
-        _, token1a = temp_db.get_next_auto_init_token_id("session-a", start_id=1)
-        _, token1b = temp_db.get_next_auto_init_token_id("session-b", start_id=1)
-        _, token2a = temp_db.get_next_auto_init_token_id("session-a", start_id=1)
-        _, token2b = temp_db.get_next_auto_init_token_id("session-b", start_id=1)
+        _, token1a = temp_db.get_next_auto_init_token_id(
+            "session-a", start_id=1
+        )
+        _, token1b = temp_db.get_next_auto_init_token_id(
+            "session-b", start_id=1
+        )
+        _, token2a = temp_db.get_next_auto_init_token_id(
+            "session-a", start_id=1
+        )
+        _, token2b = temp_db.get_next_auto_init_token_id(
+            "session-b", start_id=1
+        )
 
         assert token1a == "001"
         assert token1b == "001"
@@ -117,13 +137,17 @@ class TestAutoInitDatabase:
 
     def test_get_next_token_id_formats_correctly(self, temp_db):
         """Test that token IDs are formatted as 3-digit strings"""
-        _, token1 = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
+        _, token1 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
 
         assert token1 == "001"
         assert len(token1) == 3
 
         # Get a few more to verify formatting
-        _, token2 = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
+        _, token2 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
         assert token2 == "002"
         assert len(token2) == 3
 
@@ -131,7 +155,9 @@ class TestAutoInitDatabase:
         for _ in range(97):
             temp_db.get_next_auto_init_token_id("test-session", start_id=1)
 
-        _, token100 = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
+        _, token100 = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
         assert token100 == "100"
         assert len(token100) == 3
 
@@ -179,10 +205,11 @@ class TestAutoInitDetection:
 
         # Create a mock tap station just to access the method
         # (We can't instantiate fully without config file)
-
         # Test the logic directly
         def looks_like_uid(token_id: str) -> bool:
-            return len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id)
+            return len(token_id) >= 8 and all(
+                c in "0123456789ABCDEF" for c in token_id
+            )
 
         # These look like UIDs (8+ hex chars)
         assert looks_like_uid("04A32FB2")
@@ -205,7 +232,9 @@ class TestAutoInitIntegration:
 
     def _looks_like_uid(self, token_id: str) -> bool:
         """Helper: Check if token_id looks like a UID"""
-        return len(token_id) >= 8 and all(c in "0123456789ABCDEF" for c in token_id)
+        return len(token_id) >= 8 and all(
+            c in "0123456789ABCDEF" for c in token_id
+        )
 
     def test_auto_init_assigns_sequential_ids(self, temp_db):
         """Test that multiple uninitialized cards get sequential IDs"""
@@ -264,7 +293,9 @@ class TestAutoInitIntegration:
     def test_auto_init_logs_events_correctly(self, temp_db):
         """Test that auto-initialized cards log events correctly"""
         # Get auto-assigned token ID
-        _, token_id = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
+        _, token_id = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
 
         # Log event with auto-assigned token ID
         result = temp_db.log_event(
@@ -297,7 +328,9 @@ class TestAutoInitCardWriting:
     def test_auto_init_with_write_failure(self, temp_db):
         """Test that auto-init still works if card writing fails"""
         # Get auto-assigned token ID
-        _, token_id = temp_db.get_next_auto_init_token_id("test-session", start_id=1)
+        _, token_id = temp_db.get_next_auto_init_token_id(
+            "test-session", start_id=1
+        )
         assert token_id == "001"
 
         # Even if write fails, we can still log the event

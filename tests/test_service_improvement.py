@@ -8,24 +8,24 @@ Tests cover:
 - Analysis methods
 """
 
-import pytest
 import sqlite3
-from datetime import datetime, timedelta
-
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tap_station.service_improvement import (
-    ServiceImprovementEngine,
-    ImprovementRecommendation,
     ImprovementCategory,
     ImprovementPriority,
+    ImprovementRecommendation,
     ImprovementStatus,
+    ServiceImprovementEngine,
     ServicePattern,
-    get_improvement_engine,
     analyze_service,
+    get_improvement_engine,
 )
 
 
@@ -34,8 +34,7 @@ def db_connection():
     """Create an in-memory database with test schema"""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE events (
             id INTEGER PRIMARY KEY,
             token_id TEXT,
@@ -43,8 +42,7 @@ def db_connection():
             stage TEXT,
             timestamp TEXT
         )
-    """
-    )
+    """)
     conn.commit()
     return conn
 
@@ -76,7 +74,12 @@ def populated_db(db_connection):
         events.extend(
             [
                 (token_id, "session1", "QUEUE_JOIN", join_time.isoformat()),
-                (token_id, "session1", "SERVICE_START", service_time.isoformat()),
+                (
+                    token_id,
+                    "session1",
+                    "SERVICE_START",
+                    service_time.isoformat(),
+                ),
                 (token_id, "session1", "EXIT", exit_time.isoformat()),
             ]
         )
@@ -85,7 +88,9 @@ def populated_db(db_connection):
     for i in range(3):
         token_id = f"abandoned_{i:03d}"
         join_time = now - timedelta(hours=3, minutes=i * 10)
-        events.append((token_id, "session1", "QUEUE_JOIN", join_time.isoformat()))
+        events.append(
+            (token_id, "session1", "QUEUE_JOIN", join_time.isoformat())
+        )
 
     db_connection.executemany(
         "INSERT INTO events (token_id, session_id, stage, timestamp) VALUES (?, ?, ?, ?)",
@@ -169,7 +174,10 @@ class TestServiceImprovementEngine:
         # Acknowledge
         result = engine.acknowledge_recommendation(rec.id)
         assert result is True
-        assert engine._recommendations[rec.id].status == ImprovementStatus.ACKNOWLEDGED
+        assert (
+            engine._recommendations[rec.id].status
+            == ImprovementStatus.ACKNOWLEDGED
+        )
 
     def test_dismiss_recommendation(self, engine):
         """Test recommendation dismissal"""
@@ -188,7 +196,10 @@ class TestServiceImprovementEngine:
 
         result = engine.dismiss_recommendation(rec.id, "Not relevant")
         assert result is True
-        assert engine._recommendations[rec.id].status == ImprovementStatus.DISMISSED
+        assert (
+            engine._recommendations[rec.id].status
+            == ImprovementStatus.DISMISSED
+        )
 
     def test_health_score_calculation(self, engine):
         """Test health score calculation"""

@@ -1,9 +1,10 @@
 """Configuration loader for tap station"""
 
-import os
 import logging
+import os
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import yaml
-from typing import Any, Dict, Tuple, Callable, Optional, List
 
 from .constants import WorkflowStages
 from .exceptions import ConfigurationError
@@ -56,19 +57,35 @@ _CONFIG_SCHEMA: Dict[str, Tuple[str, Any, Optional[Callable]]] = {
     "web_server_enabled": ("web_server.enabled", False, bool),
     "web_server_host": ("web_server.host", "0.0.0.0", str),
     "web_server_port": ("web_server.port", 8080, int),
-    "admin_password": ("web_server.admin.password", "CHANGE-ME-BEFORE-DEPLOYMENT", str),
+    "admin_password": (
+        "web_server.admin.password",
+        "CHANGE-ME-BEFORE-DEPLOYMENT",
+        str,
+    ),
     "admin_session_timeout_minutes": (
         "web_server.admin.session_timeout_minutes",
         60,
         int,
     ),
     # API limits and validation
-    "api_max_events_per_request": ("web_server.api.max_events_per_request", 1000, int),
-    "api_max_token_id_length": ("web_server.api.max_token_id_length", 100, int),
+    "api_max_events_per_request": (
+        "web_server.api.max_events_per_request",
+        1000,
+        int,
+    ),
+    "api_max_token_id_length": (
+        "web_server.api.max_token_id_length",
+        100,
+        int,
+    ),
     "api_max_uid_length": ("web_server.api.max_uid_length", 100, int),
     "api_max_stage_length": ("web_server.api.max_stage_length", 50, int),
     # Analytics and dashboard settings
-    "analytics_wait_sample_size": ("web_server.analytics.wait_sample_size", 20, int),
+    "analytics_wait_sample_size": (
+        "web_server.analytics.wait_sample_size",
+        20,
+        int,
+    ),
     "analytics_recent_completions_limit": (
         "web_server.analytics.recent_completions_limit",
         10,
@@ -79,7 +96,11 @@ _CONFIG_SCHEMA: Dict[str, Tuple[str, Any, Optional[Callable]]] = {
         15,
         int,
     ),
-    "analytics_activity_hours": ("web_server.analytics.activity_hours", 12, int),
+    "analytics_activity_hours": (
+        "web_server.analytics.activity_hours",
+        12,
+        int,
+    ),
     "analytics_max_estimate_minutes": (
         "web_server.analytics.max_estimate_minutes",
         120,
@@ -104,7 +125,11 @@ _CONFIG_SCHEMA: Dict[str, Tuple[str, Any, Optional[Callable]]] = {
     "onsite_enabled": ("onsite.enabled", True, bool),
     # WiFi Management
     "onsite_wifi_enabled": ("onsite.wifi.enabled", True, bool),
-    "onsite_wifi_setup_button_gpio": ("onsite.wifi.setup_button_gpio", 23, int),
+    "onsite_wifi_setup_button_gpio": (
+        "onsite.wifi.setup_button_gpio",
+        23,
+        int,
+    ),
     "onsite_wifi_networks_file": (
         "onsite.wifi.networks_file",
         "config/wifi_networks.conf",
@@ -114,12 +139,28 @@ _CONFIG_SCHEMA: Dict[str, Tuple[str, Any, Optional[Callable]]] = {
     "onsite_mdns_enabled": ("onsite.mdns.enabled", True, bool),
     # Failover Settings
     "onsite_failover_enabled": ("onsite.failover.enabled", True, bool),
-    "onsite_failover_peer_hostname": ("onsite.failover.peer_hostname", None, str),
-    "onsite_failover_check_interval": ("onsite.failover.check_interval", 30, int),
-    "onsite_failover_failure_threshold": ("onsite.failover.failure_threshold", 2, int),
+    "onsite_failover_peer_hostname": (
+        "onsite.failover.peer_hostname",
+        None,
+        str,
+    ),
+    "onsite_failover_check_interval": (
+        "onsite.failover.check_interval",
+        30,
+        int,
+    ),
+    "onsite_failover_failure_threshold": (
+        "onsite.failover.failure_threshold",
+        2,
+        int,
+    ),
     # Status LEDs
     "onsite_status_leds_enabled": ("onsite.status_leds.enabled", True, bool),
-    "onsite_status_leds_gpio_blue": ("onsite.status_leds.gpio_blue", None, int),
+    "onsite_status_leds_gpio_blue": (
+        "onsite.status_leds.gpio_blue",
+        None,
+        int,
+    ),
 }
 
 
@@ -176,7 +217,9 @@ class Config:
         for field in _REQUIRED_FIELDS:
             value = self.get(field)
             if value is None or value == "":
-                config_warnings.append(f"Required field '{field}' is missing or empty")
+                config_warnings.append(
+                    f"Required field '{field}' is missing or empty"
+                )
             elif field == "station.device_id" and value == default_device_id:
                 config_warnings.append(
                     f"Field '{field}' uses default value '{default_device_id}' - "
@@ -312,7 +355,9 @@ class Config:
         """
         # Avoid recursion for private attributes
         if name.startswith("_"):
-            raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
+            raise AttributeError(
+                f"'{type(self).__name__}' has no attribute '{name}'"
+            )
 
         # Check if it's a known config attribute
         if name in _CONFIG_SCHEMA:
@@ -338,7 +383,9 @@ class Config:
             self._cache[name] = value
             return value
 
-        raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
+        raise AttributeError(
+            f"'{type(self).__name__}' has no attribute '{name}'"
+        )
 
     @property
     def stage(self) -> str:
@@ -360,7 +407,9 @@ class Config:
         """
         if config_path:
             if not os.path.exists(config_path):
-                raise FileNotFoundError(f"Config file not found: {config_path}")
+                raise FileNotFoundError(
+                    f"Config file not found: {config_path}"
+                )
             with open(config_path, "r") as f:
                 self._config = yaml.safe_load(f)
 

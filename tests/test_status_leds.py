@@ -1,9 +1,11 @@
 """Tests for status LED manager"""
 
-import pytest
 import time
-from unittest.mock import Mock, MagicMock, patch
-from tap_station.status_leds import StatusLEDManager, LEDPattern
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+from tap_station.status_leds import LEDPattern, StatusLEDManager
 
 
 class TestStatusLEDManager:

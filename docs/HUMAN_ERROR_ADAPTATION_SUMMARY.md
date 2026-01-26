@@ -95,12 +95,11 @@ anomalies = db.get_anomalies(session_id)
 **Dashboard Integration:**
 
 ```javascript
-fetch('/api/control/anomalies')
-  .then(data => {
-    if (data.summary.high_severity > 5) {
-      alert("⚠️ Multiple critical issues - check dashboard!");
-    }
-  });
+fetch("/api/control/anomalies").then(data => {
+  if (data.summary.high_severity > 5) {
+    alert("⚠️ Multiple critical issues - check dashboard!")
+  }
+})
 ```
 
 **Impact:**
@@ -201,7 +200,7 @@ POST /api/control/remove-event
 
 ```
 🔴 15-20% incomplete journeys
-🔴 10% out-of-order events  
+🔴 10% out-of-order events
 🔴 No correction mechanism
 🔴 Hours of manual data cleanup post-event
 🔴 Staff frustration with "broken" system
@@ -300,8 +299,8 @@ def _is_duplicate(..., grace_minutes: int = 5):  # Adjust this
 def get_anomalies(...):
     # Forgotten exits (default: 30 min)
     WHERE q.timestamp < datetime('now', '-30 minutes')
-    
-    # Stuck in service (default: 45 min)  
+
+    # Stuck in service (default: 45 min)
     WHERE s.timestamp < datetime('now', '-45 minutes')
 ```
 
@@ -355,43 +354,43 @@ Use as backup, not primary workflow. If you're making many manual corrections, f
 
 ```javascript
 async function checkCriticalIssues() {
-  const res = await fetch('/api/control/anomalies');
-  const data = await res.json();
-  
+  const res = await fetch("/api/control/anomalies")
+  const data = await res.json()
+
   if (data.summary.high_severity > 0) {
-    console.warn(`🚨 ${data.summary.high_severity} critical issues!`);
-    
+    console.warn(`🚨 ${data.summary.high_severity} critical issues!`)
+
     // Show forgotten exits
     data.anomalies.forgotten_exit_taps.forEach(issue => {
-      if (issue.severity === 'high') {
-        alert(`Token ${issue.token_id} stuck for ${issue.minutes_stuck} min!`);
+      if (issue.severity === "high") {
+        alert(`Token ${issue.token_id} stuck for ${issue.minutes_stuck} min!`)
       }
-    });
+    })
   }
 }
 
 // Run every 5 minutes
-setInterval(checkCriticalIssues, 5 * 60 * 1000);
+setInterval(checkCriticalIssues, 5 * 60 * 1000)
 ```
 
 ### Add Missed EXIT Tap
 
 ```javascript
 async function addMissedExit(tokenId, estimatedTime) {
-  const response = await fetch('/api/control/manual-event', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+  const response = await fetch("/api/control/manual-event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       token_id: tokenId,
-      stage: 'EXIT',
-      timestamp: estimatedTime,  // e.g., "2025-01-24T17:30:00Z"
+      stage: "EXIT",
+      timestamp: estimatedTime, // e.g., "2025-01-24T17:30:00Z"
       operator_id: getCurrentStaffId(),
-      reason: "Participant confirmed left without tapping - adding missed exit"
-    })
-  });
-  
-  const result = await response.json();
-  console.log(result.message);
+      reason: "Participant confirmed left without tapping - adding missed exit",
+    }),
+  })
+
+  const result = await response.json()
+  console.log(result.message)
 }
 ```
 
@@ -399,18 +398,18 @@ async function addMissedExit(tokenId, estimatedTime) {
 
 ```javascript
 async function removeWrongTap(eventId, reason) {
-  const response = await fetch('/api/control/remove-event', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+  const response = await fetch("/api/control/remove-event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       event_id: eventId,
       operator_id: getCurrentStaffId(),
-      reason: reason
-    })
-  });
-  
-  const result = await response.json();
-  console.log(`Removed event:`, result.removed_event);
+      reason: reason,
+    }),
+  })
+
+  const result = await response.json()
+  console.log(`Removed event:`, result.removed_event)
 }
 ```
 

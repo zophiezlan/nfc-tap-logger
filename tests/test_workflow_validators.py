@@ -8,26 +8,27 @@ Tests cover:
 - Validation results
 """
 
-import pytest
 import sqlite3
-from datetime import datetime, timedelta
-
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tap_station.workflow_validators import (
-    WorkflowValidationManager,
+    CustomFunctionValidator,
+    DuplicateStageValidator,
+    MaximumWaitTimeValidator,
+    MinimumWaitTimeValidator,
+    ServiceHoursValidator,
+    SubstanceReturnValidator,
+    ValidationAction,
     ValidationContext,
     ValidationResult,
     ValidationSeverity,
-    ValidationAction,
-    MinimumWaitTimeValidator,
-    MaximumWaitTimeValidator,
-    DuplicateStageValidator,
-    ServiceHoursValidator,
-    SubstanceReturnValidator,
-    CustomFunctionValidator,
+    WorkflowValidationManager,
     get_validation_manager,
     load_validators_from_config,
 )
@@ -71,9 +72,11 @@ def context():
         journey_history=[
             {
                 "stage": "QUEUE_JOIN",
-                "timestamp": (datetime.utcnow() - timedelta(minutes=15)).isoformat()
+                "timestamp": (
+                    datetime.utcnow() - timedelta(minutes=15)
+                ).isoformat(),
             }
-        ]
+        ],
     )
 
 
@@ -86,7 +89,7 @@ class TestValidationResult:
             valid=True,
             severity=ValidationSeverity.INFO,
             message="Validation passed",
-            code="TEST001"
+            code="TEST001",
         )
         assert result.valid is True
         assert result.severity == ValidationSeverity.INFO
@@ -99,7 +102,7 @@ class TestValidationResult:
             message="Validation failed",
             code="TEST002",
             suggestion="Fix the issue",
-            data={"key": "value"}
+            data={"key": "value"},
         )
         d = result.to_dict()
 
@@ -123,8 +126,13 @@ class TestMinimumWaitTimeValidator:
             timestamp=datetime.utcnow(),
             event_data={},
             journey_history=[
-                {"stage": "QUEUE_JOIN", "timestamp": (datetime.utcnow() - timedelta(minutes=5)).isoformat()}
-            ]
+                {
+                    "stage": "QUEUE_JOIN",
+                    "timestamp": (
+                        datetime.utcnow() - timedelta(minutes=5)
+                    ).isoformat(),
+                }
+            ],
         )
 
         result = validator.validate(context)
@@ -142,8 +150,13 @@ class TestMinimumWaitTimeValidator:
             timestamp=datetime.utcnow(),
             event_data={},
             journey_history=[
-                {"stage": "QUEUE_JOIN", "timestamp": (datetime.utcnow() - timedelta(seconds=10)).isoformat()}
-            ]
+                {
+                    "stage": "QUEUE_JOIN",
+                    "timestamp": (
+                        datetime.utcnow() - timedelta(seconds=10)
+                    ).isoformat(),
+                }
+            ],
         )
 
         result = validator.validate(context)
@@ -166,8 +179,13 @@ class TestMaximumWaitTimeValidator:
             timestamp=datetime.utcnow(),
             event_data={},
             journey_history=[
-                {"stage": "QUEUE_JOIN", "timestamp": (datetime.utcnow() - timedelta(minutes=30)).isoformat()}
-            ]
+                {
+                    "stage": "QUEUE_JOIN",
+                    "timestamp": (
+                        datetime.utcnow() - timedelta(minutes=30)
+                    ).isoformat(),
+                }
+            ],
         )
 
         result = validator.validate(context)
@@ -185,8 +203,13 @@ class TestMaximumWaitTimeValidator:
             timestamp=datetime.utcnow(),
             event_data={},
             journey_history=[
-                {"stage": "QUEUE_JOIN", "timestamp": (datetime.utcnow() - timedelta(hours=3)).isoformat()}
-            ]
+                {
+                    "stage": "QUEUE_JOIN",
+                    "timestamp": (
+                        datetime.utcnow() - timedelta(hours=3)
+                    ).isoformat(),
+                }
+            ],
         )
 
         result = validator.validate(context)
@@ -210,8 +233,13 @@ class TestDuplicateStageValidator:
             timestamp=datetime.utcnow(),
             event_data={},
             journey_history=[
-                {"stage": "QUEUE_JOIN", "timestamp": (datetime.utcnow() - timedelta(minutes=10)).isoformat()}
-            ]
+                {
+                    "stage": "QUEUE_JOIN",
+                    "timestamp": (
+                        datetime.utcnow() - timedelta(minutes=10)
+                    ).isoformat(),
+                }
+            ],
         )
 
         result = validator.validate(context)
@@ -229,9 +257,19 @@ class TestDuplicateStageValidator:
             timestamp=datetime.utcnow(),
             event_data={},
             journey_history=[
-                {"stage": "QUEUE_JOIN", "timestamp": (datetime.utcnow() - timedelta(minutes=30)).isoformat()},
-                {"stage": "SERVICE_START", "timestamp": (datetime.utcnow() - timedelta(minutes=5)).isoformat()}
-            ]
+                {
+                    "stage": "QUEUE_JOIN",
+                    "timestamp": (
+                        datetime.utcnow() - timedelta(minutes=30)
+                    ).isoformat(),
+                },
+                {
+                    "stage": "SERVICE_START",
+                    "timestamp": (
+                        datetime.utcnow() - timedelta(minutes=5)
+                    ).isoformat(),
+                },
+            ],
         )
 
         result = validator.validate(context)
@@ -243,7 +281,9 @@ class TestServiceHoursValidator:
 
     def test_within_hours(self):
         """Test validation passes within service hours"""
-        validator = ServiceHoursValidator(start_hour=0, end_hour=24)  # 24h service
+        validator = ServiceHoursValidator(
+            start_hour=0, end_hour=24
+        )  # 24h service
         context = ValidationContext(
             action=ValidationAction.ENTRY,
             stage="QUEUE_JOIN",
@@ -252,7 +292,7 @@ class TestServiceHoursValidator:
             previous_stage=None,
             timestamp=datetime.utcnow(),
             event_data={},
-            journey_history=[]
+            journey_history=[],
         )
 
         result = validator.validate(context)
@@ -276,8 +316,8 @@ class TestSubstanceReturnValidator:
             journey_history=[
                 {"stage": "QUEUE_JOIN", "timestamp": "..."},
                 {"stage": "SERVICE_START", "timestamp": "..."},
-                {"stage": "SUBSTANCE_RETURNED", "timestamp": "..."}
-            ]
+                {"stage": "SUBSTANCE_RETURNED", "timestamp": "..."},
+            ],
         )
 
         result = validator.validate(context)
@@ -296,8 +336,8 @@ class TestSubstanceReturnValidator:
             event_data={},
             journey_history=[
                 {"stage": "QUEUE_JOIN", "timestamp": "..."},
-                {"stage": "SERVICE_START", "timestamp": "..."}
-            ]
+                {"stage": "SERVICE_START", "timestamp": "..."},
+            ],
         )
 
         result = validator.validate(context)
@@ -311,19 +351,20 @@ class TestCustomFunctionValidator:
 
     def test_custom_validator_passes(self):
         """Test custom validator that passes"""
+
         def always_pass(ctx):
             return ValidationResult(
                 valid=True,
                 severity=ValidationSeverity.INFO,
                 message="Custom check passed",
-                code="CUSTOM001"
+                code="CUSTOM001",
             )
 
         validator = CustomFunctionValidator(
             validator_id="custom_pass",
             name="Custom Pass",
             description="Always passes",
-            validate_func=always_pass
+            validate_func=always_pass,
         )
 
         context = ValidationContext(
@@ -334,7 +375,7 @@ class TestCustomFunctionValidator:
             previous_stage="SERVICE_START",
             timestamp=datetime.utcnow(),
             event_data={},
-            journey_history=[]
+            journey_history=[],
         )
 
         result = validator.validate(context)
@@ -343,19 +384,20 @@ class TestCustomFunctionValidator:
 
     def test_custom_validator_fails(self):
         """Test custom validator that fails"""
+
         def always_fail(ctx):
             return ValidationResult(
                 valid=False,
                 severity=ValidationSeverity.ERROR,
                 message="Custom check failed",
-                code="CUSTOM002"
+                code="CUSTOM002",
             )
 
         validator = CustomFunctionValidator(
             validator_id="custom_fail",
             name="Custom Fail",
             description="Always fails",
-            validate_func=always_fail
+            validate_func=always_fail,
         )
 
         context = ValidationContext(
@@ -366,7 +408,7 @@ class TestCustomFunctionValidator:
             previous_stage="SERVICE_START",
             timestamp=datetime.utcnow(),
             event_data={},
-            journey_history=[]
+            journey_history=[],
         )
 
         result = validator.validate(context)
@@ -383,6 +425,7 @@ class TestWorkflowValidationManager:
 
     def test_register_validator(self, manager):
         """Test registering a validator"""
+
         def custom_func(ctx):
             return ValidationResult(True, ValidationSeverity.INFO, "OK", "OK")
 
@@ -390,7 +433,7 @@ class TestWorkflowValidationManager:
             validator_id="test_custom",
             name="Test Custom",
             description="Test",
-            validate_func=custom_func
+            validate_func=custom_func,
         )
         manager.register(validator)
 
@@ -398,6 +441,7 @@ class TestWorkflowValidationManager:
 
     def test_unregister_validator(self, manager):
         """Test unregistering a validator"""
+
         def custom_func(ctx):
             return ValidationResult(True, ValidationSeverity.INFO, "OK", "OK")
 
@@ -405,7 +449,7 @@ class TestWorkflowValidationManager:
             validator_id="removable",
             name="Removable",
             description="Test",
-            validate_func=custom_func
+            validate_func=custom_func,
         )
         manager.register(validator)
         result = manager.unregister("removable")
@@ -434,7 +478,7 @@ class TestWorkflowValidationManager:
             session_id=context.session_id,
             previous_stage=context.previous_stage,
             timestamp=context.timestamp,
-            journey_history=context.journey_history
+            journey_history=context.journey_history,
         )
 
         assert isinstance(valid, bool)
@@ -459,7 +503,7 @@ class TestWorkflowValidationManager:
             stage="EXIT",
             token_id="token",
             session_id="session",
-            journey_history=[]
+            journey_history=[],
         )
 
         assert len(pre_called) == 1
@@ -487,7 +531,7 @@ class TestStageValidatorAppliesTo:
             previous_stage="QUEUE_JOIN",
             timestamp=datetime.utcnow(),
             event_data={},
-            journey_history=[]
+            journey_history=[],
         )
 
         assert validator.applies_to(context) is True
@@ -503,7 +547,7 @@ class TestStageValidatorAppliesTo:
             previous_stage="SERVICE_START",
             timestamp=datetime.utcnow(),
             event_data={},
-            journey_history=[]
+            journey_history=[],
         )
 
         assert validator.applies_to(context) is False
@@ -520,7 +564,7 @@ class TestStageValidatorAppliesTo:
             previous_stage="QUEUE_JOIN",
             timestamp=datetime.utcnow(),
             event_data={},
-            journey_history=[]
+            journey_history=[],
         )
 
         assert validator.applies_to(context) is False
@@ -535,7 +579,7 @@ class TestConfigurationLoading:
             "workflow": {
                 "validators": [
                     {"id": "min_wait_time", "enabled": False},
-                    {"id": "duplicate_stage", "severity": "error"}
+                    {"id": "duplicate_stage", "severity": "error"},
                 ]
             }
         }

@@ -9,6 +9,7 @@ import logging
 import threading
 import time
 from typing import Callable, Optional
+
 from .gpio_manager import get_gpio_manager
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,9 @@ class WiFiSetupButton:
         if self._gpio.setup_input(self.gpio_pin, pull_up=True):
             logger.info(f"WiFi setup button enabled on GPIO {self.gpio_pin}")
         else:
-            logger.warning("Failed to setup WiFi button GPIO - button disabled")
+            logger.warning(
+                "Failed to setup WiFi button GPIO - button disabled"
+            )
             self.enabled = False
 
     def _start_monitoring(self):
@@ -78,7 +81,9 @@ class WiFiSetupButton:
             return
 
         self.running = True
-        self.monitor_thread = threading.Thread(target=self._monitor_button, daemon=True)
+        self.monitor_thread = threading.Thread(
+            target=self._monitor_button, daemon=True
+        )
         self.monitor_thread.start()
         logger.info("WiFi setup button monitoring started")
 
@@ -114,7 +119,9 @@ class WiFiSetupButton:
                     if not held_long_enough:
                         # Short press: enter WiFi setup mode
                         if elapsed < self.hold_time:
-                            logger.info("Button released - entering WiFi setup mode")
+                            logger.info(
+                                "Button released - entering WiFi setup mode"
+                            )
                             self._trigger_setup()
 
                 # Poll every 100ms when button not pressed
@@ -157,7 +164,9 @@ class WiFiSetupButton:
             if self.monitor_thread:
                 self.monitor_thread.join(timeout=2)
                 if self.monitor_thread.is_alive():
-                    logger.warning("WiFi button thread did not stop within timeout")
+                    logger.warning(
+                        "WiFi button thread did not stop within timeout"
+                    )
 
     def cleanup(self):
         """Cleanup GPIO on shutdown"""

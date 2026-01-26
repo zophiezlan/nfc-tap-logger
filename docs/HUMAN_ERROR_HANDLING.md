@@ -115,9 +115,11 @@ def _is_duplicate(self, token_id: str, stage: str, session_id: str, grace_minute
 ```
 
 **Thresholds:**
+
 >
-- >30 minutes: Flagged as anomaly
-- >120 minutes: High severity
+
+- > 30 minutes: Flagged as anomaly
+- > 120 minutes: High severity
 
 **Common Causes:**
 
@@ -145,9 +147,11 @@ def _is_duplicate(self, token_id: str, stage: str, session_id: str, grace_minute
 ```
 
 **Thresholds:**
+
 >
-- >45 minutes: Flagged
-- >90 minutes: High severity
+
+- > 45 minutes: Flagged
+- > 90 minutes: High severity
 
 **Common Causes:**
 
@@ -309,53 +313,61 @@ Add to your dashboard to display real-time errors:
 
 ```javascript
 // Fetch anomalies
-fetch('/api/control/anomalies')
+fetch("/api/control/anomalies")
   .then(response => response.json())
   .then(data => {
-    const { anomalies, summary } = data;
-    
+    const { anomalies, summary } = data
+
     // Display summary
-    console.log(`Total anomalies: ${summary.total_anomalies}`);
-    console.log(`High severity: ${summary.high_severity}`);
-    
+    console.log(`Total anomalies: ${summary.total_anomalies}`)
+    console.log(`High severity: ${summary.high_severity}`)
+
     // Show forgotten exit taps
     if (anomalies.forgotten_exit_taps.length > 0) {
-      alert(`${anomalies.forgotten_exit_taps.length} participants may have left without tapping exit!`);
+      alert(
+        `${anomalies.forgotten_exit_taps.length} participants may have left without tapping exit!`
+      )
     }
-  });
+  })
 ```
 
 ### Add Manual Event Form
 
 ```html
 <form id="manual-event-form">
-  <input name="token_id" placeholder="Token ID (e.g., 042)" required>
+  <input name="token_id" placeholder="Token ID (e.g., 042)" required />
   <select name="stage" required>
     <option value="QUEUE_JOIN">Queue Join</option>
     <option value="SERVICE_START">Service Start</option>
     <option value="EXIT">Exit</option>
   </select>
-  <input name="timestamp" type="datetime-local" required>
-  <input name="operator_id" placeholder="Your name/ID" required>
-  <textarea name="reason" placeholder="Why are you adding this event?" required></textarea>
+  <input name="timestamp" type="datetime-local" required />
+  <input name="operator_id" placeholder="Your name/ID" required />
+  <textarea
+    name="reason"
+    placeholder="Why are you adding this event?"
+    required
+  ></textarea>
   <button type="submit">Add Manual Event</button>
 </form>
 
 <script>
-document.getElementById('manual-event-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const data = Object.fromEntries(formData);
-  
-  const response = await fetch('/api/control/manual-event', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  
-  const result = await response.json();
-  alert(result.message);
-});
+  document
+    .getElementById("manual-event-form")
+    .addEventListener("submit", async e => {
+      e.preventDefault()
+      const formData = new FormData(e.target)
+      const data = Object.fromEntries(formData)
+
+      const response = await fetch("/api/control/manual-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+
+      const result = await response.json()
+      alert(result.message)
+    })
 </script>
 ```
 
@@ -371,17 +383,17 @@ Set up alerts for high-severity anomalies:
 def check_critical_anomalies():
     """Check for critical anomalies every 5 minutes"""
     anomalies = db.get_anomalies(session_id)
-    
+
     # Alert if >5 high-severity issues
     high_severity_count = sum(
         1 for category in anomalies.values()
         for item in category
         if item.get("severity") == "high"
     )
-    
+
     if high_severity_count > 5:
         send_alert(f"⚠️ {high_severity_count} critical anomalies detected!")
-        
+
     # Alert if >10 forgotten exit taps
     if len(anomalies["forgotten_exit_taps"]) > 10:
         send_alert(f"🚨 {len(anomalies['forgotten_exit_taps'])} people may have left without tapping exit!")
@@ -440,10 +452,10 @@ def _is_duplicate(self, token_id: str, stage: str, session_id: str, grace_minute
 def get_anomalies(self, session_id: str):
     # Forgotten exit taps (default: >30 min)
     WHERE q.timestamp < datetime('now', '-30 minutes')
-    
+
     # Stuck in service (default: >45 min)
     WHERE s.timestamp < datetime('now', '-45 minutes')
-    
+
     # Long service times (default: >2× median)
     WHERE st.service_minutes > (mc.median_service * 2)
 ```

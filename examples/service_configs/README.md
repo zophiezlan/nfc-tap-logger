@@ -206,11 +206,11 @@ Set thresholds based on your capacity and goals:
 
 Example for different service sizes:
 
-| Service Size | Queue Warning | Queue Critical | Wait Warning | Wait Critical |
-|--------------|---------------|----------------|--------------|---------------|
-| Small (< 10/hr) | 5 people | 10 people | 30 min | 60 min |
-| Medium (10-15/hr) | 10 people | 20 people | 45 min | 90 min |
-| Large (> 15/hr) | 15 people | 30 people | 60 min | 120 min |
+| Service Size      | Queue Warning | Queue Critical | Wait Warning | Wait Critical |
+| ----------------- | ------------- | -------------- | ------------ | ------------- |
+| Small (< 10/hr)   | 5 people      | 10 people      | 30 min       | 60 min        |
+| Medium (10-15/hr) | 10 people     | 20 people      | 45 min       | 90 min        |
+| Large (> 15/hr)   | 15 people     | 30 people      | 60 min       | 120 min       |
 
 ---
 
@@ -288,7 +288,7 @@ Reduce capacity during busy times when service may slow down:
 capacity:
   people_per_hour: 12
   multipliers:
-    peak_hours: 0.75  # Reduce to 9/hr during peak
+    peak_hours: 0.75 # Reduce to 9/hr during peak
   peak_hours:
     enabled: true
     ranges:

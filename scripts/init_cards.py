@@ -6,21 +6,22 @@ Writes sequential token IDs (001-100) to NTAG215 cards.
 Shows progress as cards are tapped.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import time
 import argparse
+import shutil
+import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
-import subprocess
-import shutil
-from tap_station.nfc_reader import NFCReader, MockNFCReader
+
 from tap_station.feedback import FeedbackController
 from tap_station.nfc_cleanup import cleanup_before_nfc_access
+from tap_station.nfc_reader import MockNFCReader, NFCReader
 
 
 class ErrorType:
@@ -125,7 +126,9 @@ class CardInitializer:
 
         # Statistics tracking
         self.initialized_cards = []
-        self.failed_cards = []  # List of dicts with token_id, error_type, error_msg
+        self.failed_cards = (
+            []
+        )  # List of dicts with token_id, error_type, error_msg
         self.duplicate_cards = []
         self.start_time = None
         self.retry_count = 0  # Track retry attempts
@@ -152,11 +155,15 @@ class CardInitializer:
             print(f"Warning: Could not load existing cards: {e}")
 
         if existing:
-            print(f"Loaded {len(existing)} existing card(s) from {self.mapping_file}")
+            print(
+                f"Loaded {len(existing)} existing card(s) from {self.mapping_file}"
+            )
 
         return existing
 
-    def _get_progress_bar(self, current: int, total: int, width: int = 30) -> str:
+    def _get_progress_bar(
+        self, current: int, total: int, width: int = 30
+    ) -> str:
         """Generate a text progress bar"""
         completed = self.current_id - self.start_id
         progress = completed / total if total > 0 else 0
@@ -206,7 +213,9 @@ class CardInitializer:
         )
 
         if self.auto_mode:
-            print(f"\nMode: AUTOMATIC (will proceed between cards automatically)")
+            print(
+                f"\nMode: AUTOMATIC (will proceed between cards automatically)"
+            )
             print(f"\nInstructions:")
             print(f"  1. Tap card on the NFC reader")
             print(f"  2. Wait for confirmation message")
@@ -237,7 +246,9 @@ class CardInitializer:
 
                 # Show progress
                 total_cards = self.end_id - self.start_id + 1
-                progress_bar = self._get_progress_bar(self.current_id, total_cards)
+                progress_bar = self._get_progress_bar(
+                    self.current_id, total_cards
+                )
                 stats = self._get_statistics()
                 print(f"\n{progress_bar}{stats}")
 
@@ -282,7 +293,9 @@ class CardInitializer:
             print("  ✗ TIMEOUT (no card detected)")
             if self.feedback:
                 self.feedback.error()
-            self._record_failure(token_id, ErrorType.TIMEOUT, "No card detected")
+            self._record_failure(
+                token_id, ErrorType.TIMEOUT, "No card detected"
+            )
             return
 
         uid, _ = result
@@ -291,7 +304,9 @@ class CardInitializer:
         # Check for duplicates
         if uid in self.existing_cards:
             existing_token = self.existing_cards[uid]["token_id"]
-            print(f"  ⚠ DUPLICATE! This card is already token ID {existing_token}")
+            print(
+                f"  ⚠ DUPLICATE! This card is already token ID {existing_token}"
+            )
             if self.feedback:
                 self.feedback.duplicate()
             self.duplicate_cards.append(
@@ -526,7 +541,9 @@ class CardInitializer:
         try:
             with open(temp_file, "w") as f:
                 f.write("token_id,uid,initialized_at\n")
-                for card in sorted(all_cards.values(), key=lambda x: x["token_id"]):
+                for card in sorted(
+                    all_cards.values(), key=lambda x: x["token_id"]
+                ):
                     timestamp = card.get("timestamp", "unknown")
                     f.write(f"{card['token_id']},{card['uid']},{timestamp}\n")
 
@@ -590,7 +607,9 @@ class CardInitializer:
         total_cards = self.end_id - self.start_id + 1
         completed = self.current_id - self.start_id
         progress_percent = int((completed / total_cards) * 100)
-        print(f"\nOverall progress: {completed}/{total_cards} ({progress_percent}%)")
+        print(
+            f"\nOverall progress: {completed}/{total_cards} ({progress_percent}%)"
+        )
 
         print(f"\nCard mapping saved to: {self.mapping_file}")
 
@@ -618,11 +637,17 @@ class CardInitializer:
                 f.write("Card Initialization Report\n")
                 f.write("=" * 60 + "\n\n")
 
-                f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Token ID Range: {self.start_id:03d} - {self.end_id:03d}\n")
+                f.write(
+                    f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                )
+                f.write(
+                    f"Token ID Range: {self.start_id:03d} - {self.end_id:03d}\n"
+                )
 
                 if self.start_time:
-                    elapsed = (datetime.now() - self.start_time).total_seconds()
+                    elapsed = (
+                        datetime.now() - self.start_time
+                    ).total_seconds()
                     elapsed_min = int(elapsed / 60)
                     elapsed_sec = int(elapsed % 60)
                     f.write(f"Total Time: {elapsed_min}m {elapsed_sec}s\n")
@@ -708,10 +733,14 @@ class CardInitializer:
                             "- Timeout errors: Check NFC reader position and card placement\n"
                         )
                     if ErrorType.IO_ERROR in error_groups:
-                        f.write("- I/O errors: Check I2C connection and power supply\n")
+                        f.write(
+                            "- I/O errors: Check I2C connection and power supply\n"
+                        )
                         f.write("  Run: sudo i2cdetect -y 1\n")
                     if ErrorType.CARD_REMOVED in error_groups:
-                        f.write("- Card removed early: Hold cards longer on reader\n")
+                        f.write(
+                            "- Card removed early: Hold cards longer on reader\n"
+                        )
 
                 if not self.failed_cards and not self.duplicate_cards:
                     f.write("All cards initialized successfully! ✓\n")
@@ -725,7 +754,9 @@ class CardInitializer:
 
 def main():
     """Entry point for card initialization"""
-    parser = argparse.ArgumentParser(description="Initialize NFC cards with token IDs")
+    parser = argparse.ArgumentParser(
+        description="Initialize NFC cards with token IDs"
+    )
     parser.add_argument(
         "--start", type=int, default=1, help="Starting token ID (default: 1)"
     )
@@ -744,7 +775,9 @@ def main():
         "--resume", action="store_true", help="Resume from last completed card"
     )
     parser.add_argument(
-        "--no-audio", action="store_true", help="Disable audio feedback (buzzer)"
+        "--no-audio",
+        action="store_true",
+        help="Disable audio feedback (buzzer)",
     )
     parser.add_argument(
         "--verify",
@@ -786,7 +819,9 @@ def main():
             print("\n⚠️  Could not prepare NFC reader for use")
             print("   Some issues may require manual intervention.")
             print()
-            response = input("Attempt to continue anyway? [y/N]: ").strip().lower()
+            response = (
+                input("Attempt to continue anyway? [y/N]: ").strip().lower()
+            )
             if response not in ("y", "yes"):
                 print("\nAborting. Please resolve the issues above.")
                 print("For help, see docs/TROUBLESHOOTING.md")
@@ -803,7 +838,10 @@ def main():
                     timeout=5,
                 )
                 # If service is enabled, we should restart it when done
-                if result.returncode == 0 and result.stdout.strip() == "enabled":
+                if (
+                    result.returncode == 0
+                    and result.stdout.strip() == "enabled"
+                ):
                     service_was_running = True
             except Exception:
                 pass

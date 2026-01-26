@@ -30,6 +30,7 @@ import threading
 import time
 from enum import Enum
 from typing import Optional
+
 from .gpio_manager import get_gpio_manager
 
 logger = logging.getLogger(__name__)
@@ -109,11 +110,15 @@ class StatusLEDManager:
 
         # Setup output pins
         success = True
-        success &= self._gpio.setup_output(self.gpio_green, initial_state=False)
+        success &= self._gpio.setup_output(
+            self.gpio_green, initial_state=False
+        )
         success &= self._gpio.setup_output(self.gpio_red, initial_state=False)
 
         if self.gpio_blue:
-            success &= self._gpio.setup_output(self.gpio_blue, initial_state=False)
+            success &= self._gpio.setup_output(
+                self.gpio_blue, initial_state=False
+            )
             logger.info(
                 f"Status LEDs enabled: Green={self.gpio_green}, Red={self.gpio_red}, Blue={self.gpio_blue}"
             )
@@ -193,11 +198,17 @@ class StatusLEDManager:
             elif pattern == LEDPattern.SOLID:
                 self._set_leds(True, False, False)
 
-            elif pattern == LEDPattern.READY or pattern == LEDPattern.WIFI_CONNECTED:
+            elif (
+                pattern == LEDPattern.READY
+                or pattern == LEDPattern.WIFI_CONNECTED
+            ):
                 # Green solid
                 self._set_leds(True, False, False)
 
-            elif pattern == LEDPattern.ERROR or pattern == LEDPattern.WIFI_FAILED:
+            elif (
+                pattern == LEDPattern.ERROR
+                or pattern == LEDPattern.WIFI_FAILED
+            ):
                 # Red fast blink
                 while self._running:
                     self._set_leds(False, True, False)
@@ -246,7 +257,10 @@ class StatusLEDManager:
                     self._set_leds(False, True, False)
                     time.sleep(0.2)
 
-            elif pattern == LEDPattern.FAILOVER_MODE or pattern == LEDPattern.DUAL_MODE:
+            elif (
+                pattern == LEDPattern.FAILOVER_MODE
+                or pattern == LEDPattern.DUAL_MODE
+            ):
                 # Yellow blink (warning state)
                 while self._running:
                     self._set_leds(True, True, False)  # Yellow

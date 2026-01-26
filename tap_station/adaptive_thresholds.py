@@ -22,11 +22,11 @@ Service Design Principles:
 """
 
 import logging
-from datetime import datetime, timedelta, time
-from typing import Dict, List, Optional, Any, Tuple, Callable
-from dataclasses import dataclass, field
-from enum import Enum
 import sqlite3
+from dataclasses import dataclass, field
+from datetime import datetime, time, timedelta
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .datetime_utils import utc_now
 
@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 class ThresholdType(Enum):
     """Types of thresholds"""
+
     QUEUE_WARNING = "queue_warning"
     QUEUE_CRITICAL = "queue_critical"
     WAIT_WARNING = "wait_warning"
@@ -49,6 +50,7 @@ class ThresholdType(Enum):
 
 class AdjustmentReason(Enum):
     """Reasons for threshold adjustments"""
+
     PEAK_HOURS = "peak_hours"
     OFF_PEAK = "off_peak"
     HIGH_DEMAND = "high_demand"
@@ -62,9 +64,12 @@ class AdjustmentReason(Enum):
 @dataclass
 class TimeWindow:
     """Represents a time window for threshold adjustments"""
+
     start: time
     end: time
-    days: List[int] = field(default_factory=lambda: list(range(7)))  # 0=Monday, 6=Sunday
+    days: List[int] = field(
+        default_factory=lambda: list(range(7))
+    )  # 0=Monday, 6=Sunday
     label: str = ""
 
     def contains(self, dt: datetime) -> bool:
@@ -86,13 +91,14 @@ class TimeWindow:
             "start": self.start.isoformat(),
             "end": self.end.isoformat(),
             "days": self.days,
-            "label": self.label
+            "label": self.label,
         }
 
 
 @dataclass
 class ThresholdAdjustment:
     """An adjustment to a threshold"""
+
     threshold_type: ThresholdType
     base_value: float
     adjusted_value: float
@@ -111,14 +117,17 @@ class ThresholdAdjustment:
             "multiplier": self.multiplier,
             "reason": self.reason.value,
             "explanation": self.explanation,
-            "active_until": self.active_until.isoformat() if self.active_until else None,
-            "priority": self.priority
+            "active_until": (
+                self.active_until.isoformat() if self.active_until else None
+            ),
+            "priority": self.priority,
         }
 
 
 @dataclass
 class ThresholdRule:
     """A rule for adjusting thresholds"""
+
     id: str
     name: str
     description: str
@@ -147,6 +156,7 @@ class ThresholdRule:
 @dataclass
 class ThresholdConfig:
     """Configuration for a threshold"""
+
     threshold_type: ThresholdType
     base_value: float
     min_value: float
@@ -166,51 +176,91 @@ class AdaptiveThresholdManager:
     # Default base thresholds
     DEFAULT_THRESHOLDS = {
         ThresholdType.QUEUE_WARNING: ThresholdConfig(
-            ThresholdType.QUEUE_WARNING, 10, 5, 30, "people",
-            "Queue length warning threshold"
+            ThresholdType.QUEUE_WARNING,
+            10,
+            5,
+            30,
+            "people",
+            "Queue length warning threshold",
         ),
         ThresholdType.QUEUE_CRITICAL: ThresholdConfig(
-            ThresholdType.QUEUE_CRITICAL, 20, 10, 50, "people",
-            "Queue length critical threshold"
+            ThresholdType.QUEUE_CRITICAL,
+            20,
+            10,
+            50,
+            "people",
+            "Queue length critical threshold",
         ),
         ThresholdType.WAIT_WARNING: ThresholdConfig(
-            ThresholdType.WAIT_WARNING, 30, 15, 90, "minutes",
-            "Wait time warning threshold"
+            ThresholdType.WAIT_WARNING,
+            30,
+            15,
+            90,
+            "minutes",
+            "Wait time warning threshold",
         ),
         ThresholdType.WAIT_CRITICAL: ThresholdConfig(
-            ThresholdType.WAIT_CRITICAL, 60, 30, 120, "minutes",
-            "Wait time critical threshold"
+            ThresholdType.WAIT_CRITICAL,
+            60,
+            30,
+            120,
+            "minutes",
+            "Wait time critical threshold",
         ),
         ThresholdType.THROUGHPUT_WARNING: ThresholdConfig(
-            ThresholdType.THROUGHPUT_WARNING, 6, 3, 20, "per_hour",
-            "Minimum throughput warning threshold"
+            ThresholdType.THROUGHPUT_WARNING,
+            6,
+            3,
+            20,
+            "per_hour",
+            "Minimum throughput warning threshold",
         ),
         ThresholdType.THROUGHPUT_CRITICAL: ThresholdConfig(
-            ThresholdType.THROUGHPUT_CRITICAL, 3, 1, 10, "per_hour",
-            "Minimum throughput critical threshold"
+            ThresholdType.THROUGHPUT_CRITICAL,
+            3,
+            1,
+            10,
+            "per_hour",
+            "Minimum throughput critical threshold",
         ),
         ThresholdType.INACTIVITY_WARNING: ThresholdConfig(
-            ThresholdType.INACTIVITY_WARNING, 10, 5, 30, "minutes",
-            "Service inactivity warning threshold"
+            ThresholdType.INACTIVITY_WARNING,
+            10,
+            5,
+            30,
+            "minutes",
+            "Service inactivity warning threshold",
         ),
         ThresholdType.INACTIVITY_CRITICAL: ThresholdConfig(
-            ThresholdType.INACTIVITY_CRITICAL, 20, 10, 60, "minutes",
-            "Service inactivity critical threshold"
+            ThresholdType.INACTIVITY_CRITICAL,
+            20,
+            10,
+            60,
+            "minutes",
+            "Service inactivity critical threshold",
         ),
         ThresholdType.SERVICE_TIME_WARNING: ThresholdConfig(
-            ThresholdType.SERVICE_TIME_WARNING, 15, 5, 45, "minutes",
-            "Individual service time warning threshold"
+            ThresholdType.SERVICE_TIME_WARNING,
+            15,
+            5,
+            45,
+            "minutes",
+            "Individual service time warning threshold",
         ),
         ThresholdType.SERVICE_TIME_CRITICAL: ThresholdConfig(
-            ThresholdType.SERVICE_TIME_CRITICAL, 30, 15, 90, "minutes",
-            "Individual service time critical threshold"
+            ThresholdType.SERVICE_TIME_CRITICAL,
+            30,
+            15,
+            90,
+            "minutes",
+            "Individual service time critical threshold",
         ),
     }
 
     def __init__(
         self,
         conn: Optional[sqlite3.Connection] = None,
-        base_thresholds: Optional[Dict[ThresholdType, float]] = None
+        base_thresholds: Optional[Dict[ThresholdType, float]] = None,
     ):
         """
         Initialize the adaptive threshold manager.
@@ -223,7 +273,9 @@ class AdaptiveThresholdManager:
         self._configs = self.DEFAULT_THRESHOLDS.copy()
         self._rules: List[ThresholdRule] = []
         self._manual_overrides: Dict[ThresholdType, ThresholdAdjustment] = {}
-        self._current_adjustments: Dict[ThresholdType, ThresholdAdjustment] = {}
+        self._current_adjustments: Dict[ThresholdType, ThresholdAdjustment] = (
+            {}
+        )
 
         # Apply custom base thresholds
         if base_thresholds:
@@ -237,82 +289,95 @@ class AdaptiveThresholdManager:
     def _load_default_rules(self) -> None:
         """Load the default threshold adjustment rules"""
         # Peak hours rule - more lenient thresholds
-        self._rules.append(ThresholdRule(
-            id="peak_hours",
-            name="Peak Hours Adjustment",
-            description="Increase thresholds during peak demand hours",
-            threshold_types=[
-                ThresholdType.QUEUE_WARNING,
-                ThresholdType.QUEUE_CRITICAL,
-                ThresholdType.WAIT_WARNING,
-                ThresholdType.WAIT_CRITICAL,
-            ],
-            multiplier=1.3,
-            condition=lambda dt, ctx: True,  # Time window handles the condition
-            reason=AdjustmentReason.PEAK_HOURS,
-            priority=10,
-            time_windows=[
-                TimeWindow(time(20, 0), time(23, 59), label="Evening peak"),
-                TimeWindow(time(14, 0), time(18, 0), label="Afternoon peak"),
-            ]
-        ))
+        self._rules.append(
+            ThresholdRule(
+                id="peak_hours",
+                name="Peak Hours Adjustment",
+                description="Increase thresholds during peak demand hours",
+                threshold_types=[
+                    ThresholdType.QUEUE_WARNING,
+                    ThresholdType.QUEUE_CRITICAL,
+                    ThresholdType.WAIT_WARNING,
+                    ThresholdType.WAIT_CRITICAL,
+                ],
+                multiplier=1.3,
+                condition=lambda dt, ctx: True,  # Time window handles the condition
+                reason=AdjustmentReason.PEAK_HOURS,
+                priority=10,
+                time_windows=[
+                    TimeWindow(
+                        time(20, 0), time(23, 59), label="Evening peak"
+                    ),
+                    TimeWindow(
+                        time(14, 0), time(18, 0), label="Afternoon peak"
+                    ),
+                ],
+            )
+        )
 
         # Off-peak rule - stricter thresholds
-        self._rules.append(ThresholdRule(
-            id="off_peak",
-            name="Off-Peak Adjustment",
-            description="Decrease thresholds during quiet periods",
-            threshold_types=[
-                ThresholdType.QUEUE_WARNING,
-                ThresholdType.QUEUE_CRITICAL,
-                ThresholdType.INACTIVITY_WARNING,
-                ThresholdType.INACTIVITY_CRITICAL,
-            ],
-            multiplier=0.8,
-            condition=lambda dt, ctx: True,
-            reason=AdjustmentReason.OFF_PEAK,
-            priority=10,
-            time_windows=[
-                TimeWindow(time(10, 0), time(13, 0), label="Morning quiet"),
-            ]
-        ))
+        self._rules.append(
+            ThresholdRule(
+                id="off_peak",
+                name="Off-Peak Adjustment",
+                description="Decrease thresholds during quiet periods",
+                threshold_types=[
+                    ThresholdType.QUEUE_WARNING,
+                    ThresholdType.QUEUE_CRITICAL,
+                    ThresholdType.INACTIVITY_WARNING,
+                    ThresholdType.INACTIVITY_CRITICAL,
+                ],
+                multiplier=0.8,
+                condition=lambda dt, ctx: True,
+                reason=AdjustmentReason.OFF_PEAK,
+                priority=10,
+                time_windows=[
+                    TimeWindow(
+                        time(10, 0), time(13, 0), label="Morning quiet"
+                    ),
+                ],
+            )
+        )
 
         # High demand context rule
-        self._rules.append(ThresholdRule(
-            id="high_demand",
-            name="High Demand Adjustment",
-            description="Adjust thresholds when demand exceeds normal levels",
-            threshold_types=[
-                ThresholdType.QUEUE_WARNING,
-                ThresholdType.QUEUE_CRITICAL,
-                ThresholdType.WAIT_WARNING,
-                ThresholdType.WAIT_CRITICAL,
-            ],
-            multiplier=1.25,
-            condition=lambda dt, ctx: ctx.get("demand_level", "normal") == "high",
-            reason=AdjustmentReason.HIGH_DEMAND,
-            priority=20
-        ))
+        self._rules.append(
+            ThresholdRule(
+                id="high_demand",
+                name="High Demand Adjustment",
+                description="Adjust thresholds when demand exceeds normal levels",
+                threshold_types=[
+                    ThresholdType.QUEUE_WARNING,
+                    ThresholdType.QUEUE_CRITICAL,
+                    ThresholdType.WAIT_WARNING,
+                    ThresholdType.WAIT_CRITICAL,
+                ],
+                multiplier=1.25,
+                condition=lambda dt, ctx: ctx.get("demand_level", "normal")
+                == "high",
+                reason=AdjustmentReason.HIGH_DEMAND,
+                priority=20,
+            )
+        )
 
         # Low staffing rule
-        self._rules.append(ThresholdRule(
-            id="low_staffing",
-            name="Low Staffing Adjustment",
-            description="Adjust thresholds when fewer staff are available",
-            threshold_types=[
-                ThresholdType.THROUGHPUT_WARNING,
-                ThresholdType.THROUGHPUT_CRITICAL,
-            ],
-            multiplier=0.7,
-            condition=lambda dt, ctx: ctx.get("staff_count", 2) < 2,
-            reason=AdjustmentReason.STAFFING_LEVEL,
-            priority=25
-        ))
+        self._rules.append(
+            ThresholdRule(
+                id="low_staffing",
+                name="Low Staffing Adjustment",
+                description="Adjust thresholds when fewer staff are available",
+                threshold_types=[
+                    ThresholdType.THROUGHPUT_WARNING,
+                    ThresholdType.THROUGHPUT_CRITICAL,
+                ],
+                multiplier=0.7,
+                condition=lambda dt, ctx: ctx.get("staff_count", 2) < 2,
+                reason=AdjustmentReason.STAFFING_LEVEL,
+                priority=25,
+            )
+        )
 
     def configure_base_threshold(
-        self,
-        threshold_type: ThresholdType,
-        value: float
+        self, threshold_type: ThresholdType, value: float
     ) -> None:
         """Configure a base threshold value"""
         if threshold_type in self._configs:
@@ -320,7 +385,9 @@ class AdaptiveThresholdManager:
             # Clamp to valid range
             value = max(config.min_value, min(config.max_value, value))
             config.base_value = value
-            logger.info(f"Base threshold {threshold_type.value} set to {value}")
+            logger.info(
+                f"Base threshold {threshold_type.value} set to {value}"
+            )
 
     def add_rule(self, rule: ThresholdRule) -> None:
         """Add a custom threshold adjustment rule"""
@@ -342,7 +409,7 @@ class AdaptiveThresholdManager:
         threshold_type: ThresholdType,
         value: float,
         duration_minutes: Optional[int] = None,
-        reason: str = ""
+        reason: str = "",
     ) -> ThresholdAdjustment:
         """
         Set a manual override for a threshold.
@@ -368,11 +435,13 @@ class AdaptiveThresholdManager:
             threshold_type=threshold_type,
             base_value=config.base_value,
             adjusted_value=value,
-            multiplier=value / config.base_value if config.base_value > 0 else 1,
+            multiplier=(
+                value / config.base_value if config.base_value > 0 else 1
+            ),
             reason=AdjustmentReason.MANUAL_OVERRIDE,
             explanation=reason or f"Manual override to {value} {config.unit}",
             active_until=active_until,
-            priority=100  # Highest priority
+            priority=100,  # Highest priority
         )
 
         self._manual_overrides[threshold_type] = adjustment
@@ -390,7 +459,7 @@ class AdaptiveThresholdManager:
     def get_threshold(
         self,
         threshold_type: ThresholdType,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[float, ThresholdAdjustment]:
         """
         Get the current effective threshold value.
@@ -420,7 +489,8 @@ class AdaptiveThresholdManager:
 
         # Find applicable rules
         applicable_rules = [
-            r for r in self._rules
+            r
+            for r in self._rules
             if threshold_type in r.threshold_types and r.evaluate(now, context)
         ]
 
@@ -432,7 +502,7 @@ class AdaptiveThresholdManager:
                 adjusted_value=config.base_value,
                 multiplier=1.0,
                 reason=AdjustmentReason.SYSTEM_DEFAULT,
-                explanation=f"Base {config.description.lower()}"
+                explanation=f"Base {config.description.lower()}",
             )
             return config.base_value, adjustment
 
@@ -441,7 +511,9 @@ class AdaptiveThresholdManager:
         adjusted_value = config.base_value * best_rule.multiplier
 
         # Clamp to valid range
-        adjusted_value = max(config.min_value, min(config.max_value, adjusted_value))
+        adjusted_value = max(
+            config.min_value, min(config.max_value, adjusted_value)
+        )
 
         adjustment = ThresholdAdjustment(
             threshold_type=threshold_type,
@@ -450,15 +522,14 @@ class AdaptiveThresholdManager:
             multiplier=best_rule.multiplier,
             reason=best_rule.reason,
             explanation=f"{best_rule.name}: {best_rule.description}",
-            priority=best_rule.priority
+            priority=best_rule.priority,
         )
 
         self._current_adjustments[threshold_type] = adjustment
         return adjusted_value, adjustment
 
     def get_all_thresholds(
-        self,
-        context: Optional[Dict[str, Any]] = None
+        self, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Dict[str, Any]]:
         """
         Get all current threshold values with their adjustments.
@@ -478,14 +549,14 @@ class AdaptiveThresholdManager:
                 "base_value": config.base_value,
                 "unit": config.unit,
                 "description": config.description,
-                "adjustment": adjustment.to_dict()
+                "adjustment": adjustment.to_dict(),
             }
         return result
 
     def get_threshold_explanation(
         self,
         threshold_type: ThresholdType,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Get a human-readable explanation of the current threshold.
@@ -515,7 +586,7 @@ class AdaptiveThresholdManager:
         self,
         threshold_type: ThresholdType,
         current_value: float,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Check if a value exceeds a threshold.
@@ -528,7 +599,9 @@ class AdaptiveThresholdManager:
         Returns:
             Check result with details
         """
-        threshold_value, adjustment = self.get_threshold(threshold_type, context)
+        threshold_value, adjustment = self.get_threshold(
+            threshold_type, context
+        )
         config = self._configs[threshold_type]
 
         # For throughput, we check if value is BELOW threshold
@@ -547,7 +620,9 @@ class AdaptiveThresholdManager:
             "unit": config.unit,
             "threshold_type": threshold_type.value,
             "adjustment": adjustment.to_dict(),
-            "explanation": self.get_threshold_explanation(threshold_type, context)
+            "explanation": self.get_threshold_explanation(
+                threshold_type, context
+            ),
         }
 
     def add_time_window_rule(
@@ -559,7 +634,7 @@ class AdaptiveThresholdManager:
         start_time: time,
         end_time: time,
         days: Optional[List[int]] = None,
-        reason: AdjustmentReason = AdjustmentReason.PEAK_HOURS
+        reason: AdjustmentReason = AdjustmentReason.PEAK_HOURS,
     ) -> ThresholdRule:
         """
         Convenience method to add a time-window based rule.
@@ -581,7 +656,7 @@ class AdaptiveThresholdManager:
             start=start_time,
             end=end_time,
             days=days or list(range(7)),
-            label=f"{start_time.strftime('%H:%M')}-{end_time.strftime('%H:%M')}"
+            label=f"{start_time.strftime('%H:%M')}-{end_time.strftime('%H:%M')}",
         )
 
         rule = ThresholdRule(
@@ -593,15 +668,14 @@ class AdaptiveThresholdManager:
             condition=lambda dt, ctx: True,
             reason=reason,
             priority=15,
-            time_windows=[window]
+            time_windows=[window],
         )
 
         self.add_rule(rule)
         return rule
 
     def get_active_rules(
-        self,
-        context: Optional[Dict[str, Any]] = None
+        self, context: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
         Get list of currently active rules.
@@ -618,21 +692,23 @@ class AdaptiveThresholdManager:
         active = []
         for rule in self._rules:
             if rule.evaluate(now, context):
-                active.append({
-                    "id": rule.id,
-                    "name": rule.name,
-                    "description": rule.description,
-                    "multiplier": rule.multiplier,
-                    "reason": rule.reason.value,
-                    "affected_thresholds": [t.value for t in rule.threshold_types]
-                })
+                active.append(
+                    {
+                        "id": rule.id,
+                        "name": rule.name,
+                        "description": rule.description,
+                        "multiplier": rule.multiplier,
+                        "reason": rule.reason.value,
+                        "affected_thresholds": [
+                            t.value for t in rule.threshold_types
+                        ],
+                    }
+                )
 
         return active
 
     def learn_from_historical(
-        self,
-        session_id: str,
-        lookback_hours: int = 168  # 1 week
+        self, session_id: str, lookback_hours: int = 168  # 1 week
     ) -> List[ThresholdRule]:
         """
         Analyze historical data to suggest threshold adjustments.
@@ -651,7 +727,8 @@ class AdaptiveThresholdManager:
 
         try:
             # Analyze hourly patterns
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 SELECT
                     strftime('%H', timestamp) as hour,
                     strftime('%w', timestamp) as day_of_week,
@@ -662,21 +739,26 @@ class AdaptiveThresholdManager:
                     AND datetime(timestamp) > datetime('now', '-' || ? || ' hours')
                 GROUP BY strftime('%H', timestamp), strftime('%w', timestamp)
                 HAVING COUNT(*) > 5
-            """, (session_id, lookback_hours))
+            """,
+                (session_id, lookback_hours),
+            )
 
             hourly_data = cursor.fetchall()
 
             # Find consistent peak hours
             if hourly_data:
-                avg_events = sum(r["events"] for r in hourly_data) / len(hourly_data)
+                avg_events = sum(r["events"] for r in hourly_data) / len(
+                    hourly_data
+                )
                 peak_hours = [
-                    r for r in hourly_data
-                    if r["events"] > avg_events * 1.5
+                    r for r in hourly_data if r["events"] > avg_events * 1.5
                 ]
 
                 if len(peak_hours) >= 3:
                     # Create rule for identified peak hours
-                    peak_hour_times = list(set(int(r["hour"]) for r in peak_hours))
+                    peak_hour_times = list(
+                        set(int(r["hour"]) for r in peak_hours)
+                    )
                     peak_hour_times.sort()
 
                     # Group consecutive hours
@@ -711,9 +793,9 @@ class AdaptiveThresholdManager:
                                 TimeWindow(
                                     time(group[0], 0),
                                     time(group[-1], 59),
-                                    label=f"Historical peak {group[0]:02d}:00-{group[-1]:02d}:59"
+                                    label=f"Historical peak {group[0]:02d}:00-{group[-1]:02d}:59",
                                 )
-                            ]
+                            ],
                         )
                         suggested_rules.append(rule)
 
@@ -735,6 +817,7 @@ class AdaptiveThresholdManager:
 # Convenience Functions for Common Threshold Types
 # =============================================================================
 
+
 class ThresholdChecker:
     """Convenience class for checking multiple thresholds"""
 
@@ -742,9 +825,7 @@ class ThresholdChecker:
         self._manager = manager
 
     def check_queue(
-        self,
-        queue_size: int,
-        context: Optional[Dict[str, Any]] = None
+        self, queue_size: int, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Check queue-related thresholds"""
         warning = self._manager.check_threshold(
@@ -758,13 +839,15 @@ class ThresholdChecker:
             "queue_size": queue_size,
             "warning": warning,
             "critical": critical,
-            "status": "critical" if critical["exceeded"] else ("warning" if warning["exceeded"] else "ok")
+            "status": (
+                "critical"
+                if critical["exceeded"]
+                else ("warning" if warning["exceeded"] else "ok")
+            ),
         }
 
     def check_wait_time(
-        self,
-        wait_minutes: float,
-        context: Optional[Dict[str, Any]] = None
+        self, wait_minutes: float, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Check wait time thresholds"""
         warning = self._manager.check_threshold(
@@ -778,13 +861,17 @@ class ThresholdChecker:
             "wait_minutes": wait_minutes,
             "warning": warning,
             "critical": critical,
-            "status": "critical" if critical["exceeded"] else ("warning" if warning["exceeded"] else "ok")
+            "status": (
+                "critical"
+                if critical["exceeded"]
+                else ("warning" if warning["exceeded"] else "ok")
+            ),
         }
 
     def check_all(
         self,
         metrics: Dict[str, float],
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Check all relevant thresholds against provided metrics.
@@ -802,34 +889,52 @@ class ThresholdChecker:
             results["queue"] = self.check_queue(metrics["queue_size"], context)
 
         if "wait_time" in metrics:
-            results["wait_time"] = self.check_wait_time(metrics["wait_time"], context)
+            results["wait_time"] = self.check_wait_time(
+                metrics["wait_time"], context
+            )
 
         if "throughput" in metrics:
             warning = self._manager.check_threshold(
-                ThresholdType.THROUGHPUT_WARNING, metrics["throughput"], context
+                ThresholdType.THROUGHPUT_WARNING,
+                metrics["throughput"],
+                context,
             )
             critical = self._manager.check_threshold(
-                ThresholdType.THROUGHPUT_CRITICAL, metrics["throughput"], context
+                ThresholdType.THROUGHPUT_CRITICAL,
+                metrics["throughput"],
+                context,
             )
             results["throughput"] = {
                 "throughput": metrics["throughput"],
                 "warning": warning,
                 "critical": critical,
-                "status": "critical" if critical["exceeded"] else ("warning" if warning["exceeded"] else "ok")
+                "status": (
+                    "critical"
+                    if critical["exceeded"]
+                    else ("warning" if warning["exceeded"] else "ok")
+                ),
             }
 
         if "inactivity_minutes" in metrics:
             warning = self._manager.check_threshold(
-                ThresholdType.INACTIVITY_WARNING, metrics["inactivity_minutes"], context
+                ThresholdType.INACTIVITY_WARNING,
+                metrics["inactivity_minutes"],
+                context,
             )
             critical = self._manager.check_threshold(
-                ThresholdType.INACTIVITY_CRITICAL, metrics["inactivity_minutes"], context
+                ThresholdType.INACTIVITY_CRITICAL,
+                metrics["inactivity_minutes"],
+                context,
             )
             results["inactivity"] = {
                 "inactivity_minutes": metrics["inactivity_minutes"],
                 "warning": warning,
                 "critical": critical,
-                "status": "critical" if critical["exceeded"] else ("warning" if warning["exceeded"] else "ok")
+                "status": (
+                    "critical"
+                    if critical["exceeded"]
+                    else ("warning" if warning["exceeded"] else "ok")
+                ),
             }
 
         # Calculate overall status
@@ -853,7 +958,7 @@ _threshold_manager: Optional[AdaptiveThresholdManager] = None
 
 
 def get_threshold_manager(
-    conn: Optional[sqlite3.Connection] = None
+    conn: Optional[sqlite3.Connection] = None,
 ) -> AdaptiveThresholdManager:
     """Get or create the global threshold manager"""
     global _threshold_manager
@@ -863,7 +968,7 @@ def get_threshold_manager(
 
 
 def get_threshold_checker(
-    conn: Optional[sqlite3.Connection] = None
+    conn: Optional[sqlite3.Connection] = None,
 ) -> ThresholdChecker:
     """Get a threshold checker using the global manager"""
     return ThresholdChecker(get_threshold_manager(conn))

@@ -100,14 +100,14 @@ curl http://station1.local:8080/health
 
 ```javascript
 // Example: Web NFC API
-const ndef = new NDEFReader();
-await ndef.scan();
+const ndef = new NDEFReader()
+await ndef.scan()
 ndef.addEventListener("reading", ({ serialNumber }) => {
   fetch("/api/log-event", {
     method: "POST",
     body: JSON.stringify({ uid: serialNumber }),
-  });
-});
+  })
+})
 ```
 
 **Effort:** 5 days for basic PWA

@@ -9,9 +9,9 @@ Verify that all hardware components are working:
 - Power/battery status
 """
 
-import sys
 import os
 import subprocess
+import sys
 import time
 
 # Add parent directory to path
@@ -40,7 +40,9 @@ def check_i2c():
     print_header("I2C Bus Check")
 
     # Check if I2C device exists
-    i2c_device_exists = os.path.exists("/dev/i2c-1") or os.path.exists("/dev/i2c-0")
+    i2c_device_exists = os.path.exists("/dev/i2c-1") or os.path.exists(
+        "/dev/i2c-0"
+    )
 
     if not i2c_device_exists:
         print_result("I2C device exists", False, "/dev/i2c-1 not found")
@@ -174,7 +176,9 @@ def check_nfc_reader():
 
         if result:
             uid, token_id = result
-            print_result("Card read successful", True, f"UID: {uid}, Token: {token_id}")
+            print_result(
+                "Card read successful", True, f"UID: {uid}, Token: {token_id}"
+            )
             return True
         else:
             print_result("Card read", False, "No card detected within timeout")
@@ -193,7 +197,10 @@ def check_nfc_reader():
         print_result("NFC reader test", False, error_msg)
 
         # Provide specific guidance for common errors
-        if "No such file or directory" in error_msg and "/dev/i2c" in error_msg:
+        if (
+            "No such file or directory" in error_msg
+            and "/dev/i2c" in error_msg
+        ):
             print("\n  ⚠ I2C device not accessible")
             print("  Run: bash scripts/enable_i2c.sh")
         elif "Failed to communicate with PN532" in error_msg:
@@ -249,7 +256,9 @@ def check_gpio():
         GPIO.output(BUZZER_PIN, GPIO.HIGH)
         time.sleep(0.2)
         GPIO.output(BUZZER_PIN, GPIO.LOW)
-        buzzer_ok = input("Did you hear a beep? (y/n): ").strip().lower() == "y"
+        buzzer_ok = (
+            input("Did you hear a beep? (y/n): ").strip().lower() == "y"
+        )
         print_result("Buzzer (GPIO 17)", buzzer_ok)
 
         # Test success pattern
@@ -299,7 +308,9 @@ def check_battery():
         throttled = result.stdout.strip().split("=")[1]
         no_throttle = throttled == "0x0"
 
-        print_result("No under-voltage detected", no_throttle, f"Status: {throttled}")
+        print_result(
+            "No under-voltage detected", no_throttle, f"Status: {throttled}"
+        )
 
         if not no_throttle:
             print("  Under-voltage detected!")

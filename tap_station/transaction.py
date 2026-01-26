@@ -9,12 +9,12 @@ atomic database operations. It supports:
 - Transaction isolation levels
 """
 
-import sqlite3
-import logging
 import functools
+import logging
+import sqlite3
 from contextlib import contextmanager
-from typing import Optional, Callable, TypeVar, Any, Generator
 from enum import Enum
+from typing import Any, Callable, Generator, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,9 @@ class TransactionManager:
             if self._transaction_depth == 0:
                 # Start new transaction
                 self._conn.execute(f"BEGIN {isolation.value}")
-                logger.debug(f"Started transaction with isolation {isolation.value}")
+                logger.debug(
+                    f"Started transaction with isolation {isolation.value}"
+                )
             else:
                 # Create savepoint for nested transaction
                 self._savepoint_counter += 1
@@ -161,7 +163,9 @@ class TransactionManager:
 
             try:
                 if savepoint_name:
-                    self._conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+                    self._conn.execute(
+                        f"ROLLBACK TO SAVEPOINT {savepoint_name}"
+                    )
                     logger.debug(f"Rolled back to savepoint {savepoint_name}")
                 else:
                     self._conn.rollback()
@@ -176,7 +180,9 @@ class TransactionManager:
             except sqlite3.Error as rollback_e:
                 logger.error(f"Rollback failed: {rollback_e}")
 
-            raise TransactionError(f"Transaction failed: {str(e)}", cause=e) from e
+            raise TransactionError(
+                f"Transaction failed: {str(e)}", cause=e
+            ) from e
 
     @contextmanager
     def atomic(self) -> Generator[sqlite3.Connection, None, None]:
@@ -239,7 +245,9 @@ def with_transaction(
                         )
                         time.sleep(retry_delay_ms / 1000)
                     else:
-                        logger.error(f"Transaction failed after {max_retries} attempts")
+                        logger.error(
+                            f"Transaction failed after {max_retries} attempts"
+                        )
 
             raise last_error
 

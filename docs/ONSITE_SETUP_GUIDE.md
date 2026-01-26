@@ -63,7 +63,7 @@ This installs:
 
      failover:
        enabled: true
-       peer_hostname: "tapstation-exit.local"  # For QUEUE station
+       peer_hostname: "tapstation-exit.local" # For QUEUE station
        # peer_hostname: "tapstation-queue.local"  # For EXIT station
    ```
 
@@ -214,12 +214,12 @@ Exit Station:   http://tapstation-exit.local:8080
 
 The system automatically generates hostnames from `device_id`:
 
-| device_id        | Hostname               |
-|------------------|------------------------|
-| `station1`       | `tapstation-station1`  |
-| `queue-join`     | `tapstation-queue`     |
-| `exit`           | `tapstation-exit`      |
-| `service-start`  | `tapstation-service`   |
+| device_id       | Hostname              |
+| --------------- | --------------------- |
+| `station1`      | `tapstation-station1` |
+| `queue-join`    | `tapstation-queue`    |
+| `exit`          | `tapstation-exit`     |
+| `service-start` | `tapstation-service`  |
 
 ### Troubleshooting mDNS
 
@@ -301,8 +301,8 @@ onsite:
   failover:
     enabled: true
     peer_hostname: "tapstation-exit.local"
-    check_interval: 30          # Seconds between checks
-    failure_threshold: 2        # Failures before failover
+    check_interval: 30 # Seconds between checks
+    failure_threshold: 2 # Failures before failover
 ```
 
 ### Manual Failover Control
@@ -319,24 +319,24 @@ Via control panel:
 
 ### WiFi Status
 
-| Pattern              | Meaning                      |
-|----------------------|------------------------------|
-| Green solid          | Connected to WiFi            |
-| Green slow blink     | Ready, no WiFi (offline OK)  |
-| Green fast blink     | Connecting to WiFi           |
-| Blue blink*          | WiFi setup mode (AP active)  |
-| Red fast blink       | WiFi connection failed       |
+| Pattern          | Meaning                     |
+| ---------------- | --------------------------- |
+| Green solid      | Connected to WiFi           |
+| Green slow blink | Ready, no WiFi (offline OK) |
+| Green fast blink | Connecting to WiFi          |
+| Blue blink\*     | WiFi setup mode (AP active) |
+| Red fast blink   | WiFi connection failed      |
 
-*Alternates green/red if no blue LED installed
+\*Alternates green/red if no blue LED installed
 
 ### System Status
 
-| Pattern              | Meaning                      |
-|----------------------|------------------------------|
-| Alternating          | Booting up                   |
-| Green solid          | Ready for taps               |
-| Yellow blink         | Failover mode active         |
-| Red blink            | System error                 |
+| Pattern      | Meaning              |
+| ------------ | -------------------- |
+| Alternating  | Booting up           |
+| Green solid  | Ready for taps       |
+| Yellow blink | Failover mode active |
+| Red blink    | System error         |
 
 ### Boot Sequence
 
@@ -423,7 +423,7 @@ grep "Restart" logs/watchdog.log
 
 ### QR Code Access
 
-*(Future Enhancement)*
+_(Future Enhancement)_
 
 Display QR code on OLED screen:
 
@@ -767,11 +767,11 @@ Include:
 
 ## 🎉 Success Stories
 
-*"We deployed at a 5000-person festival. One station's battery died at 2am. The other station automatically handled both stages. Nobody noticed. Flawless."* - Festival Coordinator
+_"We deployed at a 5000-person festival. One station's battery died at 2am. The other station automatically handled both stages. Nobody noticed. Flawless."_ - Festival Coordinator
 
-*"No more hunting for IP addresses! We just tell volunteers to open tapstation-queue.local on their phones. It just works."* - Site Manager
+_"No more hunting for IP addresses! We just tell volunteers to open tapstation-queue.local on their phones. It just works."_ - Site Manager
 
-*"The WiFi button saved us. Site gave us wrong WiFi password. Instead of SSH'ing in, we just pressed the button and configured it on-site. 30 seconds."* - Tech Lead
+_"The WiFi button saved us. Site gave us wrong WiFi password. Instead of SSH'ing in, we just pressed the button and configured it on-site. 30 seconds."_ - Tech Lead
 
 ---
 

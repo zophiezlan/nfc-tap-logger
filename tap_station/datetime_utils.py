@@ -5,9 +5,9 @@ This module provides common datetime operations used throughout the application,
 ensuring consistent timezone handling and reducing code duplication.
 """
 
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Union, Any
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,9 @@ def seconds_since(timestamp: Union[str, datetime]) -> float:
     return delta.total_seconds()
 
 
-def is_within_window(timestamp: Union[str, datetime], window_minutes: float) -> bool:
+def is_within_window(
+    timestamp: Union[str, datetime], window_minutes: float
+) -> bool:
     """
     Check if timestamp is within a time window from now.
 
@@ -120,7 +122,9 @@ def is_within_window(timestamp: Union[str, datetime], window_minutes: float) -> 
     return 0 <= elapsed <= window_minutes
 
 
-def is_older_than(timestamp: Union[str, datetime], threshold_minutes: float) -> bool:
+def is_older_than(
+    timestamp: Union[str, datetime], threshold_minutes: float
+) -> bool:
     """
     Check if timestamp is older than a threshold.
 
@@ -229,7 +233,9 @@ def add_minutes(dt: Optional[datetime] = None, minutes: float = 0) -> datetime:
     return dt + timedelta(minutes=minutes)
 
 
-def subtract_minutes(dt: Optional[datetime] = None, minutes: float = 0) -> datetime:
+def subtract_minutes(
+    dt: Optional[datetime] = None, minutes: float = 0
+) -> datetime:
     """
     Subtract minutes from a datetime.
 
@@ -269,7 +275,9 @@ def get_time_window_start_iso(window_minutes: float) -> str:
     return to_iso(get_time_window_start(window_minutes))
 
 
-def parse_timestamp(value: Any, default_to_now: bool = True) -> Optional[datetime]:
+def parse_timestamp(
+    value: Any, default_to_now: bool = True
+) -> Optional[datetime]:
     """
     Parse a timestamp from various formats.
 
@@ -319,7 +327,9 @@ def parse_timestamp(value: Any, default_to_now: bool = True) -> Optional[datetim
         # Try parsing as numeric first
         if value.isdigit():
             try:
-                return datetime.fromtimestamp(int(value) / 1000, tz=timezone.utc)
+                return datetime.fromtimestamp(
+                    int(value) / 1000, tz=timezone.utc
+                )
             except (ValueError, OSError) as e:
                 logger.warning(
                     f"Failed to parse string numeric timestamp '{value}': {e}"

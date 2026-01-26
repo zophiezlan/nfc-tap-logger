@@ -26,10 +26,14 @@ def _coerce_timestamp(value) -> datetime:
         try:
             # Support ms stored as strings
             if value.isdigit():
-                return datetime.fromtimestamp(int(value) / 1000, tz=timezone.utc)
+                return datetime.fromtimestamp(
+                    int(value) / 1000, tz=timezone.utc
+                )
             return datetime.fromisoformat(value)
         except ValueError:
-            logger.warning("Could not parse timestamp '%s', falling back to now", value)
+            logger.warning(
+                "Could not parse timestamp '%s', falling back to now", value
+            )
     return datetime.now(timezone.utc)
 
 
@@ -38,9 +42,15 @@ def _normalize_event(raw: Dict) -> Tuple[str, str, str, str, str, datetime]:
     token_id = str(raw.get("token_id") or raw.get("tokenId") or "UNKNOWN")
     uid = str(raw.get("uid") or raw.get("serial") or token_id or "UNKNOWN")
     stage = str(raw.get("stage") or "").strip().upper() or "UNKNOWN"
-    session_id = str(raw.get("session_id") or raw.get("sessionId") or "UNKNOWN")
+    session_id = str(
+        raw.get("session_id") or raw.get("sessionId") or "UNKNOWN"
+    )
     device_id = str(raw.get("device_id") or raw.get("deviceId") or "mobile")
-    ts_value = raw.get("timestamp_ms") or raw.get("timestamp") or raw.get("timestampMs")
+    ts_value = (
+        raw.get("timestamp_ms")
+        or raw.get("timestamp")
+        or raw.get("timestampMs")
+    )
     timestamp = _coerce_timestamp(ts_value)
     return token_id, uid, stage, session_id, device_id, timestamp
 
@@ -110,7 +120,9 @@ def ingest_events(events: Iterable[Dict], db_path: Path) -> Dict[str, int]:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--input", required=True, help="Path to JSONL or CSV export from the mobile app"
+        "--input",
+        required=True,
+        help="Path to JSONL or CSV export from the mobile app",
     )
     parser.add_argument(
         "--db",

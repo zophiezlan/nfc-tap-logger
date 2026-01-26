@@ -1,9 +1,11 @@
 """Tests for database operations"""
 
-import pytest
-import tempfile
 import os
+import tempfile
 from datetime import datetime, timezone
+
+import pytest
+
 from tap_station.database import Database
 
 

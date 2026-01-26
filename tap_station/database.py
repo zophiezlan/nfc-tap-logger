@@ -1,21 +1,21 @@
 """SQLite database operations for event logging"""
 
 import csv
+import logging
 import sqlite3
 import uuid
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-import logging
+from typing import Any, Dict, List, Optional
 
+from .anomaly_detector import AnomalyDetector
 from .constants import (
-    WorkflowStages,
     DatabaseDefaults,
+    WorkflowStages,
     get_workflow_transitions,
 )
-from .datetime_utils import utc_now, from_iso, to_iso, minutes_since
-from .validation import TokenValidator, StageNameValidator
-from .anomaly_detector import AnomalyDetector
+from .datetime_utils import from_iso, minutes_since, to_iso, utc_now
 from .path_utils import ensure_parent_dir
+from .validation import StageNameValidator, TokenValidator
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,7 @@ class Database:
 
     def _create_tables(self):
         """Create database tables if they don't exist"""
-        self.conn.execute(
-            """
+        self.conn.execute("""
             CREATE TABLE IF NOT EXISTS events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 token_id TEXT NOT NULL,
@@ -63,38 +62,30 @@ class Database:
                 session_id TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
-        """
-        )
+        """)
 
         # Create index for fast lookups
-        self.conn.execute(
-            """
+        self.conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_token_stage_session
             ON events(token_id, stage, session_id)
-        """
-        )
+        """)
 
-        self.conn.execute(
-            """
+        self.conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_session_timestamp
             ON events(session_id, timestamp)
-        """
-        )
+        """)
 
         # Create table for auto-init token tracking
-        self.conn.execute(
-            """
+        self.conn.execute("""
             CREATE TABLE IF NOT EXISTS auto_init_counter (
                 session_id TEXT PRIMARY KEY,
                 next_token_id INTEGER NOT NULL,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
-        """
-        )
+        """)
 
         # Create audit table for deleted events
-        self.conn.execute(
-            """
+        self.conn.execute("""
             CREATE TABLE IF NOT EXISTS deleted_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 original_event_id INTEGER NOT NULL,
@@ -109,16 +100,13 @@ class Database:
                 deletion_reason TEXT,
                 original_created_at TEXT
             )
-        """
-        )
+        """)
 
         # Create index for deleted events lookups
-        self.conn.execute(
-            """
+        self.conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_deleted_session_token
             ON deleted_events(session_id, token_id)
-        """
-        )
+        """)
 
         self.conn.commit()
         logger.info("Database tables initialized")
@@ -187,15 +175,21 @@ class Database:
 
         # Check for duplicate (same token, same stage, same session)
         # Skip this check for manual corrections where staff intentionally add events
-        if not skip_duplicate_check and self._is_duplicate(token_id, stage, session_id):
-            logger.warning(f"Duplicate tap detected: token={token_id}, stage={stage}")
+        if not skip_duplicate_check and self._is_duplicate(
+            token_id, stage, session_id
+        ):
+            logger.warning(
+                f"Duplicate tap detected: token={token_id}, stage={stage}"
+            )
             result["duplicate"] = True
             result["warning"] = f"Card already tapped at {stage}"
             return result
 
         # Validate sequence unless explicitly allowed to bypass
         if not allow_out_of_order:
-            sequence_check = self._validate_sequence(token_id, stage, session_id)
+            sequence_check = self._validate_sequence(
+                token_id, stage, session_id
+            )
             if not sequence_check["valid"]:
                 logger.warning(
                     f"Out-of-order tap detected: token={token_id}, "
@@ -284,7 +278,9 @@ class Database:
         # Outside grace period - true duplicate
         return True
 
-    def _validate_sequence(self, token_id: str, stage: str, session_id: str) -> dict:
+    def _validate_sequence(
+        self, token_id: str, stage: str, session_id: str
+    ) -> dict:
         """
         Validate that this tap makes sense given the card's journey so far
         Implements state machine logic to catch human errors
@@ -377,7 +373,9 @@ class Database:
                     }
                 )
         except Exception as e:
-            logger.error(f"Error detecting incomplete journeys: {e}", exc_info=True)
+            logger.error(
+                f"Error detecting incomplete journeys: {e}", exc_info=True
+            )
 
         try:
             # Detect out-of-order events
@@ -410,7 +408,9 @@ class Database:
                     prev_stage = stages[-2]
                     curr_stage = stages[-1]
 
-                    if not workflow.is_valid_transition(prev_stage, curr_stage):
+                    if not workflow.is_valid_transition(
+                        prev_stage, curr_stage
+                    ):
                         anomalies["out_of_order_events"].append(
                             {
                                 "token_id": row["token_id"],
@@ -422,7 +422,9 @@ class Database:
                             }
                         )
         except Exception as e:
-            logger.error(f"Error detecting out-of-order events: {e}", exc_info=True)
+            logger.error(
+                f"Error detecting out-of-order events: {e}", exc_info=True
+            )
 
         # Calculate summary statistics
         summary = {
@@ -698,11 +700,15 @@ class Database:
 
             # Return a fallback using UUID to ensure uniqueness
             fallback_id = abs(hash(str(uuid.uuid4()))) % 10000
-            fallback_str = f"E{fallback_id:03d}"  # E prefix indicates error/fallback
+            fallback_str = (
+                f"E{fallback_id:03d}"  # E prefix indicates error/fallback
+            )
             logger.warning(f"Using fallback token ID: {fallback_str}")
             return (fallback_id, fallback_str)
 
-    def export_to_csv(self, output_path: str, session_id: Optional[str] = None) -> int:
+    def export_to_csv(
+        self, output_path: str, session_id: Optional[str] = None
+    ) -> int:
         """
         Export events to CSV file
 
@@ -715,7 +721,9 @@ class Database:
         """
         # Build query
         if session_id:
-            query = "SELECT * FROM events WHERE session_id = ? ORDER BY timestamp"
+            query = (
+                "SELECT * FROM events WHERE session_id = ? ORDER BY timestamp"
+            )
             params = (session_id,)
         else:
             query = "SELECT * FROM events ORDER BY timestamp"

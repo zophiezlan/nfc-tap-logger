@@ -13,10 +13,10 @@ measurable outcomes that matter for service delivery and improvement.
 
 import logging
 import sqlite3
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 from .datetime_utils import utc_now
 
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class MetricType(Enum):
     """Types of quality metrics"""
+
     COUNTER = "counter"
     GAUGE = "gauge"
     HISTOGRAM = "histogram"
@@ -33,6 +34,7 @@ class MetricType(Enum):
 
 class HealthStatus(Enum):
     """Service health status levels"""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -42,6 +44,7 @@ class HealthStatus(Enum):
 @dataclass
 class SLODefinition:
     """Defines a Service Level Objective"""
+
     name: str
     description: str
     target: float  # Target percentage (0-100)
@@ -54,6 +57,7 @@ class SLODefinition:
 @dataclass
 class MetricValue:
     """A single metric observation"""
+
     name: str
     value: float
     timestamp: datetime
@@ -64,6 +68,7 @@ class MetricValue:
 @dataclass
 class QualityScore:
     """Overall service quality score"""
+
     overall: float
     components: Dict[str, float]
     status: HealthStatus
@@ -91,7 +96,7 @@ class ServiceQualityMetrics:
             warning_threshold=70.0,
             metric_query="wait_time_under_target",
             window_hours=4,
-            unit="percent"
+            unit="percent",
         ),
         SLODefinition(
             name="completion_rate_slo",
@@ -100,7 +105,7 @@ class ServiceQualityMetrics:
             warning_threshold=90.0,
             metric_query="completion_rate",
             window_hours=24,
-            unit="percent"
+            unit="percent",
         ),
         SLODefinition(
             name="throughput_slo",
@@ -109,7 +114,7 @@ class ServiceQualityMetrics:
             warning_threshold=50.0,
             metric_query="throughput_rate",
             window_hours=4,
-            unit="percent"
+            unit="percent",
         ),
         SLODefinition(
             name="error_rate_slo",
@@ -118,7 +123,7 @@ class ServiceQualityMetrics:
             warning_threshold=95.0,
             metric_query="error_free_rate",
             window_hours=24,
-            unit="percent"
+            unit="percent",
         ),
     ]
 
@@ -127,7 +132,7 @@ class ServiceQualityMetrics:
         conn: sqlite3.Connection,
         slos: Optional[List[SLODefinition]] = None,
         target_wait_minutes: int = 30,
-        target_throughput_per_hour: int = 12
+        target_throughput_per_hour: int = 12,
     ):
         """
         Initialize service quality metrics.
@@ -149,7 +154,7 @@ class ServiceQualityMetrics:
         self,
         target_wait_minutes: Optional[int] = None,
         target_throughput_per_hour: Optional[int] = None,
-        custom_slos: Optional[List[SLODefinition]] = None
+        custom_slos: Optional[List[SLODefinition]] = None,
     ) -> None:
         """
         Update configuration.
@@ -182,7 +187,9 @@ class ServiceQualityMetrics:
         slis["avg_wait_time"] = self._calc_avg_wait_time(session_id)
         slis["median_wait_time"] = self._calc_median_wait_time(session_id)
         slis["p95_wait_time"] = self._calc_percentile_wait_time(session_id, 95)
-        slis["wait_time_under_target"] = self._calc_wait_time_under_target(session_id)
+        slis["wait_time_under_target"] = self._calc_wait_time_under_target(
+            session_id
+        )
 
         # Throughput SLI
         slis["current_throughput"] = self._calc_current_throughput(session_id)
@@ -194,7 +201,9 @@ class ServiceQualityMetrics:
 
         # Quality SLIs
         slis["error_free_rate"] = self._calc_error_free_rate(session_id)
-        slis["sequence_compliance"] = self._calc_sequence_compliance(session_id)
+        slis["sequence_compliance"] = self._calc_sequence_compliance(
+            session_id
+        )
 
         # Service SLIs
         slis["avg_service_time"] = self._calc_avg_service_time(session_id)
@@ -231,9 +240,13 @@ class ServiceQualityMetrics:
                 "current": metric_value,
                 "status": status,
                 "warning_threshold": slo.warning_threshold,
-                "compliance": (metric_value / slo.target * 100) if slo.target > 0 else 100,
+                "compliance": (
+                    (metric_value / slo.target * 100)
+                    if slo.target > 0
+                    else 100
+                ),
                 "window_hours": slo.window_hours,
-                "unit": slo.unit
+                "unit": slo.unit,
             }
 
         return results
@@ -267,10 +280,7 @@ class ServiceQualityMetrics:
             "reliability": 0.20,
         }
 
-        overall = sum(
-            components[k] * weights.get(k, 0.25)
-            for k in components
-        )
+        overall = sum(components[k] * weights.get(k, 0.25) for k in components)
 
         # Determine health status
         if overall >= 90:
@@ -291,15 +301,12 @@ class ServiceQualityMetrics:
                 "slos": slos,
                 "slis": slis,
                 "target_wait_minutes": self._target_wait,
-                "target_throughput": self._target_throughput
-            }
+                "target_throughput": self._target_throughput,
+            },
         )
 
     def get_quality_trend(
-        self,
-        session_id: str,
-        hours: int = 4,
-        interval_minutes: int = 30
+        self, session_id: str, hours: int = 4, interval_minutes: int = 30
     ) -> List[Dict[str, Any]]:
         """
         Get quality score trend over time.
@@ -323,12 +330,14 @@ class ServiceQualityMetrics:
             # A full implementation would query historical data
             if i == 0:
                 score = self.calculate_quality_score(session_id)
-                trend.append({
-                    "timestamp": point_time.isoformat(),
-                    "overall": score.overall,
-                    "status": score.status.value,
-                    "components": score.components
-                })
+                trend.append(
+                    {
+                        "timestamp": point_time.isoformat(),
+                        "overall": score.overall,
+                        "status": score.status.value,
+                        "components": score.components,
+                    }
+                )
 
         return trend
 
@@ -343,7 +352,9 @@ class ServiceQualityMetrics:
 
         # Trim history if too large
         if len(self._metric_history) > self._max_history_size:
-            self._metric_history = self._metric_history[-self._max_history_size // 2:]
+            self._metric_history = self._metric_history[
+                -self._max_history_size // 2 :
+            ]
 
     # =========================================================================
     # Private SLI Calculation Methods
@@ -352,7 +363,8 @@ class ServiceQualityMetrics:
     def _calc_avg_wait_time(self, session_id: str) -> float:
         """Calculate average wait time (QUEUE_JOIN to SERVICE_START or EXIT)"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 SELECT AVG(
                     CAST((julianday(e.timestamp) - julianday(q.timestamp)) * 1440 AS REAL)
                 ) as avg_wait
@@ -364,7 +376,9 @@ class ServiceQualityMetrics:
                 WHERE q.stage = 'QUEUE_JOIN'
                     AND q.session_id = ?
                     AND datetime(q.timestamp) > datetime('now', '-4 hours')
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             return row["avg_wait"] if row and row["avg_wait"] else 0.0
         except Exception as e:
@@ -374,7 +388,8 @@ class ServiceQualityMetrics:
     def _calc_median_wait_time(self, session_id: str) -> float:
         """Calculate median wait time"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 WITH wait_times AS (
                     SELECT CAST((julianday(e.timestamp) - julianday(q.timestamp)) * 1440 AS REAL) as wait
                     FROM events q
@@ -392,17 +407,22 @@ class ServiceQualityMetrics:
                     LIMIT 2 - (SELECT COUNT(*) FROM wait_times) % 2
                     OFFSET (SELECT (COUNT(*) - 1) / 2 FROM wait_times)
                 )
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             return row["median"] if row and row["median"] else 0.0
         except Exception as e:
             logger.error(f"Error calculating median wait time: {e}")
             return 0.0
 
-    def _calc_percentile_wait_time(self, session_id: str, percentile: int) -> float:
+    def _calc_percentile_wait_time(
+        self, session_id: str, percentile: int
+    ) -> float:
         """Calculate wait time at given percentile"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 WITH wait_times AS (
                     SELECT CAST((julianday(e.timestamp) - julianday(q.timestamp)) * 1440 AS REAL) as wait,
                            ROW_NUMBER() OVER (ORDER BY (julianday(e.timestamp) - julianday(q.timestamp))) as rn,
@@ -419,7 +439,9 @@ class ServiceQualityMetrics:
                 SELECT wait FROM wait_times
                 WHERE rn >= CAST(total * ? / 100.0 AS INTEGER)
                 LIMIT 1
-            """, (session_id, percentile))
+            """,
+                (session_id, percentile),
+            )
             row = cursor.fetchone()
             return row["wait"] if row and row["wait"] else 0.0
         except Exception as e:
@@ -429,7 +451,8 @@ class ServiceQualityMetrics:
     def _calc_wait_time_under_target(self, session_id: str) -> float:
         """Calculate percentage of wait times under target"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 WITH wait_times AS (
                     SELECT CAST((julianday(e.timestamp) - julianday(q.timestamp)) * 1440 AS REAL) as wait
                     FROM events q
@@ -445,9 +468,15 @@ class ServiceQualityMetrics:
                     CAST(SUM(CASE WHEN wait <= ? THEN 1 ELSE 0 END) AS REAL) * 100.0 /
                     NULLIF(COUNT(*), 0) as pct_under_target
                 FROM wait_times
-            """, (session_id, self._target_wait))
+            """,
+                (session_id, self._target_wait),
+            )
             row = cursor.fetchone()
-            return row["pct_under_target"] if row and row["pct_under_target"] else 100.0
+            return (
+                row["pct_under_target"]
+                if row and row["pct_under_target"]
+                else 100.0
+            )
         except Exception as e:
             logger.error(f"Error calculating wait time under target: {e}")
             return 100.0
@@ -455,7 +484,8 @@ class ServiceQualityMetrics:
     def _calc_current_throughput(self, session_id: str) -> float:
         """Calculate current throughput (completions per hour)"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 SELECT COUNT(*) * 1.0 / NULLIF(
                     (julianday('now') - julianday(MIN(timestamp))) * 24, 0
                 ) as throughput
@@ -463,7 +493,9 @@ class ServiceQualityMetrics:
                 WHERE stage = 'EXIT'
                     AND session_id = ?
                     AND datetime(timestamp) > datetime('now', '-4 hours')
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             return row["throughput"] if row and row["throughput"] else 0.0
         except Exception as e:
@@ -480,7 +512,8 @@ class ServiceQualityMetrics:
     def _calc_completion_rate(self, session_id: str) -> float:
         """Calculate journey completion rate"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 WITH journeys AS (
                     SELECT token_id,
                            MAX(CASE WHEN stage = 'QUEUE_JOIN' THEN 1 ELSE 0 END) as joined,
@@ -492,7 +525,9 @@ class ServiceQualityMetrics:
                 )
                 SELECT CAST(SUM(exited) AS REAL) * 100.0 / NULLIF(SUM(joined), 0) as completion
                 FROM journeys
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             return row["completion"] if row and row["completion"] else 100.0
         except Exception as e:
@@ -502,7 +537,8 @@ class ServiceQualityMetrics:
     def _calc_active_journeys(self, session_id: str) -> int:
         """Calculate number of active (incomplete) journeys"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 SELECT COUNT(DISTINCT q.token_id) as active
                 FROM events q
                 LEFT JOIN events e ON q.token_id = e.token_id
@@ -511,7 +547,9 @@ class ServiceQualityMetrics:
                 WHERE q.stage = 'QUEUE_JOIN'
                     AND q.session_id = ?
                     AND e.id IS NULL
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             return row["active"] if row else 0
         except Exception as e:
@@ -527,7 +565,8 @@ class ServiceQualityMetrics:
     def _calc_sequence_compliance(self, session_id: str) -> float:
         """Calculate percentage of journeys with valid sequences"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 WITH journey_sequences AS (
                     SELECT token_id,
                            GROUP_CONCAT(stage, '→') as sequence
@@ -546,7 +585,9 @@ class ServiceQualityMetrics:
                         ELSE 0
                     END) AS REAL) * 100.0 / NULLIF(COUNT(*), 0) as compliance
                 FROM journey_sequences
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             return row["compliance"] if row and row["compliance"] else 100.0
         except Exception as e:
@@ -556,7 +597,8 @@ class ServiceQualityMetrics:
     def _calc_avg_service_time(self, session_id: str) -> float:
         """Calculate average service time (SERVICE_START to EXIT)"""
         try:
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 SELECT AVG(
                     CAST((julianday(e.timestamp) - julianday(s.timestamp)) * 1440 AS REAL)
                 ) as avg_service
@@ -568,7 +610,9 @@ class ServiceQualityMetrics:
                 WHERE s.stage = 'SERVICE_START'
                     AND s.session_id = ?
                     AND datetime(s.timestamp) > datetime('now', '-4 hours')
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             return row["avg_service"] if row and row["avg_service"] else 0.0
         except Exception as e:
@@ -579,7 +623,8 @@ class ServiceQualityMetrics:
         """Calculate service efficiency (consistent service times)"""
         try:
             # Low variance = high efficiency
-            cursor = self._conn.execute("""
+            cursor = self._conn.execute(
+                """
                 WITH service_times AS (
                     SELECT CAST((julianday(e.timestamp) - julianday(s.timestamp)) * 1440 AS REAL) as svc_time
                     FROM events s
@@ -596,7 +641,9 @@ class ServiceQualityMetrics:
                     (SUM(svc_time * svc_time) - SUM(svc_time) * SUM(svc_time) / COUNT(*)) /
                     NULLIF(COUNT(*) - 1, 0) as variance
                 FROM service_times
-            """, (session_id,))
+            """,
+                (session_id,),
+            )
             row = cursor.fetchone()
             if row and row["avg_time"] and row["variance"]:
                 # Coefficient of variation (lower = more efficient)
@@ -620,7 +667,9 @@ class ServiceQualityMetrics:
         # Combine wait time under target with average wait penalty
         score = wait_under
         if avg_wait > self._target_wait:
-            penalty = min(30, (avg_wait - self._target_wait) / self._target_wait * 30)
+            penalty = min(
+                30, (avg_wait - self._target_wait) / self._target_wait * 30
+            )
             score = max(0, score - penalty)
 
         return score
@@ -646,7 +695,7 @@ class ServiceQualityMetrics:
         sequence = slis.get("sequence_compliance", 100)
         efficiency = slis.get("service_efficiency", 100)
 
-        return (error_free * 0.4 + sequence * 0.4 + efficiency * 0.2)
+        return error_free * 0.4 + sequence * 0.4 + efficiency * 0.2
 
 
 # =============================================================================

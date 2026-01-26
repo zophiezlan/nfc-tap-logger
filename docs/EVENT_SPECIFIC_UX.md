@@ -190,7 +190,7 @@ If user doesn't interact with modal:
 ```yaml
 web_server:
   admin:
-    session_timeout_minutes: 60  # Default: 60 minutes
+    session_timeout_minutes: 60 # Default: 60 minutes
 ```
 
 **Warning Timing**:
@@ -261,7 +261,7 @@ Edit `config.yaml`:
 ```yaml
 web_server:
   admin:
-    session_timeout_minutes: 90  # Change timeout to 90 minutes
+    session_timeout_minutes: 90 # Change timeout to 90 minutes
 ```
 
 The 5-minute warning is hardcoded but can be adjusted in `control.html` JavaScript if needed.

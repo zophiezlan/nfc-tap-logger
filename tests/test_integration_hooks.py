@@ -8,27 +8,28 @@ Tests cover:
 - Delivery status tracking
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
 import json
-
 import sys
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tap_station.integration_hooks import (
-    IntegrationHooksManager,
-    IntegrationEvent,
-    WebhookConfig,
     DeliveryResult,
     DeliveryStatus,
-    IntegrationEventType,
-    IntegrationStats,
     EventTransformer,
+    IntegrationEvent,
+    IntegrationEventType,
+    IntegrationHooksManager,
+    IntegrationStats,
+    WebhookConfig,
+    emit_event,
     get_hooks_manager,
     load_webhooks_from_config,
-    emit_event,
 )
 
 
@@ -46,7 +47,7 @@ def webhook_config():
         name="Test Webhook",
         url="https://example.com/webhook",
         events=[IntegrationEventType.ALL],
-        enabled=True
+        enabled=True,
     )
 
 
@@ -59,7 +60,7 @@ class TestIntegrationEvent:
             id="evt_001",
             event_type=IntegrationEventType.QUEUE_JOIN,
             timestamp=datetime.utcnow(),
-            payload={"token_id": "token_001"}
+            payload={"token_id": "token_001"},
         )
         assert event.id == "evt_001"
         assert event.event_type == IntegrationEventType.QUEUE_JOIN
@@ -71,7 +72,7 @@ class TestIntegrationEvent:
             event_type=IntegrationEventType.EXIT,
             timestamp=datetime.utcnow(),
             payload={"stage": "EXIT"},
-            correlation_id="token_001"
+            correlation_id="token_001",
         )
         d = event.to_dict()
 
@@ -85,7 +86,7 @@ class TestIntegrationEvent:
             id="evt_001",
             event_type=IntegrationEventType.ALERT_TRIGGERED,
             timestamp=datetime.utcnow(),
-            payload={"alert": "test"}
+            payload={"alert": "test"},
         )
         json_str = event.to_json()
         parsed = json.loads(json_str)
@@ -102,8 +103,11 @@ class TestWebhookConfig:
             id="webhook_1",
             name="Webhook 1",
             url="https://example.com",
-            events=[IntegrationEventType.QUEUE_JOIN, IntegrationEventType.EXIT],
-            secret="secret123"
+            events=[
+                IntegrationEventType.QUEUE_JOIN,
+                IntegrationEventType.EXIT,
+            ],
+            secret="secret123",
         )
         d = config.to_dict()
 
@@ -121,7 +125,7 @@ class TestEventTransformer:
             id="evt_001",
             event_type=IntegrationEventType.QUEUE_JOIN,
             timestamp=datetime.utcnow(),
-            payload={"test": "data"}
+            payload={"test": "data"},
         )
         result = EventTransformer.transform(event, "full")
         assert result == event.to_dict()
@@ -133,7 +137,7 @@ class TestEventTransformer:
             event_type=IntegrationEventType.QUEUE_JOIN,
             timestamp=datetime.utcnow(),
             payload={"test": "data"},
-            metadata={"extra": "info"}
+            metadata={"extra": "info"},
         )
         result = EventTransformer.transform(event, "minimal")
 
@@ -148,7 +152,7 @@ class TestEventTransformer:
             id="evt_001",
             event_type=IntegrationEventType.QUEUE_JOIN,
             timestamp=datetime.utcnow(),
-            payload={"nested": {"value": 123}}
+            payload={"nested": {"value": 123}},
         )
         result = EventTransformer.transform(event, "flatten")
 
@@ -175,7 +179,7 @@ class TestIntegrationHooksManager:
             "name": "Dict Webhook",
             "url": "https://example.com/hook",
             "events": ["queue_join", "exit"],
-            "enabled": True
+            "enabled": True,
         }
         webhook = manager.register_webhook_from_dict(config)
 
@@ -204,7 +208,7 @@ class TestIntegrationHooksManager:
         """Test event emission"""
         event = manager.emit(
             event_type=IntegrationEventType.QUEUE_JOIN,
-            payload={"token_id": "token_001"}
+            payload={"token_id": "token_001"},
         )
 
         assert event is not None
@@ -213,9 +217,7 @@ class TestIntegrationHooksManager:
     def test_emit_tap_event(self, manager):
         """Test tap event emission"""
         event = manager.emit_tap_event(
-            stage="QUEUE_JOIN",
-            token_id="token_001",
-            session_id="session1"
+            stage="QUEUE_JOIN", token_id="token_001", session_id="session1"
         )
 
         assert event is not None
@@ -227,7 +229,7 @@ class TestIntegrationHooksManager:
         event = manager.emit_alert(
             alert_type="queue_warning",
             severity="warning",
-            message="Queue is getting long"
+            message="Queue is getting long",
         )
 
         assert event is not None
@@ -305,9 +307,9 @@ class TestEventFiltering:
                 id="test",
                 event_type=IntegrationEventType.QUEUE_JOIN,
                 timestamp=datetime.utcnow(),
-                payload={"stage": "QUEUE_JOIN"}
+                payload={"stage": "QUEUE_JOIN"},
             ),
-            "stage=QUEUE_JOIN"
+            "stage=QUEUE_JOIN",
         )
         assert result is True
 
@@ -318,9 +320,9 @@ class TestEventFiltering:
                 id="test",
                 event_type=IntegrationEventType.QUEUE_JOIN,
                 timestamp=datetime.utcnow(),
-                payload={"stage": "EXIT"}
+                payload={"stage": "EXIT"},
             ),
-            "stage=QUEUE_JOIN"
+            "stage=QUEUE_JOIN",
         )
         assert result is False
 
@@ -331,9 +333,9 @@ class TestEventFiltering:
                 id="test",
                 event_type=IntegrationEventType.QUEUE_JOIN,
                 timestamp=datetime.utcnow(),
-                payload={"stage": "EXIT"}
+                payload={"stage": "EXIT"},
             ),
-            "stage!=QUEUE_JOIN"
+            "stage!=QUEUE_JOIN",
         )
         assert result is True
 
@@ -350,7 +352,7 @@ class TestDeliveryResult:
             attempt=1,
             timestamp=datetime.utcnow(),
             response_code=200,
-            duration_ms=150.5
+            duration_ms=150.5,
         )
         d = result.to_dict()
 
@@ -369,7 +371,7 @@ class TestIntegrationStats:
             total_events=100,
             delivered=95,
             failed=5,
-            avg_latency_ms=150.0
+            avg_latency_ms=150.0,
         )
         d = stats.to_dict()
 
@@ -380,7 +382,7 @@ class TestIntegrationStats:
 class TestWebhookDelivery:
     """Tests for webhook delivery (mocked)"""
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_successful_delivery(self, mock_urlopen, manager, webhook_config):
         """Test successful webhook delivery"""
         mock_response = MagicMock()
@@ -395,18 +397,18 @@ class TestWebhookDelivery:
             id="test_evt",
             event_type=IntegrationEventType.QUEUE_JOIN,
             timestamp=datetime.utcnow(),
-            payload={}
+            payload={},
         )
 
         result = manager._deliver_to_webhook(event, webhook_config)
         assert result.status == DeliveryStatus.DELIVERED
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_test_webhook(self, mock_urlopen, manager, webhook_config):
         """Test webhook testing"""
         mock_response = MagicMock()
         mock_response.getcode.return_value = 200
-        mock_response.read.return_value = b'ok'
+        mock_response.read.return_value = b"ok"
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -430,7 +432,7 @@ class TestConfigurationLoading:
                     "name": "Config Webhook",
                     "url": "https://example.com/hook",
                     "events": ["queue_join"],
-                    "enabled": True
+                    "enabled": True,
                 }
             ]
         }

@@ -1,13 +1,15 @@
 """Integration tests - full card lifecycle"""
 
-import pytest
-import tempfile
 import os
+import tempfile
 import time
+
+import pytest
+
 from tap_station.config import Config
 from tap_station.database import Database
-from tap_station.nfc_reader import MockNFCReader
 from tap_station.feedback import FeedbackController
+from tap_station.nfc_reader import MockNFCReader
 
 
 @pytest.fixture
@@ -39,7 +41,9 @@ logging:
   level: "INFO"
 """
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         f.write(config_content)
         config_path = f.name
 
@@ -140,7 +144,9 @@ def test_full_card_lifecycle(temp_config, temp_db):
         os.close(fd)
 
         try:
-            row_count = db.export_to_csv(csv_path, session_id=config.session_id)
+            row_count = db.export_to_csv(
+                csv_path, session_id=config.session_id
+            )
             assert row_count == 3
 
             # Verify CSV content

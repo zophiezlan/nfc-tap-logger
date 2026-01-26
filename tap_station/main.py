@@ -1,26 +1,28 @@
 """Main tap station service - ties everything together"""
 
-import sys
 import logging
 import signal
-import time
-from pathlib import Path
-from logging.handlers import RotatingFileHandler
+import sys
 import threading
+import time
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from tap_station.config import Config
 from tap_station.database import Database
-from tap_station.nfc_reader import NFCReader, MockNFCReader
 from tap_station.feedback import FeedbackController
-from tap_station.validation import TokenValidator
-from tap_station.path_utils import ensure_parent_dir
+from tap_station.nfc_reader import MockNFCReader, NFCReader
 from tap_station.onsite_manager import OnSiteManager
+from tap_station.path_utils import ensure_parent_dir
+from tap_station.validation import TokenValidator
 
 
 class TapStation:
     """Main tap station service"""
 
-    def __init__(self, config_path: str = "config.yaml", mock_nfc: bool = False):
+    def __init__(
+        self, config_path: str = "config.yaml", mock_nfc: bool = False
+    ):
         """
         Initialize tap station
 
@@ -116,7 +118,9 @@ class TapStation:
                     f"{self.config.web_server_host}:{self.config.web_server_port}"
                 )
             except Exception as e:
-                self.logger.error(f"Failed to start web server: {e}", exc_info=True)
+                self.logger.error(
+                    f"Failed to start web server: {e}", exc_info=True
+                )
 
         # Initialize on-site manager (WiFi, mDNS, failover, etc.)
         self.onsite_manager = None
@@ -132,7 +136,9 @@ class TapStation:
                 )
                 self.logger.info("On-site manager initialized")
             except Exception as e:
-                self.logger.warning(f"Failed to initialize on-site manager: {e}")
+                self.logger.warning(
+                    f"Failed to initialize on-site manager: {e}"
+                )
 
         # State
         self.running = False
@@ -147,7 +153,9 @@ class TapStation:
         log_path = ensure_parent_dir(self.config.log_path)
 
         # Get log level
-        log_level = getattr(logging, self.config.log_level.upper(), logging.INFO)
+        log_level = getattr(
+            logging, self.config.log_level.upper(), logging.INFO
+        )
 
         # Create formatters
         formatter = logging.Formatter(
@@ -189,7 +197,9 @@ class TapStation:
             try:
                 self.onsite_manager.startup()
             except Exception as e:
-                self.logger.error(f"On-site manager startup failed: {e}", exc_info=True)
+                self.logger.error(
+                    f"On-site manager startup failed: {e}", exc_info=True
+                )
 
         # Startup feedback
         self.feedback.startup()
@@ -215,7 +225,9 @@ class TapStation:
             self.logger.info("Keyboard interrupt received")
 
         except Exception as e:
-            self.logger.error(f"Unexpected error in main loop: {e}", exc_info=True)
+            self.logger.error(
+                f"Unexpected error in main loop: {e}", exc_info=True
+            )
 
         finally:
             self.shutdown()
@@ -259,7 +271,9 @@ class TapStation:
 
         # Check if auto-initialization is enabled and card appears uninitialized
         # Uninitialized cards will have token_id that looks like a UID (8+ hex chars)
-        if self.config.auto_init_cards and self._is_uninitialized_card(token_id):
+        if self.config.auto_init_cards and self._is_uninitialized_card(
+            token_id
+        ):
             # This looks like an uninitialized card (UID being used as token_id)
             # Auto-assign the next token ID
             _, new_token_id = self.db.get_next_auto_init_token_id(
@@ -312,7 +326,9 @@ class TapStation:
                 # Use warning pattern in failover mode to distinguish from normal
                 if use_alternate_beep:
                     self.feedback.warning()  # Yellow flash for failover mode
-                    self.logger.info("Event logged successfully (FAILOVER MODE)")
+                    self.logger.info(
+                        "Event logged successfully (FAILOVER MODE)"
+                    )
                 else:
                     self.feedback.success()  # Green flash for normal
                     self.logger.info("Event logged successfully")
@@ -401,9 +417,13 @@ def main():
         help="Path to configuration file (default: config.yaml)",
     )
     parser.add_argument(
-        "--mock-nfc", action="store_true", help="Use mock NFC reader for testing"
+        "--mock-nfc",
+        action="store_true",
+        help="Use mock NFC reader for testing",
     )
-    parser.add_argument("--stats", action="store_true", help="Show statistics and exit")
+    parser.add_argument(
+        "--stats", action="store_true", help="Show statistics and exit"
+    )
 
     args = parser.parse_args()
 

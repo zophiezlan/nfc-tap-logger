@@ -10,8 +10,8 @@ No need to hunt for IP addresses!
 """
 
 import logging
-import subprocess
 import socket
+import subprocess
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,9 @@ class MDNSService:
             if is_active:
                 logger.info("Avahi daemon is available")
             else:
-                logger.warning("Avahi daemon is not running - mDNS will not work")
+                logger.warning(
+                    "Avahi daemon is not running - mDNS will not work"
+                )
                 logger.info("Install with: sudo apt install avahi-daemon")
 
             return is_active

@@ -5,11 +5,11 @@ This module provides centralized health check functionality for monitoring
 system resources, hardware status, and service health.
 """
 
-import os
 import logging
+import os
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, Tuple
 from enum import Enum
+from typing import Any, Dict, Optional, Tuple
 
 from .constants import HardwareDefaults, StorageUnits
 
@@ -125,7 +125,8 @@ class HealthChecker:
         except (ValueError, IOError) as e:
             logger.warning(f"Failed to read temperature: {e}")
             return HealthResult(
-                status=HealthStatus.UNKNOWN, message=f"Failed to read temperature: {e}"
+                status=HealthStatus.UNKNOWN,
+                message=f"Failed to read temperature: {e}",
             )
 
     def get_temperature(self) -> Optional[float]:
@@ -161,7 +162,9 @@ class HealthChecker:
 
             total_gb = total_bytes / StorageUnits.BYTES_PER_GB
             free_gb = free_bytes / StorageUnits.BYTES_PER_GB
-            used_percent = (used_bytes / total_bytes) * 100 if total_bytes > 0 else 0
+            used_percent = (
+                (used_bytes / total_bytes) * 100 if total_bytes > 0 else 0
+            )
 
             details = {
                 "total_gb": round(total_gb, 2),
@@ -195,7 +198,8 @@ class HealthChecker:
         except OSError as e:
             logger.warning(f"Failed to check disk space: {e}")
             return HealthResult(
-                status=HealthStatus.UNKNOWN, message=f"Failed to check disk space: {e}"
+                status=HealthStatus.UNKNOWN,
+                message=f"Failed to check disk space: {e}",
             )
 
     def get_disk_usage(self, path: str = "/") -> Tuple[float, float, float]:

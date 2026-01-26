@@ -22,17 +22,18 @@ Service Design Principles:
 - Support operational flexibility
 """
 
+import hashlib
 import logging
 import os
-import hashlib
-import yaml
 import threading
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Callable, Set
-from dataclasses import dataclass, field
-from pathlib import Path
-from copy import deepcopy
 import time
+from copy import deepcopy
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set
+
+import yaml
 
 from .datetime_utils import utc_now
 
@@ -92,7 +93,8 @@ class ConfigurationValidator:
         """Load default validation rules"""
         # Capacity rules
         self.add_rule(
-            "capacity.people_per_hour", lambda v: isinstance(v, int) and 1 <= v <= 100
+            "capacity.people_per_hour",
+            lambda v: isinstance(v, int) and 1 <= v <= 100,
         )
         self.add_rule(
             "capacity.avg_service_minutes",
@@ -101,10 +103,12 @@ class ConfigurationValidator:
 
         # Alert rules
         self.add_rule(
-            "alerts.queue.warning_threshold", lambda v: isinstance(v, int) and v >= 1
+            "alerts.queue.warning_threshold",
+            lambda v: isinstance(v, int) and v >= 1,
         )
         self.add_rule(
-            "alerts.queue.critical_threshold", lambda v: isinstance(v, int) and v >= 1
+            "alerts.queue.critical_threshold",
+            lambda v: isinstance(v, int) and v >= 1,
         )
 
         # UI rules
@@ -306,7 +310,9 @@ class DynamicConfigurationManager:
             logger.error(f"Error loading configuration from {path}: {e}")
             return False
 
-    def load_from_dict(self, config: Dict[str, Any], source: str = "api") -> bool:
+    def load_from_dict(
+        self, config: Dict[str, Any], source: str = "api"
+    ) -> bool:
         """
         Load configuration from a dictionary.
 
@@ -374,7 +380,10 @@ class DynamicConfigurationManager:
 
             # Create change record
             change = ConfigurationChange(
-                path=path, old_value=old_value, new_value=value, changed_at=utc_now()
+                path=path,
+                old_value=old_value,
+                new_value=value,
+                changed_at=utc_now(),
             )
 
             # Calculate checksum
@@ -440,7 +449,9 @@ class DynamicConfigurationManager:
                 target = self._history[-2]
             else:
                 # Find specific version
-                target = next((v for v in self._history if v.version == version), None)
+                target = next(
+                    (v for v in self._history if v.version == version), None
+                )
                 if not target:
                     logger.warning(f"Version {version} not found")
                     return False
@@ -494,7 +505,10 @@ class DynamicConfigurationManager:
             YAML string
         """
         yaml_str = yaml.dump(
-            self._config, default_flow_style=False, allow_unicode=True, sort_keys=False
+            self._config,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
         )
 
         if path:
@@ -523,7 +537,9 @@ class DynamicConfigurationManager:
             self._watch_thread.join(timeout=5.0)
         logger.info("Configuration auto-reload stopped")
 
-    def add_validation_rule(self, path: str, validator: Callable[[Any], bool]) -> None:
+    def add_validation_rule(
+        self, path: str, validator: Callable[[Any], bool]
+    ) -> None:
         """Add a custom validation rule"""
         self._validator.add_rule(path, validator)
 
@@ -550,7 +566,9 @@ class DynamicConfigurationManager:
 
                         checksum = hashlib.md5(content.encode()).hexdigest()
                         if checksum != self._last_checksum:
-                            logger.info("Configuration file changed, reloading...")
+                            logger.info(
+                                "Configuration file changed, reloading..."
+                            )
                             self.load_from_file(self._config_path)
 
                         last_mtime = current_mtime
@@ -601,7 +619,9 @@ class DynamicConfigurationManager:
             if old_val != new_val:
                 if isinstance(old_val, dict) and isinstance(new_val, dict):
                     # Recurse into nested dicts
-                    changes.extend(self._detect_changes(old_val, new_val, path))
+                    changes.extend(
+                        self._detect_changes(old_val, new_val, path)
+                    )
                 else:
                     changes.append(
                         ConfigurationChange(

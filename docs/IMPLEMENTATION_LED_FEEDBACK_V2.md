@@ -176,7 +176,7 @@
 
    ```yaml
    feedback:
-     beep_success: [0.1]  # Change from [0.1, 0.1, 0.1]
+     beep_success: [0.1] # Change from [0.1, 0.1, 0.1]
    ```
 
 2. Review GPIO pin usage if using StatusLEDManager

@@ -6,8 +6,8 @@ This script tests the automatic cleanup and conflict resolution.
 Run this to verify the cleanup manager works as expected.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,7 +23,9 @@ def test_detection_only():
     print()
 
     manager = NFCCleanupManager(auto_fix=False, require_sudo=False)
-    success, messages = manager.check_and_cleanup(stop_service=False, reset_i2c=False)
+    success, messages = manager.check_and_cleanup(
+        stop_service=False, reset_i2c=False
+    )
 
     print("Results:")
     for msg in messages:
@@ -44,7 +46,9 @@ def test_auto_fix():
     print()
 
     manager = NFCCleanupManager(auto_fix=True, require_sudo=True)
-    success, messages = manager.check_and_cleanup(stop_service=True, reset_i2c=False)
+    success, messages = manager.check_and_cleanup(
+        stop_service=True, reset_i2c=False
+    )
 
     print("Results:")
     for msg in messages:

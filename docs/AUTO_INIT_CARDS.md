@@ -30,7 +30,7 @@ Edit `config.yaml`:
 nfc:
   # Auto-initialize cards on first tap (assigns next available token ID)
   auto_init_cards: true
-  
+
   # Starting token ID for auto-initialization (default: 1)
   auto_init_start_id: 1
 ```
@@ -185,7 +185,7 @@ If you want to switch from pre-initialized to auto-init:
 
    ```yaml
    auto_init_cards: true
-   auto_init_start_id: 501  # If pre-init cards are 001-500
+   auto_init_start_id: 501 # If pre-init cards are 001-500
    ```
 
 2. **Fresh start**: Begin a new session with auto-init from ID 1

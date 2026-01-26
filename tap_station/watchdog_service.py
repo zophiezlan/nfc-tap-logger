@@ -9,10 +9,11 @@ Provides:
 """
 
 import logging
-import time
 import subprocess
-import requests
+import time
 from datetime import datetime, timedelta
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,9 @@ class WatchdogService:
                 self.web_last_success = datetime.now()
                 return True
             else:
-                logger.warning(f"Web server returned status {response.status_code}")
+                logger.warning(
+                    f"Web server returned status {response.status_code}"
+                )
                 self.web_consecutive_failures += 1
                 return False
 
@@ -107,7 +110,9 @@ class WatchdogService:
 
         # Check if we've exceeded restart rate limit
         one_hour_ago = datetime.now() - timedelta(hours=1)
-        recent_restarts = [ts for ts in self.restart_history if ts > one_hour_ago]
+        recent_restarts = [
+            ts for ts in self.restart_history if ts > one_hour_ago
+        ]
 
         if len(recent_restarts) >= self.max_restarts_per_hour:
             logger.error(
@@ -151,20 +156,25 @@ class WatchdogService:
             Status dictionary
         """
         one_hour_ago = datetime.now() - timedelta(hours=1)
-        recent_restarts = [ts for ts in self.restart_history if ts > one_hour_ago]
+        recent_restarts = [
+            ts for ts in self.restart_history if ts > one_hour_ago
+        ]
 
         return {
             "web_server": {
                 "consecutive_failures": self.web_consecutive_failures,
                 "last_success": self.web_last_success.isoformat(),
                 "health": (
-                    "healthy" if self.web_consecutive_failures == 0 else "unhealthy"
+                    "healthy"
+                    if self.web_consecutive_failures == 0
+                    else "unhealthy"
                 ),
             },
             "restart_history": {
                 "total": len(self.restart_history),
                 "last_hour": len(recent_restarts),
-                "rate_limited": len(recent_restarts) >= self.max_restarts_per_hour,
+                "rate_limited": len(recent_restarts)
+                >= self.max_restarts_per_hour,
             },
         }
 
@@ -209,7 +219,10 @@ def main():
     logger.info("Starting watchdog service...")
 
     watchdog = WatchdogService(
-        web_port=8080, check_interval=10, restart_threshold=3, max_restarts_per_hour=5
+        web_port=8080,
+        check_interval=10,
+        restart_threshold=3,
+        max_restarts_per_hour=5,
     )
 
     watchdog._running = True

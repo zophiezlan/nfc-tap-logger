@@ -8,9 +8,10 @@ Enables automatic role switching for high reliability.
 import logging
 import threading
 import time
-import requests
-from typing import Optional, Callable, Dict
 from datetime import datetime
+from typing import Callable, Dict, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +79,14 @@ class PeerMonitor:
             logger.warning("Peer monitor already running")
             return
 
-        logger.info(f"Starting peer monitor for {self.peer_hostname}:{self.peer_port}")
+        logger.info(
+            f"Starting peer monitor for {self.peer_hostname}:{self.peer_port}"
+        )
 
         self._running = True
-        self._monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self._monitor_thread = threading.Thread(
+            target=self._monitor_loop, daemon=True
+        )
         self._monitor_thread.start()
 
     def stop(self):
@@ -97,7 +102,9 @@ class PeerMonitor:
 
     def _monitor_loop(self):
         """Main monitoring loop"""
-        logger.info(f"Peer monitoring started (check every {self.check_interval}s)")
+        logger.info(
+            f"Peer monitoring started (check every {self.check_interval}s)"
+        )
 
         while self._running:
             try:
@@ -163,7 +170,9 @@ class PeerMonitor:
                     except Exception as e:
                         logger.error(f"Error in peer_up callback: {e}")
 
-                peer_up_thread = threading.Thread(target=_run_callback, daemon=True)
+                peer_up_thread = threading.Thread(
+                    target=_run_callback, daemon=True
+                )
                 peer_up_thread.start()
 
     def _handle_failure(self):
@@ -210,10 +219,14 @@ class PeerMonitor:
             "peer_healthy": self.peer_healthy,
             "consecutive_failures": self.consecutive_failures,
             "last_check_time": (
-                self.last_check_time.isoformat() if self.last_check_time else None
+                self.last_check_time.isoformat()
+                if self.last_check_time
+                else None
             ),
             "last_success_time": (
-                self.last_success_time.isoformat() if self.last_success_time else None
+                self.last_success_time.isoformat()
+                if self.last_success_time
+                else None
             ),
             "monitoring_enabled": self._running,
         }

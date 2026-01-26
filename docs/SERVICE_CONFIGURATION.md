@@ -72,7 +72,7 @@ Define who you are and what you do:
 service:
   name: "Festival Drug Checking"
   description: "Harm Reduction & Substance Analysis"
-  type: "festival"  # Options: festival, venue, popup, mobile
+  type: "festival" # Options: festival, venue, popup, mobile
   organization: "Community Harm Reduction"
   contact:
     display: true
@@ -100,14 +100,14 @@ Each stage represents a distinct step in your service process:
 ```yaml
 workflow:
   stages:
-    - id: "QUEUE_JOIN"           # Internal identifier (use CAPS_WITH_UNDERSCORES)
-      label: "In Queue"          # What users see
-      description: "Waiting"     # Detailed description
-      order: 1                   # Sequence number
-      required: true             # Must everyone go through this?
-      visible_to_public: true    # Show on public display?
-      duration_estimate: 0       # Minutes (used for wait calculation)
-      icon: "⏰"                  # Optional emoji
+    - id: "QUEUE_JOIN" # Internal identifier (use CAPS_WITH_UNDERSCORES)
+      label: "In Queue" # What users see
+      description: "Waiting" # Detailed description
+      order: 1 # Sequence number
+      required: true # Must everyone go through this?
+      visible_to_public: true # Show on public display?
+      duration_estimate: 0 # Minutes (used for wait calculation)
+      icon: "⏰" # Optional emoji
 ```
 
 #### Common Workflow Patterns
@@ -116,8 +116,8 @@ workflow:
 
 ```yaml
 stages:
-  - {id: "QUEUE_JOIN", label: "Waiting", order: 1, required: true}
-  - {id: "EXIT", label: "Complete", order: 2, required: true}
+  - { id: "QUEUE_JOIN", label: "Waiting", order: 1, required: true }
+  - { id: "EXIT", label: "Complete", order: 2, required: true }
 ```
 
 Best for:
@@ -130,9 +130,27 @@ Best for:
 
 ```yaml
 stages:
-  - {id: "QUEUE_JOIN", label: "In Queue", order: 1, required: true, duration_estimate: 0}
-  - {id: "SERVICE_START", label: "Being Served", order: 2, required: true, duration_estimate: 5}
-  - {id: "EXIT", label: "Complete", order: 3, required: true, duration_estimate: 0}
+  - {
+      id: "QUEUE_JOIN",
+      label: "In Queue",
+      order: 1,
+      required: true,
+      duration_estimate: 0,
+    }
+  - {
+      id: "SERVICE_START",
+      label: "Being Served",
+      order: 2,
+      required: true,
+      duration_estimate: 5,
+    }
+  - {
+      id: "EXIT",
+      label: "Complete",
+      order: 3,
+      required: true,
+      duration_estimate: 0,
+    }
 ```
 
 Best for:
@@ -145,11 +163,17 @@ Best for:
 
 ```yaml
 stages:
-  - {id: "QUEUE_JOIN", label: "Queue", order: 1}
-  - {id: "INTAKE", label: "Check-in", order: 2, duration_estimate: 3}
-  - {id: "TESTING", label: "Testing", order: 3, duration_estimate: 10, visible_to_public: false}
-  - {id: "RESULTS", label: "Results", order: 4, duration_estimate: 7}
-  - {id: "EXIT", label: "Complete", order: 5}
+  - { id: "QUEUE_JOIN", label: "Queue", order: 1 }
+  - { id: "INTAKE", label: "Check-in", order: 2, duration_estimate: 3 }
+  - {
+      id: "TESTING",
+      label: "Testing",
+      order: 3,
+      duration_estimate: 10,
+      visible_to_public: false,
+    }
+  - { id: "RESULTS", label: "Results", order: 4, duration_estimate: 7 }
+  - { id: "EXIT", label: "Complete", order: 5 }
 ```
 
 Best for:
@@ -163,9 +187,9 @@ Best for:
 
 ```yaml
 workflow:
-  allow_skip_stages: false       # Can stages be skipped?
-  allow_repeat_stages: false     # Can someone go through a stage twice?
-  enforce_stage_order: true      # Must stages be in order?
+  allow_skip_stages: false # Can stages be skipped?
+  allow_repeat_stages: false # Can someone go through a stage twice?
+  enforce_stage_order: true # Must stages be in order?
 ```
 
 ### Capacity & Throughput
@@ -174,10 +198,10 @@ Configure how many people you can serve:
 
 ```yaml
 capacity:
-  people_per_hour: 12           # Your maximum throughput
-  avg_service_minutes: 5        # Average time per person
-  default_wait_estimate: 20     # Default if no data available
-  queue_multiplier: 2           # Used for quick estimates (pos × multiplier = min)
+  people_per_hour: 12 # Your maximum throughput
+  avg_service_minutes: 5 # Average time per person
+  default_wait_estimate: 20 # Default if no data available
+  queue_multiplier: 2 # Used for quick estimates (pos × multiplier = min)
 ```
 
 #### How to Calculate Your Capacity
@@ -212,14 +236,14 @@ Reduce capacity during busy times when service may slow:
 capacity:
   people_per_hour: 12
   multipliers:
-    peak_hours: 0.8      # 20% reduction during peak
-    off_peak: 1.0        # Normal during off-peak
+    peak_hours: 0.8 # 20% reduction during peak
+    off_peak: 1.0 # Normal during off-peak
 
   peak_hours:
     enabled: true
     ranges:
-      - start: "20:00"   # 8 PM
-        end: "23:00"     # 11 PM
+      - start: "20:00" # 8 PM
+        end: "23:00" # 11 PM
 ```
 
 ### Alert Thresholds
@@ -229,19 +253,19 @@ Set when the system should alert your staff:
 ```yaml
 alerts:
   queue:
-    warning_threshold: 10     # Yellow alert at 10 people
-    critical_threshold: 20    # Red alert at 20 people
+    warning_threshold: 10 # Yellow alert at 10 people
+    critical_threshold: 20 # Red alert at 20 people
 
   wait_time:
-    warning_minutes: 45       # Warn if wait > 45 min
-    critical_minutes: 90      # Critical if > 90 min
+    warning_minutes: 45 # Warn if wait > 45 min
+    critical_minutes: 90 # Critical if > 90 min
 
   service_inactivity:
-    warning_minutes: 5        # Warn if no activity for 5 min
-    critical_minutes: 10      # Critical if no activity for 10 min
+    warning_minutes: 5 # Warn if no activity for 5 min
+    critical_minutes: 10 # Critical if no activity for 10 min
 
   stuck_cards:
-    threshold_hours: 2        # Alert if someone hasn't exited in 2 hours
+    threshold_hours: 2 # Alert if someone hasn't exited in 2 hours
 ```
 
 #### Choosing Good Thresholds
@@ -253,11 +277,11 @@ Ask yourself:
 - At what queue length should I consider calling in more staff? → **Warning**
 - At what length is the queue unmanageable? → **Critical**
 
-| Service Size | Warning | Critical | Reasoning |
-|--------------|---------|----------|-----------|
-| Small (≤8/hr) | 5 | 10 | Limited capacity, queue builds fast |
-| Medium (8-15/hr) | 10 | 20 | Moderate buffer |
-| Large (≥15/hr) | 15 | 30 | Can handle larger queues |
+| Service Size     | Warning | Critical | Reasoning                           |
+| ---------------- | ------- | -------- | ----------------------------------- |
+| Small (≤8/hr)    | 5       | 10       | Limited capacity, queue builds fast |
+| Medium (8-15/hr) | 10      | 20       | Moderate buffer                     |
+| Large (≥15/hr)   | 15      | 30       | Can handle larger queues            |
 
 **Wait Time Thresholds**
 
@@ -284,9 +308,9 @@ Customize all user-facing text:
 ```yaml
 ui:
   labels:
-    queue_count: "waiting"              # Instead of "people in queue"
+    queue_count: "waiting" # Instead of "people in queue"
     wait_time: "wait time"
-    served_today: "people helped"       # Instead of "served today"
+    served_today: "people helped" # Instead of "served today"
     avg_service_time: "avg time"
     service_status: "status"
 
@@ -303,7 +327,7 @@ You can configure labels in any language:
 ```yaml
 ui:
   labels:
-    queue_count: "en attente"           # French
+    queue_count: "en attente" # French
     wait_time: "temps d'attente"
     served_today: "servi aujourd'hui"
 ```
@@ -315,18 +339,18 @@ Control what appears on public displays:
 ```yaml
 ui:
   public_display:
-    show_queue_positions: true         # Show position in queue?
-    show_wait_estimates: true          # Show estimated wait?
-    show_served_count: true            # Show people served today?
-    show_avg_time: true                # Show average service time?
-    show_service_hours: true           # Show operating hours?
-    refresh_interval_seconds: 5        # How often to refresh
+    show_queue_positions: true # Show position in queue?
+    show_wait_estimates: true # Show estimated wait?
+    show_served_count: true # Show people served today?
+    show_avg_time: true # Show average service time?
+    show_service_hours: true # Show operating hours?
+    refresh_interval_seconds: 5 # How often to refresh
 
   dashboard:
     show_individual_queue_positions: true
-    max_recent_events: 15              # How many recent events to show
-    max_recent_completions: 10         # How many recent completions
-    analytics_history_hours: 12        # How far back for analytics
+    max_recent_events: 15 # How many recent events to show
+    max_recent_completions: 10 # How many recent completions
+    analytics_history_hours: 12 # How far back for analytics
 ```
 
 ### Staffing & Roles
@@ -335,7 +359,7 @@ Define staff types and permissions:
 
 ```yaml
 staffing:
-  require_staff_id: false     # Must staff identify themselves?
+  require_staff_id: false # Must staff identify themselves?
 
   roles:
     - id: "peer_worker"
@@ -372,8 +396,8 @@ Configure multiple service locations:
 
 ```yaml
 locations:
-  multi_location: true         # Enable multi-location mode
-  shared_queue: false          # Each location has its own queue
+  multi_location: true # Enable multi-location mode
+  shared_queue: false # Each location has its own queue
 
   sites:
     - id: "main_stage"
@@ -394,7 +418,7 @@ locations:
         - device_id: "camp_station1"
           description: "Camp Station"
 
-  show_all_locations: true     # Show all locations on public display
+  show_all_locations: true # Show all locations on public display
 ```
 
 ## Advanced Configuration
@@ -619,8 +643,8 @@ service:
 
 workflow:
   stages:
-    - {id: "QUEUE_JOIN", label: "Waiting", order: 1}
-    - {id: "EXIT", label: "Done", order: 2}
+    - { id: "QUEUE_JOIN", label: "Waiting", order: 1 }
+    - { id: "EXIT", label: "Done", order: 2 }
 
 capacity:
   people_per_hour: 8
@@ -654,11 +678,17 @@ service:
 
 workflow:
   stages:
-    - {id: "QUEUE_JOIN", label: "Queue", order: 1, duration_estimate: 0}
-    - {id: "INTAKE", label: "Check-in", order: 2, duration_estimate: 3}
-    - {id: "TESTING", label: "Testing", order: 3, duration_estimate: 12, visible_to_public: false}
-    - {id: "RESULTS", label: "Results", order: 4, duration_estimate: 8}
-    - {id: "EXIT", label: "Complete", order: 5, duration_estimate: 0}
+    - { id: "QUEUE_JOIN", label: "Queue", order: 1, duration_estimate: 0 }
+    - { id: "INTAKE", label: "Check-in", order: 2, duration_estimate: 3 }
+    - {
+        id: "TESTING",
+        label: "Testing",
+        order: 3,
+        duration_estimate: 12,
+        visible_to_public: false,
+      }
+    - { id: "RESULTS", label: "Results", order: 4, duration_estimate: 8 }
+    - { id: "EXIT", label: "Complete", order: 5, duration_estimate: 0 }
 
 capacity:
   people_per_hour: 15
@@ -666,7 +696,7 @@ capacity:
   peak_hours:
     enabled: true
     ranges:
-      - {start: "22:00", end: "02:00"}
+      - { start: "22:00", end: "02:00" }
 
 alerts:
   queue:
@@ -679,8 +709,8 @@ alerts:
 locations:
   multi_location: true
   sites:
-    - {id: "main", name: "Main Stage", enabled: true}
-    - {id: "camp", name: "Camping", enabled: true}
+    - { id: "main", name: "Main Stage", enabled: true }
+    - { id: "camp", name: "Camping", enabled: true }
 ```
 
 ## Getting Help

@@ -18,15 +18,15 @@ Service Design Principles:
 - Maintain audit trail for compliance
 """
 
-import logging
+import functools
 import hashlib
+import logging
 import secrets
 import sqlite3
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-import functools
+from typing import Any, Dict, List, Optional, Set
 
 from .datetime_utils import utc_now
 
@@ -134,7 +134,9 @@ class User:
             "email": self.email,
             "active": self.active,
             "created_at": self.created_at.isoformat(),
-            "last_login": self.last_login.isoformat() if self.last_login else None,
+            "last_login": (
+                self.last_login.isoformat() if self.last_login else None
+            ),
             "metadata": self.metadata,
         }
         if include_sensitive:
@@ -582,7 +584,10 @@ class AccessControlManager:
         return session
 
     def _create_session(
-        self, user_id: str, ip_address: Optional[str], user_agent: Optional[str]
+        self,
+        user_id: str,
+        ip_address: Optional[str],
+        user_agent: Optional[str],
     ) -> Session:
         """Create a new session"""
         session_id = f"sess_{secrets.token_hex(8)}"
@@ -828,7 +833,11 @@ class AccessControlManager:
             self._audit_log = self._audit_log[-self._max_audit_log // 2 :]
 
     def _audit_access(
-        self, user_id: str, permission: str, resource: Optional[str], allowed: bool
+        self,
+        user_id: str,
+        permission: str,
+        resource: Optional[str],
+        allowed: bool,
     ) -> None:
         """Audit an access control decision"""
         self._audit(
@@ -839,7 +848,9 @@ class AccessControlManager:
             details={"permission": permission},
         )
 
-    def _audit_login_success(self, user_id: str, ip_address: Optional[str]) -> None:
+    def _audit_login_success(
+        self, user_id: str, ip_address: Optional[str]
+    ) -> None:
         """Audit successful login"""
         self._audit("login_success", user_id, "auth", True, ip_address)
 
@@ -943,7 +954,9 @@ def load_roles_from_config(
             manager.define_role_from_dict(role_config)
             loaded += 1
         except Exception as e:
-            logger.error(f"Error loading role {role_config.get('id', 'unknown')}: {e}")
+            logger.error(
+                f"Error loading role {role_config.get('id', 'unknown')}: {e}"
+            )
 
     return loaded
 

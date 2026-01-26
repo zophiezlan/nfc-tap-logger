@@ -12,26 +12,26 @@ The architecture follows the Open/Closed principle - open for extension,
 closed for modification.
 """
 
-import logging
 import importlib
 import importlib.util
+import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
 from typing import (
-    Dict,
-    List,
-    Optional,
     Any,
     Callable,
-    TypeVar,
+    Dict,
     Generic,
+    List,
+    Optional,
     Set,
     Type,
+    TypeVar,
     Union,
 )
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -322,7 +322,10 @@ class HookRegistry:
         return count
 
     def execute(
-        self, hook_type: HookType, context: HookContext, stop_on_cancel: bool = True
+        self,
+        hook_type: HookType,
+        context: HookContext,
+        stop_on_cancel: bool = True,
     ) -> List[HookResult]:
         """
         Execute all handlers for a hook type.
@@ -409,7 +412,9 @@ class PluginLoader:
     """
 
     def __init__(
-        self, plugin_dirs: Optional[List[Path]] = None, auto_discover: bool = True
+        self,
+        plugin_dirs: Optional[List[Path]] = None,
+        auto_discover: bool = True,
     ):
         """
         Initialize plugin loader.
@@ -622,7 +627,9 @@ class ExtensionManager:
                 plugin.register_hooks(self._hook_registry)
 
         self._initialized = True
-        logger.info(f"Extension system initialized with {len(discovered)} plugins")
+        logger.info(
+            f"Extension system initialized with {len(discovered)} plugins"
+        )
 
     def register_extension_point(self, point: ExtensionPoint) -> None:
         """Register an extension point"""
@@ -722,7 +729,9 @@ class DashboardWidgetExtension(ExtensionPoint[dict]):
 _extension_manager: Optional[ExtensionManager] = None
 
 
-def get_extension_manager(plugin_dirs: Optional[List[Path]] = None) -> ExtensionManager:
+def get_extension_manager(
+    plugin_dirs: Optional[List[Path]] = None,
+) -> ExtensionManager:
     """Get or create the global extension manager"""
     global _extension_manager
     if _extension_manager is None:

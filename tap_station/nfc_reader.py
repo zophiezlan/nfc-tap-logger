@@ -1,10 +1,10 @@
 """NFC reader wrapper for PN532 via I2C"""
 
+import logging
 import re
 import time
-import logging
-from typing import Optional, Tuple
 from datetime import datetime
+from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,9 @@ class NFCReader:
             try:
                 # Try to read card using PN532 readPassiveTargetID
                 # Returns a list [success, uid] where uid is a bytearray
-                success, uid_bytes = self.pn532.readPassiveTargetID(cardbaudrate=0x00)
+                success, uid_bytes = self.pn532.readPassiveTargetID(
+                    cardbaudrate=0x00
+                )
 
                 if success and uid_bytes:
                     # Convert bytearray to hex string
@@ -127,7 +129,9 @@ class NFCReader:
                     return (uid_hex, token_id)
 
             except Exception as e:
-                logger.warning(f"Read attempt {attempt + 1}/{self.retries} failed: {e}")
+                logger.warning(
+                    f"Read attempt {attempt + 1}/{self.retries} failed: {e}"
+                )
                 time.sleep(0.1)
 
         logger.error("Failed to read card after all retries")
@@ -254,7 +258,10 @@ class NFCReader:
             # Legacy cards start immediately with the ID (e.g. "001")
             if len(raw_data) >= 4 and raw_data[0] != 0x03:
                 token = (
-                    raw_data[:4].decode("ascii", errors="ignore").strip("\x00").strip()
+                    raw_data[:4]
+                    .decode("ascii", errors="ignore")
+                    .strip("\x00")
+                    .strip()
                 )
                 if token and len(token) >= 1:
                     return token
@@ -281,7 +288,9 @@ class NFCReader:
                 return False
 
             # Read card first to ensure it's present
-            success, uid_bytes = self.pn532.readPassiveTargetID(cardbaudrate=0x00)
+            success, uid_bytes = self.pn532.readPassiveTargetID(
+                cardbaudrate=0x00
+            )
 
             if not success or not uid_bytes:
                 logger.error("No card present to write")
@@ -302,7 +311,10 @@ class NFCReader:
             raw = self._read_page_bytes(4)
             if raw:
                 read_token = (
-                    raw[:4].decode("ascii", errors="ignore").strip("\x00").strip()
+                    raw[:4]
+                    .decode("ascii", errors="ignore")
+                    .strip("\x00")
+                    .strip()
                 )
                 if read_token and read_token != token_id:
                     logger.error(
@@ -356,7 +368,9 @@ class NFCReader:
         """
         write_page = getattr(self.pn532, "mifareultralight_WritePage", None)
         if not write_page:
-            logger.error("PN532 library does not support mifareultralight_WritePage")
+            logger.error(
+                "PN532 library does not support mifareultralight_WritePage"
+            )
             return False
 
         # Ensure data is bytes type (not bytearray or other types)
@@ -400,7 +414,9 @@ class NFCReader:
 
                 # Check result - some implementations return None on success, others return True
                 if result is False:
-                    logger.error(f"Failed to write page {page} (write returned False)")
+                    logger.error(
+                        f"Failed to write page {page} (write returned False)"
+                    )
                     return False
                 elif result is None:
                     logger.debug(
@@ -419,9 +435,13 @@ class NFCReader:
                 # Try fallback method with individual bytes (for older library versions)
                 logger.info("Attempting fallback: individual byte arguments")
                 try:
-                    result = write_page(page, chunk[0], chunk[1], chunk[2], chunk[3])
+                    result = write_page(
+                        page, chunk[0], chunk[1], chunk[2], chunk[3]
+                    )
                     if result is False:
-                        logger.error(f"Fallback method also failed for page {page}")
+                        logger.error(
+                            f"Fallback method also failed for page {page}"
+                        )
                         return False
                 except Exception as e2:
                     logger.error(f"Fallback method failed: {e2}")
@@ -464,7 +484,9 @@ class NFCReader:
         """
         try:
             # Quick check without retries
-            success, uid_bytes = self.pn532.readPassiveTargetID(cardbaudrate=0x00)
+            success, uid_bytes = self.pn532.readPassiveTargetID(
+                cardbaudrate=0x00
+            )
             return success and uid_bytes is not None
 
         except Exception:

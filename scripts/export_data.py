@@ -5,8 +5,8 @@ Data Export Script
 Export event data from SQLite to CSV with timestamp in filename.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import argparse
 from datetime import datetime
 from pathlib import Path
+
 from tap_station.config import Config
 from tap_station.database import Database
 
@@ -142,9 +143,12 @@ def main():
         default=".",
         help="Output directory (default: current directory)",
     )
-    parser.add_argument("--session", help="Session ID filter (default: from config)")
     parser.add_argument(
-        "--filename", help="Custom output filename (default: export_TIMESTAMP.csv)"
+        "--session", help="Session ID filter (default: from config)"
+    )
+    parser.add_argument(
+        "--filename",
+        help="Custom output filename (default: export_TIMESTAMP.csv)",
     )
     parser.add_argument(
         "--all-sessions",

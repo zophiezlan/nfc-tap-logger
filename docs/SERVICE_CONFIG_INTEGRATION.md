@@ -19,7 +19,7 @@ This guide documents the integration of the service configuration system through
 #### 2. Backend Integration (web_server.py)
 
 - [x] Import service_integration module
-- [x] Initialize ServiceIntegration in __init__
+- [x] Initialize ServiceIntegration in **init**
 - [x] Replace hardcoded alert thresholds:
   - [x] Queue warning/critical (10/20 → configurable)
   - [x] Wait time warning/critical (45/90 min → configurable)
@@ -47,14 +47,14 @@ This guide documents the integration of the service configuration system through
 
 The HTML templates need to be updated to use the service configuration dynamically. This involves:
 
-__Required Changes:__
+**Required Changes:**
 
 1. Include `service-config.js` in all template files
 2. Use `data-label` attributes for configurable text
 3. Use `data-service-name` for service name placeholders
 4. Load stages dynamically instead of hardcoding
 
-__Templates to Update:__
+**Templates to Update:**
 
 - [ ] `public.html` - Public queue display
 - [ ] `dashboard.html` - Staff dashboard
@@ -63,7 +63,7 @@ __Templates to Update:__
 - [ ] `shift.html` - Shift summary
 - [ ] Any other templates with hardcoded labels
 
-__Example Update Pattern:__
+**Example Update Pattern:**
 
 Before:
 
@@ -93,7 +93,7 @@ After:
 - [ ] Dynamically populate stage dropdown instead of hardcoding
 - [ ] Use service name from configuration
 
-__Current Code (mobile_app/index.html):__
+**Current Code (mobile_app/index.html):**
 
 ```html
 <select id="stage" required>
@@ -102,7 +102,7 @@ __Current Code (mobile_app/index.html):__
 </select>
 ```
 
-__Should Become:__
+**Should Become:**
 
 ```html
 <select id="stage" required>
@@ -110,18 +110,18 @@ __Should Become:__
 </select>
 
 <script>
-// Load stages from service configuration
-fetch('/api/service-config')
-  .then(r => r.json())
-  .then(config => {
-    const select = document.getElementById('stage');
-    config.workflow_stages.forEach(stage => {
-      const option = document.createElement('option');
-      option.value = stage.id;
-      option.textContent = stage.label;
-      select.appendChild(option);
-    });
-  });
+  // Load stages from service configuration
+  fetch("/api/service-config")
+    .then(r => r.json())
+    .then(config => {
+      const select = document.getElementById("stage")
+      config.workflow_stages.forEach(stage => {
+        const option = document.createElement("option")
+        option.value = stage.id
+        option.textContent = stage.label
+        select.appendChild(option)
+      })
+    })
 </script>
 ```
 
@@ -133,7 +133,7 @@ Currently, the database stores stage names as strings. Consider:
 - [ ] Add a stage_labels table for mapping stage IDs to labels
 - [ ] Migration script for existing data (if needed)
 
-__Note:__ This is optional - the current string-based approach works fine with configuration.
+**Note:** This is optional - the current string-based approach works fine with configuration.
 
 #### 7. Scripts and CLI Tools
 
@@ -144,7 +144,7 @@ Some scripts may reference stages or thresholds directly:
 - [ ] `scripts/dev_reset.py` - Check for stage assumptions
 - [ ] Any other scripts that assume specific stages
 
-__Pattern:__ Scripts should import and use `service_integration` module.
+**Pattern:** Scripts should import and use `service_integration` module.
 
 ```python
 from tap_station.service_integration import get_service_integration
@@ -205,18 +205,18 @@ The current `normalize_stage()` method just ensures consistent formatting (upper
 
 ### High Priority (Should be done soon)
 
-1. __HTML Template Updates__ - Most user-facing
-2. __Mobile App Updates__ - Critical for mobile deployments
-3. __Testing__ - Ensure everything works
+1. **HTML Template Updates** - Most user-facing
+2. **Mobile App Updates** - Critical for mobile deployments
+3. **Testing** - Ensure everything works
 
 ### Medium Priority (Can be done incrementally)
 
-1. __Script Updates__ - Less critical, can fall back to defaults
-2. __Database Enhancements__ - Optional improvements
+1. **Script Updates** - Less critical, can fall back to defaults
+2. **Database Enhancements** - Optional improvements
 
 ### Low Priority (Nice to have)
 
-1. __Additional UI enhancements__ - Polish and refinements
+1. **Additional UI enhancements** - Polish and refinements
 
 ---
 
@@ -270,7 +270,7 @@ For each template file:
 
 ## Backward Compatibility
 
-__IMPORTANT:__ All changes maintain backward compatibility:
+**IMPORTANT:** All changes maintain backward compatibility:
 
 - System works without `service_config.yaml` (uses defaults)
 - Falls back gracefully if configuration unavailable
@@ -283,14 +283,14 @@ __IMPORTANT:__ All changes maintain backward compatibility:
 
 Consider these for future versions:
 
-1. __Configuration UI__ - Web interface to edit service_config.yaml
-2. __Multiple Profiles__ - Switch between configurations without restart
-3. __Real-time Config Reload__ - Update configuration without restart
-4. __Configuration Validation__ - Web UI to validate config before saving
-5. __Workflow Builder__ - Visual editor for workflow stages
-6. __Multi-language Support__ - Full i18n with language selection
-7. __Custom Fields__ - User-defined data fields per stage
-8. __Advanced Alerts__ - Conditional alerts based on complex rules
+1. **Configuration UI** - Web interface to edit service_config.yaml
+2. **Multiple Profiles** - Switch between configurations without restart
+3. **Real-time Config Reload** - Update configuration without restart
+4. **Configuration Validation** - Web UI to validate config before saving
+5. **Workflow Builder** - Visual editor for workflow stages
+6. **Multi-language Support** - Full i18n with language selection
+7. **Custom Fields** - User-defined data fields per stage
+8. **Advanced Alerts** - Conditional alerts based on complex rules
 
 ---
 
@@ -345,21 +345,21 @@ If you complete integration for a component:
 
 ## Summary
 
-__What's Done:__
+**What's Done:**
 
 - ✅ Core configuration system
 - ✅ Backend integration (all thresholds, capacity, alerts)
 - ✅ API endpoint for frontend
 - ✅ JavaScript helper for templates
 
-__What's Next:__
+**What's Next:**
 
 - 🔄 Update HTML templates to use service-config.js
 - 🔄 Update mobile app to load stages dynamically
 - 🔄 Test with different configurations
 - 🔄 Update scripts as needed
 
-__Estimated Effort:__
+**Estimated Effort:**
 
 - Template updates: 1-2 hours (mostly find-and-replace)
 - Mobile app: 30 minutes

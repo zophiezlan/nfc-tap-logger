@@ -30,15 +30,14 @@ Usage:
 
 import logging
 import sqlite3
-from datetime import datetime
-from typing import Dict, Optional, Any
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-from .datetime_utils import utc_now
-
-# Import all managers
-from .service_improvement import (
-    ServiceImprovementEngine,
+from .access_control import (
+    AccessControlManager,
+    Permission,
+    load_roles_from_config,
 )
 from .adaptive_thresholds import (
     AdaptiveThresholdManager,
@@ -48,25 +47,26 @@ from .custom_slo import (
     CustomSLOManager,
     load_slos_from_config,
 )
+from .datetime_utils import utc_now
+from .dynamic_config import (
+    ConfigurationSubscriber,
+    DynamicConfigurationManager,
+)
 from .integration_hooks import (
-    IntegrationHooksManager,
     IntegrationEventType,
+    IntegrationHooksManager,
     load_webhooks_from_config,
 )
-from .access_control import (
-    AccessControlManager,
-    Permission,
-    load_roles_from_config,
+
+# Import all managers
+from .service_improvement import (
+    ServiceImprovementEngine,
 )
 from .workflow_validators import (
-    WorkflowValidationManager,
     ValidationAction,
     ValidationSeverity,
+    WorkflowValidationManager,
     load_validators_from_config,
-)
-from .dynamic_config import (
-    DynamicConfigurationManager,
-    ConfigurationSubscriber,
 )
 
 logger = logging.getLogger(__name__)
@@ -171,11 +171,15 @@ class ServiceOrchestrator(ConfigurationSubscriber):
 
         self._improvement_engine = ServiceImprovementEngine(
             conn=self._conn,
-            target_wait_minutes=improvement_config.get("target_wait_minutes", 30),
+            target_wait_minutes=improvement_config.get(
+                "target_wait_minutes", 30
+            ),
             target_throughput_per_hour=improvement_config.get(
                 "target_throughput_per_hour", 12
             ),
-            analysis_window_hours=improvement_config.get("analysis_window_hours", 24),
+            analysis_window_hours=improvement_config.get(
+                "analysis_window_hours", 24
+            ),
         )
         logger.debug("Service improvement engine initialized")
 
@@ -200,7 +204,9 @@ class ServiceOrchestrator(ConfigurationSubscriber):
         slo_config = self._config.get(
             "slos", self._config.get("service_level_objectives", {})
         )
-        target_wait = self._config.get("capacity", {}).get("target_wait_minutes", 30)
+        target_wait = self._config.get("capacity", {}).get(
+            "target_wait_minutes", 30
+        )
 
         self._slo_manager = CustomSLOManager(
             conn=self._conn, target_wait_minutes=target_wait
@@ -245,7 +251,9 @@ class ServiceOrchestrator(ConfigurationSubscriber):
         self._access_manager = AccessControlManager(
             conn=self._conn,
             session_timeout_minutes=session_timeout,
-            require_authentication=access_config.get("require_authentication", False),
+            require_authentication=access_config.get(
+                "require_authentication", False
+            ),
         )
 
         # Load custom roles
@@ -255,7 +263,9 @@ class ServiceOrchestrator(ConfigurationSubscriber):
 
     def _init_validation_manager(self) -> None:
         """Initialize the workflow validation manager"""
-        validation_config = self._config.get("workflow", {}).get("validation", {})
+        validation_config = self._config.get("workflow", {}).get(
+            "validation", {}
+        )
 
         self._validation_manager = WorkflowValidationManager(
             conn=self._conn,
@@ -281,7 +291,8 @@ class ServiceOrchestrator(ConfigurationSubscriber):
             errors = [
                 r
                 for r in results
-                if r.severity in (ValidationSeverity.ERROR, ValidationSeverity.CRITICAL)
+                if r.severity
+                in (ValidationSeverity.ERROR, ValidationSeverity.CRITICAL)
             ]
             if errors:
                 self._hooks_manager.emit_alert(
@@ -300,7 +311,9 @@ class ServiceOrchestrator(ConfigurationSubscriber):
 
         logger.debug("Event coordination configured")
 
-    def _add_threshold_rule_from_config(self, rule_config: Dict[str, Any]) -> None:
+    def _add_threshold_rule_from_config(
+        self, rule_config: Dict[str, Any]
+    ) -> None:
         """Add a threshold rule from configuration"""
         # This would parse the config and add appropriate rules
         # Simplified implementation
@@ -318,7 +331,10 @@ class ServiceOrchestrator(ConfigurationSubscriber):
         if self._hooks_manager:
             self._hooks_manager.emit(
                 IntegrationEventType.HEALTH_CHECK,
-                {"type": "config_changed", "changes": [c.to_dict() for c in changes]},
+                {
+                    "type": "config_changed",
+                    "changes": [c.to_dict() for c in changes],
+                },
             )
 
         # Update internal config reference
@@ -440,9 +456,13 @@ class ServiceOrchestrator(ConfigurationSubscriber):
         """
         self._ensure_initialized()
         if self._hooks_manager:
-            self._hooks_manager.emit_tap_event(stage, token_id, session_id, extra_data)
+            self._hooks_manager.emit_tap_event(
+                stage, token_id, session_id, extra_data
+            )
 
-    def check_permission(self, user_id: Optional[str], permission: Permission) -> bool:
+    def check_permission(
+        self, user_id: Optional[str], permission: Permission
+    ) -> bool:
         """
         Check if a user has a permission.
 
@@ -472,7 +492,9 @@ class ServiceOrchestrator(ConfigurationSubscriber):
         self._ensure_initialized()
 
         # Get health report from improvement engine
-        health_report = self._improvement_engine.get_service_health_report(session_id)
+        health_report = self._improvement_engine.get_service_health_report(
+            session_id
+        )
 
         # Get SLO summary
         slo_summary = self._slo_manager.get_slo_summary(session_id)
@@ -502,7 +524,9 @@ class ServiceOrchestrator(ConfigurationSubscriber):
                     + health_report["recommendations"]["high"][:2]
                 ),
             },
-            "thresholds": {"active_rules": self._threshold_manager.get_active_rules()},
+            "thresholds": {
+                "active_rules": self._threshold_manager.get_active_rules()
+            },
             "integrations": {
                 "status": integration_health["status"],
                 "webhooks": integration_health["enabled_webhooks"],
@@ -571,7 +595,11 @@ class ServiceOrchestrator(ConfigurationSubscriber):
                 name="validation_manager",
                 status="healthy" if self._validation_manager else "unhealthy",
                 message="Workflow validation operational",
-                details={"validators": len(self._validation_manager.list_validators())},
+                details={
+                    "validators": len(
+                        self._validation_manager.list_validators()
+                    )
+                },
             )
         )
 
@@ -628,13 +656,16 @@ _orchestrator: Optional[ServiceOrchestrator] = None
 
 
 def get_orchestrator(
-    conn: Optional[sqlite3.Connection] = None, config_path: Optional[str] = None
+    conn: Optional[sqlite3.Connection] = None,
+    config_path: Optional[str] = None,
 ) -> ServiceOrchestrator:
     """Get or create the global service orchestrator"""
     global _orchestrator
     if _orchestrator is None:
         if conn is None:
-            raise ValueError("Database connection required for first initialization")
+            raise ValueError(
+                "Database connection required for first initialization"
+            )
         _orchestrator = ServiceOrchestrator(conn, config_path)
     return _orchestrator
 

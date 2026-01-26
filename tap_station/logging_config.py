@@ -11,7 +11,6 @@ from typing import Optional
 
 from .path_utils import ensure_parent_dir
 
-
 # Default logging format
 DEFAULT_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -179,7 +178,9 @@ def silence_module(module_name: str) -> None:
     logging.getLogger(module_name).setLevel(logging.WARNING)
 
 
-def log_exception(logger: logging.Logger, message: str, exc: Exception) -> None:
+def log_exception(
+    logger: logging.Logger, message: str, exc: Exception
+) -> None:
     """
     Log an exception with context.
 

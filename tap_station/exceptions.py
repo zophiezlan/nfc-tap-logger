@@ -140,7 +140,9 @@ class SequenceValidationError(ValidationError):
         if token_id:
             message = f"Sequence error for token {token_id}: {message}"
         if expected_stage and actual_stage:
-            message = f"{message} (expected {expected_stage}, got {actual_stage})"
+            message = (
+                f"{message} (expected {expected_stage}, got {actual_stage})"
+            )
 
         super().__init__(message)
 

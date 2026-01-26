@@ -8,11 +8,12 @@ The service configuration extends the base config.yaml with service-specific set
 like workflow stages, alert thresholds, UI labels, staffing models, etc.
 """
 
-import yaml
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, field
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +120,8 @@ class ServiceConfig:
     def get_all_stage_ids(self) -> List[str]:
         """Get list of all stage IDs in order"""
         return [
-            stage.id for stage in sorted(self.workflow_stages, key=lambda s: s.order)
+            stage.id
+            for stage in sorted(self.workflow_stages, key=lambda s: s.order)
         ]
 
     def get_public_stages(self) -> List[WorkflowStage]:
@@ -194,7 +196,9 @@ class ServiceConfigLoader:
             config = self._parse_config(raw_config)
             self.config = config
 
-            logger.info(f"Loaded service configuration for: {config.service_name}")
+            logger.info(
+                f"Loaded service configuration for: {config.service_name}"
+            )
             logger.info(f"  Workflow stages: {len(config.workflow_stages)}")
             logger.info(f"  Stage IDs: {config.get_all_stage_ids()}")
 
@@ -221,7 +225,9 @@ class ServiceConfigLoader:
                 "description", config.service_description
             )
             config.service_type = service.get("type", config.service_type)
-            config.organization = service.get("organization", config.organization)
+            config.organization = service.get(
+                "organization", config.organization
+            )
 
         # Parse workflow stages
         if "workflow" in raw:
@@ -236,7 +242,8 @@ class ServiceConfigLoader:
             # Add custom stages if defined
             if "custom_stages" in workflow:
                 custom_stages = [
-                    WorkflowStage(**stage) for stage in workflow["custom_stages"]
+                    WorkflowStage(**stage)
+                    for stage in workflow["custom_stages"]
                 ]
                 config.workflow_stages.extend(custom_stages)
 
@@ -293,10 +300,16 @@ class ServiceConfigLoader:
             if "service_inactivity" in alerts:
                 config.service_inactivity_warning_minutes = alerts[
                     "service_inactivity"
-                ].get("warning_minutes", config.service_inactivity_warning_minutes)
+                ].get(
+                    "warning_minutes",
+                    config.service_inactivity_warning_minutes,
+                )
                 config.service_inactivity_critical_minutes = alerts[
                     "service_inactivity"
-                ].get("critical_minutes", config.service_inactivity_critical_minutes)
+                ].get(
+                    "critical_minutes",
+                    config.service_inactivity_critical_minutes,
+                )
 
             if "stuck_cards" in alerts:
                 config.stuck_cards_threshold_hours = alerts["stuck_cards"].get(
@@ -309,13 +322,14 @@ class ServiceConfigLoader:
                 ].get("multiplier", config.service_variance_multiplier)
 
             if "capacity_utilization" in alerts:
-                config.capacity_critical_percent = alerts["capacity_utilization"].get(
-                    "critical_percent", config.capacity_critical_percent
-                )
+                config.capacity_critical_percent = alerts[
+                    "capacity_utilization"
+                ].get("critical_percent", config.capacity_critical_percent)
 
             if "system" in alerts:
                 config.temperature_critical_celsius = alerts["system"].get(
-                    "temperature_critical_celsius", config.temperature_critical_celsius
+                    "temperature_critical_celsius",
+                    config.temperature_critical_celsius,
                 )
                 config.disk_warning_percent = alerts["system"].get(
                     "disk_usage_warning_percent", config.disk_warning_percent
@@ -346,7 +360,9 @@ class ServiceConfigLoader:
                 config.show_served_count = pd.get(
                     "show_served_count", config.show_served_count
                 )
-                config.show_avg_time = pd.get("show_avg_time", config.show_avg_time)
+                config.show_avg_time = pd.get(
+                    "show_avg_time", config.show_avg_time
+                )
                 config.public_refresh_interval = pd.get(
                     "refresh_interval_seconds", config.public_refresh_interval
                 )
@@ -378,7 +394,9 @@ class ServiceConfigLoader:
                 "multi_location", config.multi_location
             )
             config.sites = locations.get("sites", [])
-            config.shared_queue = locations.get("shared_queue", config.shared_queue)
+            config.shared_queue = locations.get(
+                "shared_queue", config.shared_queue
+            )
 
         # Parse metrics
         if "metrics" in raw:

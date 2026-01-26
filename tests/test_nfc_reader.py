@@ -2,7 +2,8 @@
 
 import time
 from unittest.mock import patch
-from tap_station.nfc_reader import NFCReader, MockNFCReader
+
+from tap_station.nfc_reader import MockNFCReader, NFCReader
 
 
 def test_mock_reader_initialization():

@@ -9,24 +9,24 @@ Tests cover:
 - Subscriber notifications
 """
 
-import pytest
-import tempfile
 import os
-from datetime import datetime
-
 import sys
+import tempfile
+from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tap_station.dynamic_config import (
-    DynamicConfigurationManager,
-    ConfigurationValidator,
-    ConfigurationSubscriber,
     ConfigurationChange,
+    ConfigurationSubscriber,
+    ConfigurationValidator,
     ConfigurationVersion,
-    get_config_manager,
+    DynamicConfigurationManager,
     get_config,
+    get_config_manager,
     update_config,
 )
 
@@ -54,7 +54,9 @@ alerts:
     warning_threshold: 10
     critical_threshold: 20
 """
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         f.write(content)
         f.flush()
         yield f.name
@@ -68,7 +70,9 @@ class TestConfigurationValidator:
     def test_validate_valid_config(self):
         """Test validation passes for valid config"""
         validator = ConfigurationValidator()
-        config = {"capacity": {"people_per_hour": 12, "avg_service_minutes": 5}}
+        config = {
+            "capacity": {"people_per_hour": 12, "avg_service_minutes": 5}
+        }
         errors = validator.validate(config)
         assert len(errors) == 0
 
@@ -192,7 +196,9 @@ class TestDynamicConfigurationManager:
         """Test YAML export to file"""
         manager.load_from_dict({"test": "value"})
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
             path = f.name
 
         try:
@@ -344,7 +350,9 @@ class TestValidationOnLoad:
 
     def test_invalid_config_rejected(self, manager):
         """Test invalid config is rejected"""
-        manager.add_validation_rule("must_exist", lambda v: v == "required_value")
+        manager.add_validation_rule(
+            "must_exist", lambda v: v == "required_value"
+        )
 
         config = {"must_exist": "wrong_value"}
         result = manager.load_from_dict(config)

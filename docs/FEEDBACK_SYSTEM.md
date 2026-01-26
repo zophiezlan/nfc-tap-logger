@@ -106,9 +106,9 @@ feedback:
 
 ```yaml
 feedback:
-  beep_success: [0.1]                 # Short beep
-  beep_duplicate: [0.1, 0.05, 0.1]    # Double beep  
-  beep_error: [0.3]                   # Long beep
+  beep_success: [0.1] # Short beep
+  beep_duplicate: [0.1, 0.05, 0.1] # Double beep
+  beep_error: [0.3] # Long beep
 ```
 
 ## Visual Reference

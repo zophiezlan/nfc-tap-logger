@@ -168,7 +168,7 @@ Returns CSV file with appropriate Content-Disposition header for download.
 **Stuck Cards Detection:**
 
 ```sql
-SELECT DISTINCT 
+SELECT DISTINCT
     q.token_id,
     q.timestamp as queue_time,
     (julianday('now') - julianday(q.timestamp)) * 24 as hours_stuck

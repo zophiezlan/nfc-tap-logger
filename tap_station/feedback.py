@@ -1,10 +1,10 @@
 """Feedback system for buzzer and LED control"""
 
-import time
 import logging
 import threading
-from typing import List, Optional
+import time
 from enum import Enum
+from typing import List, Optional
 
 from .gpio_manager import get_gpio_manager
 
@@ -100,8 +100,12 @@ class FeedbackController:
                 self.buzzer_enabled = False
 
         if self.led_enabled:
-            green_ok = self._gpio.setup_output(self.gpio_led_green, initial_state=False)
-            red_ok = self._gpio.setup_output(self.gpio_led_red, initial_state=False)
+            green_ok = self._gpio.setup_output(
+                self.gpio_led_green, initial_state=False
+            )
+            red_ok = self._gpio.setup_output(
+                self.gpio_led_red, initial_state=False
+            )
             if green_ok and red_ok:
                 logger.info(
                     f"LEDs enabled on GPIO {self.gpio_led_green}, {self.gpio_led_red}"

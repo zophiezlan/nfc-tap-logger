@@ -20,10 +20,10 @@ Presets configure:
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from copy import deepcopy
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -665,7 +665,11 @@ class PresetManager:
         logger.info(f"Registered preset: {preset.id}")
 
     def create_from_base(
-        self, base_preset_id: str, new_id: str, name: str, modifications: Dict[str, Any]
+        self,
+        base_preset_id: str,
+        new_id: str,
+        name: str,
+        modifications: Dict[str, Any],
     ) -> Optional[ServicePreset]:
         """
         Create a new preset by modifying an existing one.
@@ -718,7 +722,10 @@ class PresetManager:
         return None
 
     def recommend_preset(
-        self, expected_daily_visitors: int, has_substance_return: bool, is_mobile: bool
+        self,
+        expected_daily_visitors: int,
+        has_substance_return: bool,
+        is_mobile: bool,
     ) -> str:
         """
         Recommend a preset based on service characteristics.

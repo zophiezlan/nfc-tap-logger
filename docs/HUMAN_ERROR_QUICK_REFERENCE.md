@@ -87,11 +87,11 @@
 
 ## System Beeps
 
-| Beeps | Meaning | Action |
-|-------|---------|--------|
-| 🔊 **BEEP** (1 short) | ✅ Success | Continue |
+| Beeps                        | Meaning                      | Action          |
+| ---------------------------- | ---------------------------- | --------------- |
+| 🔊 **BEEP** (1 short)        | ✅ Success                   | Continue        |
 | 🔊🔊 **BEEP-BEEP** (2 short) | ⚠️ Duplicate or out-of-order | Check dashboard |
-| 🔊━━━ **BEEEEEP** (1 long) | ❌ Error | Try again |
+| 🔊━━━ **BEEEEEP** (1 long)   | ❌ Error                     | Try again       |
 
 ---
 
@@ -114,6 +114,7 @@
 4. Submit
 
 **Example Reason:**
+
 > "Participant confirmed left at ~2:45pm, forgot to tap exit. Card reader working normally."
 
 ---
@@ -133,6 +134,7 @@
 5. Confirm
 
 **Example Reason:**
+
 > "Participant grabbed wrong card from table, used neighbor's card by mistake. Correct card tapped 2 minutes later."
 
 ---

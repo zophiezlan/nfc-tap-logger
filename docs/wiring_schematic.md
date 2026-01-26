@@ -114,7 +114,7 @@ All I2C devices share the same 4 connections. Use breadboard rows to fan out:
 ```
 Breadboard Layout (I2C Bus):
 Row A: 3.3V rail → All VCC pins
-Row B: GND rail → All GND pins  
+Row B: GND rail → All GND pins
 Row C: SDA (Pi Pin 3/GPIO2) → All SDA pins
 Row D: SCL (Pi Pin 5/GPIO3) → All SCL pins
 

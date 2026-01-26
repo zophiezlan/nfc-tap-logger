@@ -4,13 +4,14 @@ Simplified write test to diagnose the exact issue
 Run this on the Raspberry Pi to test writing to a card
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pn532pi import Pn532, Pn532I2c
+
 from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 
@@ -78,10 +79,14 @@ def main():
 
         # Prepare test data
         test_data = bytearray(b"TEST")
-        print(f"\nTest data to write: {test_data.hex()} ({repr(bytes(test_data))})")
+        print(
+            f"\nTest data to write: {test_data.hex()} ({repr(bytes(test_data))})"
+        )
         print(f"Type: {type(test_data)}, Length: {len(test_data)}")
 
-        input("\nPress Enter to write TEST to page 4 (WARNING: will modify card!)...")
+        input(
+            "\nPress Enter to write TEST to page 4 (WARNING: will modify card!)..."
+        )
 
         # Try the write
         print("Calling: pn532.mifareultralight_WritePage(4, test_data)")
@@ -101,7 +106,9 @@ def main():
             if readback_bytes == b"TEST":
                 print("\n✓ SUCCESS! Write and read-back match!")
             else:
-                print(f"\n✗ MISMATCH! Expected TEST, got {repr(readback_bytes)}")
+                print(
+                    f"\n✗ MISMATCH! Expected TEST, got {repr(readback_bytes)}"
+                )
         else:
             print("ERROR: Could not read back")
 

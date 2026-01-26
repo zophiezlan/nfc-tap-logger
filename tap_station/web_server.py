@@ -10,22 +10,32 @@ Provides:
 """
 
 import csv
-import sys
 import logging
-import subprocess
 import os
-import shutil
-import time
 import secrets
+import shutil
+import subprocess
+import sys
+import time
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+from functools import wraps
 from io import StringIO
 from threading import Lock
-from functools import wraps
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for, current_app
-from datetime import datetime, timezone, timedelta
+
+from flask import (
+    Flask,
+    current_app,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 # Import utilities
-from .datetime_utils import parse_timestamp, from_iso
+from .datetime_utils import from_iso, parse_timestamp
 from .path_utils import ensure_dir
 
 # Initialize logger at module level (before try block to avoid duplication)
@@ -44,11 +54,11 @@ except ImportError:
 # Simple rate limiting implementation
 class RateLimiter:
     """Simple in-memory rate limiter for API endpoints"""
-    
+
     def __init__(self, max_requests: int = 10, window_seconds: int = 60):
         """
         Initialize rate limiter
-        
+
         Args:
             max_requests: Maximum requests allowed per window
             window_seconds: Time window in seconds
@@ -57,14 +67,14 @@ class RateLimiter:
         self.window_seconds = window_seconds
         self.requests = defaultdict(list)
         self.lock = Lock()
-    
+
     def is_allowed(self, key: str) -> bool:
         """
         Check if request is allowed
-        
+
         Args:
             key: Identifier (e.g., IP address)
-            
+
         Returns:
             True if request is allowed
         """
@@ -72,24 +82,26 @@ class RateLimiter:
         with self.lock:
             # Clean up old requests
             self.requests[key] = [
-                req_time for req_time in self.requests[key]
+                req_time
+                for req_time in self.requests[key]
                 if now - req_time < self.window_seconds
             ]
-            
+
             # Check if under limit
             if len(self.requests[key]) < self.max_requests:
                 self.requests[key].append(now)
                 return True
-            
+
             return False
-    
+
     def get_remaining(self, key: str) -> int:
         """Get number of remaining requests in current window"""
         now = time.time()
         with self.lock:
             # Clean up old requests
             self.requests[key] = [
-                req_time for req_time in self.requests[key]
+                req_time
+                for req_time in self.requests[key]
                 if now - req_time < self.window_seconds
             ]
             return max(0, self.max_requests - len(self.requests[key]))
@@ -98,61 +110,80 @@ class RateLimiter:
 def require_admin_auth(f):
     """
     Decorator to require admin authentication for control panel routes
-    
+
     Checks if user is logged in via session. If not, redirects to login page.
     Also checks session timeout and auto-logs out inactive sessions.
     """
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Check if user is authenticated
-        if not session.get('admin_authenticated'):
-            return redirect(url_for('login', next=request.url))
-        
+        if not session.get("admin_authenticated"):
+            return redirect(url_for("login", next=request.url))
+
         # Check session timeout
-        last_activity = session.get('last_activity')
+        last_activity = session.get("last_activity")
         if last_activity:
             try:
                 last_activity_time = datetime.fromisoformat(last_activity)
                 # Get timeout from Flask app config (set during init)
-                timeout_minutes = current_app.config.get('ADMIN_SESSION_TIMEOUT_MINUTES', 60)
-                if datetime.now(timezone.utc) - last_activity_time > timedelta(minutes=timeout_minutes):
+                timeout_minutes = current_app.config.get(
+                    "ADMIN_SESSION_TIMEOUT_MINUTES", 60
+                )
+                if datetime.now(timezone.utc) - last_activity_time > timedelta(
+                    minutes=timeout_minutes
+                ):
                     # Session timed out
                     session.clear()
-                    return redirect(url_for('login', next=request.url, error='Session timed out. Please login again.'))
+                    return redirect(
+                        url_for(
+                            "login",
+                            next=request.url,
+                            error="Session timed out. Please login again.",
+                        )
+                    )
             except (ValueError, TypeError):
                 # Invalid timestamp, clear session
                 session.clear()
-                return redirect(url_for('login'))
-        
+                return redirect(url_for("login"))
+
         # Update last activity time
-        session['last_activity'] = datetime.now(timezone.utc).isoformat()
-        
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
+
         return f(*args, **kwargs)
-    
+
     return decorated_function
 
 
 def rate_limit(limiter: RateLimiter):
     """
     Decorator to apply rate limiting to Flask routes
-    
+
     Args:
         limiter: RateLimiter instance
     """
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Use IP address as key
-            key = request.remote_addr or 'unknown'
-            
+            key = request.remote_addr or "unknown"
+
             if not limiter.is_allowed(key):
-                return jsonify({
-                    "success": False,
-                    "error": "Rate limit exceeded. Please try again later.",
-                }), 429
-            
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Rate limit exceeded. Please try again later.",
+                        }
+                    ),
+                    429,
+                )
+
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
@@ -170,18 +201,20 @@ class StatusWebServer:
         self.config = config
         self.db = database
         self.app = Flask(__name__)
-        
+
         # Configure Flask session for admin authentication
         # Generate a secure random secret key for session encryption
-        self.app.config['SECRET_KEY'] = secrets.token_hex(32)
-        self.app.config['SESSION_COOKIE_HTTPONLY'] = True
-        self.app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-        self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-        
+        self.app.config["SECRET_KEY"] = secrets.token_hex(32)
+        self.app.config["SESSION_COOKIE_HTTPONLY"] = True
+        self.app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+        self.app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)
+
         # Store admin password and timeout from config
-        self.app.config['ADMIN_PASSWORD'] = config.admin_password
-        self.app.config['ADMIN_SESSION_TIMEOUT_MINUTES'] = config.admin_session_timeout_minutes
-        
+        self.app.config["ADMIN_PASSWORD"] = config.admin_password
+        self.app.config["ADMIN_SESSION_TIMEOUT_MINUTES"] = (
+            config.admin_session_timeout_minutes
+        )
+
         # Initialize rate limiters for different endpoint types
         # Control endpoints (manual-event, remove-event): 10 requests/minute
         self.control_limiter = RateLimiter(max_requests=10, window_seconds=60)
@@ -191,7 +224,9 @@ class StatusWebServer:
         # Load service configuration
         if SERVICE_CONFIG_AVAILABLE:
             self.svc = get_service_integration()
-            logger.info(f"Service configuration loaded: {self.svc.get_service_name()}")
+            logger.info(
+                f"Service configuration loaded: {self.svc.get_service_name()}"
+            )
         else:
             self.svc = None
             logger.warning("Service configuration not available")
@@ -222,7 +257,9 @@ class StatusWebServer:
                             "stage": self.config.stage,
                             "session": self.config.session_id,
                             "total_events": count,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": datetime.now(
+                                timezone.utc
+                            ).isoformat(),
                         }
                     ),
                     200,
@@ -235,7 +272,9 @@ class StatusWebServer:
                         {
                             "status": "error",
                             "error": str(e),
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": datetime.now(
+                                timezone.utc
+                            ).isoformat(),
                         }
                     ),
                     500,
@@ -268,7 +307,9 @@ class StatusWebServer:
                 if len(events) > 1000:
                     logger.warning(f"Payload too large: {len(events)} events")
                     return (
-                        jsonify({"error": "Too many events (max 1000 per request)"}),
+                        jsonify(
+                            {"error": "Too many events (max 1000 per request)"}
+                        ),
                         413,
                     )
 
@@ -284,13 +325,17 @@ class StatusWebServer:
                     try:
                         # Basic type validation
                         if not isinstance(event, dict):
-                            logger.warning(f"Invalid event type: {type(event)}")
+                            logger.warning(
+                                f"Invalid event type: {type(event)}"
+                            )
                             errors += 1
                             continue
 
                         # Normalize fields
                         token_id = str(
-                            event.get("token_id") or event.get("tokenId") or "UNKNOWN"
+                            event.get("token_id")
+                            or event.get("tokenId")
+                            or "UNKNOWN"
                         )
                         uid = str(
                             event.get("uid")
@@ -299,7 +344,8 @@ class StatusWebServer:
                             or "UNKNOWN"
                         )
                         stage = (
-                            str(event.get("stage") or "").strip().upper() or "UNKNOWN"
+                            str(event.get("stage") or "").strip().upper()
+                            or "UNKNOWN"
                         )
                         session_id = str(
                             event.get("session_id")
@@ -307,18 +353,28 @@ class StatusWebServer:
                             or "UNKNOWN"
                         )
                         device_id = str(
-                            event.get("device_id") or event.get("deviceId") or "mobile"
+                            event.get("device_id")
+                            or event.get("deviceId")
+                            or "mobile"
                         )
 
                         # Validate field lengths (prevent database bloat)
-                        if len(token_id) > 100 or len(uid) > 100 or len(stage) > 50:
+                        if (
+                            len(token_id) > 100
+                            or len(uid) > 100
+                            or len(stage) > 50
+                        ):
                             logger.warning(f"Field too long in event: {event}")
                             errors += 1
                             continue
 
                         # Handle timestamp using centralized function
-                        ts_val = event.get("timestamp_ms") or event.get("timestampMs")
-                        timestamp = parse_timestamp(ts_val, default_to_now=False)
+                        ts_val = event.get("timestamp_ms") or event.get(
+                            "timestampMs"
+                        )
+                        timestamp = parse_timestamp(
+                            ts_val, default_to_now=False
+                        )
 
                         # Log event
                         success = self.db.log_event(
@@ -386,7 +442,12 @@ class StatusWebServer:
             token_id = request.args.get("token")
 
             if not token_id:
-                return render_template("error.html", error="No token ID provided"), 400
+                return (
+                    render_template(
+                        "error.html", error="No token ID provided"
+                    ),
+                    400,
+                )
 
             # Get status from API
             try:
@@ -401,7 +462,9 @@ class StatusWebServer:
             except Exception as e:
                 logger.error(f"Status check failed for token {token_id}: {e}")
                 return (
-                    render_template("error.html", error=f"Error checking status: {e}"),
+                    render_template(
+                        "error.html", error=f"Error checking status: {e}"
+                    ),
                     500,
                 )
 
@@ -421,7 +484,9 @@ class StatusWebServer:
                 return jsonify(status), 200
 
             except Exception as e:
-                logger.error(f"API status check failed for token {token_id}: {e}")
+                logger.error(
+                    f"API status check failed for token {token_id}: {e}"
+                )
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route("/api/stats")
@@ -437,7 +502,9 @@ class StatusWebServer:
                     "device_id": self.config.device_id,
                     "stage": self.config.stage,
                     "session_id": self.config.session_id,
-                    "total_events": self.db.get_event_count(self.config.session_id),
+                    "total_events": self.db.get_event_count(
+                        self.config.session_id
+                    ),
                     "recent_events": self.db.get_recent_events(10),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
@@ -473,7 +540,11 @@ class StatusWebServer:
                                         "label": "Being Served",
                                         "order": 2,
                                     },
-                                    {"id": "EXIT", "label": "Completed", "order": 3},
+                                    {
+                                        "id": "EXIT",
+                                        "label": "Completed",
+                                        "order": 3,
+                                    },
                                 ],
                                 "ui_labels": {
                                     "queue_count": "people in queue",
@@ -511,7 +582,9 @@ class StatusWebServer:
                         if self.svc._config
                         else []
                     ),
-                    "ui_labels": self.svc._config.ui_labels if self.svc._config else {},
+                    "ui_labels": (
+                        self.svc._config.ui_labels if self.svc._config else {}
+                    ),
                     "display_settings": {
                         "refresh_interval": self.svc.get_public_refresh_interval(),
                         "show_queue_positions": self.svc.show_queue_positions(),
@@ -555,41 +628,45 @@ class StatusWebServer:
             """Admin login page and authentication"""
             if request.method == "POST":
                 password = request.form.get("password", "").strip()
-                
+
                 # Verify password
-                if password == self.app.config.get('ADMIN_PASSWORD'):
+                if password == self.app.config.get("ADMIN_PASSWORD"):
                     # Set session as authenticated
                     session.permanent = True
-                    session['admin_authenticated'] = True
-                    session['last_activity'] = datetime.now(timezone.utc).isoformat()
-                    session['login_time'] = datetime.now(timezone.utc).isoformat()
-                    
+                    session["admin_authenticated"] = True
+                    session["last_activity"] = datetime.now(
+                        timezone.utc
+                    ).isoformat()
+                    session["login_time"] = datetime.now(
+                        timezone.utc
+                    ).isoformat()
+
                     # Redirect to original destination or control panel
-                    next_url = request.args.get('next')
-                    if next_url and next_url.startswith('/'):
+                    next_url = request.args.get("next")
+                    if next_url and next_url.startswith("/"):
                         return redirect(next_url)
-                    return redirect(url_for('control'))
+                    return redirect(url_for("control"))
                 else:
                     # Invalid password
                     return render_template(
                         "login.html",
                         session=self.config.session_id,
-                        error="Invalid password. Please try again."
+                        error="Invalid password. Please try again.",
                     )
-            
+
             # GET request - show login form
-            error = request.args.get('error')
+            error = request.args.get("error")
             return render_template(
-                "login.html",
-                session=self.config.session_id,
-                error=error
+                "login.html", session=self.config.session_id, error=error
             )
 
         @self.app.route("/logout")
         def logout():
             """Logout admin user"""
             session.clear()
-            return redirect(url_for('login', error='You have been logged out.'))
+            return redirect(
+                url_for("login", error="You have been logged out.")
+            )
 
         @self.app.route("/control")
         @require_admin_auth
@@ -611,7 +688,7 @@ class StatusWebServer:
                 stage=self.config.stage,
                 session=self.config.session_id,
             )
-        
+
         @self.app.route("/event-summary")
         @require_admin_auth
         def event_summary():
@@ -619,11 +696,8 @@ class StatusWebServer:
             try:
                 session_id = self.config.session_id
                 summary_data = self._calculate_event_summary(session_id)
-                
-                return render_template(
-                    "event_summary.html",
-                    **summary_data
-                )
+
+                return render_template("event_summary.html", **summary_data)
             except Exception as e:
                 logger.error(f"Event summary failed: {e}", exc_info=True)
                 return render_template("error.html", error=str(e)), 500
@@ -649,7 +723,9 @@ class StatusWebServer:
 
                 if not command:
                     return (
-                        jsonify({"success": False, "error": "No command specified"}),
+                        jsonify(
+                            {"success": False, "error": "No command specified"}
+                        ),
                         400,
                     )
 
@@ -670,7 +746,12 @@ class StatusWebServer:
 
                 if not token_ids:
                     return (
-                        jsonify({"success": False, "error": "No token IDs provided"}),
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "No token IDs provided",
+                            }
+                        ),
                         400,
                     )
 
@@ -706,7 +787,9 @@ class StatusWebServer:
                             "anomalies": anomalies,
                             "summary": anomalies.get("summary", {}),
                             "session_id": self.config.session_id,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": datetime.now(
+                                timezone.utc
+                            ).isoformat(),
                         }
                     ),
                     200,
@@ -724,7 +807,13 @@ class StatusWebServer:
                 data = request.get_json()
 
                 # Validate required fields
-                required = ["token_id", "stage", "timestamp", "operator_id", "reason"]
+                required = [
+                    "token_id",
+                    "stage",
+                    "timestamp",
+                    "operator_id",
+                    "reason",
+                ]
                 missing = [f for f in required if f not in data]
                 if missing:
                     return (
@@ -740,7 +829,7 @@ class StatusWebServer:
                 # Parse timestamp with comprehensive error handling
                 try:
                     timestamp_str = data["timestamp"]
-                    
+
                     # Try ISO format first
                     try:
                         timestamp = datetime.fromisoformat(timestamp_str)
@@ -753,7 +842,9 @@ class StatusWebServer:
                             # If value is very large, assume milliseconds
                             if ts_value > 1e10:
                                 ts_value = ts_value / 1000
-                            timestamp = datetime.fromtimestamp(ts_value, tz=timezone.utc)
+                            timestamp = datetime.fromtimestamp(
+                                ts_value, tz=timezone.utc
+                            )
                         except (ValueError, OSError) as e:
                             return (
                                 jsonify(
@@ -764,13 +855,15 @@ class StatusWebServer:
                                 ),
                                 400,
                             )
-                    
+
                     # Validate timestamp is reasonable (not too far in past or future)
                     now = datetime.now(timezone.utc)
                     max_age_days = 30
                     max_future_hours = 1
-                    
-                    if timestamp < now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=max_age_days):
+
+                    if timestamp < now.replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    ) - timedelta(days=max_age_days):
                         return (
                             jsonify(
                                 {
@@ -780,7 +873,7 @@ class StatusWebServer:
                             ),
                             400,
                         )
-                    
+
                     if timestamp > now + timedelta(hours=max_future_hours):
                         return (
                             jsonify(
@@ -791,7 +884,7 @@ class StatusWebServer:
                             ),
                             400,
                         )
-                        
+
                 except KeyError:
                     return (
                         jsonify(
@@ -829,7 +922,9 @@ class StatusWebServer:
                         jsonify(
                             {
                                 "success": False,
-                                "error": result.get("warning", "Failed to add event"),
+                                "error": result.get(
+                                    "warning", "Failed to add event"
+                                ),
                             }
                         ),
                         400,
@@ -846,7 +941,7 @@ class StatusWebServer:
             """Remove an incorrect event"""
             try:
                 data = request.get_json()
-                
+
                 if not data:
                     return (
                         jsonify(
@@ -871,7 +966,7 @@ class StatusWebServer:
                         ),
                         400,
                     )
-                
+
                 # Validate event_id is an integer
                 try:
                     event_id = int(data["event_id"])
@@ -887,7 +982,7 @@ class StatusWebServer:
                         ),
                         400,
                     )
-                
+
                 # Validate operator_id is non-empty
                 operator_id = str(data["operator_id"]).strip()
                 if not operator_id:
@@ -900,7 +995,7 @@ class StatusWebServer:
                         ),
                         400,
                     )
-                
+
                 # Validate reason is non-empty
                 reason = str(data["reason"]).strip()
                 if not reason:
@@ -951,9 +1046,7 @@ class StatusWebServer:
                 if filter_type == "hour":
                     where_clause = "WHERE session_id = ? AND timestamp > datetime('now', '-1 hour')"
                 elif filter_type == "today":
-                    where_clause = (
-                        "WHERE session_id = ? AND date(timestamp) = date('now')"
-                    )
+                    where_clause = "WHERE session_id = ? AND date(timestamp) = date('now')"
                 else:
                     where_clause = "WHERE session_id = ?"
 
@@ -1032,13 +1125,16 @@ class StatusWebServer:
         def api_backup_database():
             """Download full database backup"""
             try:
-                from flask import send_file
                 from datetime import datetime
+
+                from flask import send_file
 
                 # Create backup filename
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 session_id = self.config.session_id
-                backup_filename = f"tap_station_backup_{session_id}_{timestamp}.db"
+                backup_filename = (
+                    f"tap_station_backup_{session_id}_{timestamp}.db"
+                )
 
                 # Get database path
                 db_path = self.db.db_path
@@ -1233,7 +1329,7 @@ class StatusWebServer:
             if self.svc:
                 quality.configure(
                     target_wait_minutes=self.svc.get_wait_warning_minutes(),
-                    target_throughput_per_hour=self.svc.get_people_per_hour()
+                    target_throughput_per_hour=self.svc.get_people_per_hour(),
                 )
 
             # Calculate quality score
@@ -1262,16 +1358,26 @@ class StatusWebServer:
             return {
                 "session_id": self.config.session_id,
                 "error": "Service quality metrics not available",
-                "quality_score": {"overall": 0, "status": "unknown", "components": {}},
+                "quality_score": {
+                    "overall": 0,
+                    "status": "unknown",
+                    "components": {},
+                },
                 "slos": {},
                 "slis": {},
             }
         except Exception as e:
-            logger.error(f"Error calculating service insights: {e}", exc_info=True)
+            logger.error(
+                f"Error calculating service insights: {e}", exc_info=True
+            )
             return {
                 "session_id": self.config.session_id,
                 "error": str(e),
-                "quality_score": {"overall": 0, "status": "unknown", "components": {}},
+                "quality_score": {
+                    "overall": 0,
+                    "status": "unknown",
+                    "components": {},
+                },
                 "slos": {},
                 "slis": {},
             }
@@ -1383,17 +1489,29 @@ class StatusWebServer:
                 "throughput_per_hour": (
                     last_hour_events / 2 if last_hour_events > 0 else 0
                 ),  # Rough estimate
-                "longest_wait_current": operational_metrics["longest_wait_current"],
-                "estimated_wait_new": operational_metrics["estimated_wait_new"],
+                "longest_wait_current": operational_metrics[
+                    "longest_wait_current"
+                ],
+                "estimated_wait_new": operational_metrics[
+                    "estimated_wait_new"
+                ],
                 "smart_wait_estimate": smart_estimate,
-                "service_uptime_minutes": operational_metrics["service_uptime_minutes"],
-                "capacity_utilization": operational_metrics["capacity_utilization"],
+                "service_uptime_minutes": operational_metrics[
+                    "service_uptime_minutes"
+                ],
+                "capacity_utilization": operational_metrics[
+                    "capacity_utilization"
+                ],
                 # 3-stage metrics
-                "avg_queue_wait_minutes": three_stage_metrics["avg_queue_wait_minutes"],
+                "avg_queue_wait_minutes": three_stage_metrics[
+                    "avg_queue_wait_minutes"
+                ],
                 "avg_service_time_minutes": three_stage_metrics[
                     "avg_service_time_minutes"
                 ],
-                "avg_total_time_minutes": three_stage_metrics["avg_total_time_minutes"],
+                "avg_total_time_minutes": three_stage_metrics[
+                    "avg_total_time_minutes"
+                ],
                 "has_3stage_data": three_stage_metrics["has_3stage_data"],
             },
             "operational": {
@@ -1462,7 +1580,9 @@ class StatusWebServer:
         queue_mult = self.svc.get_queue_multiplier() if self.svc else 2
         default_wait = self.svc.get_default_wait_estimate() if self.svc else 20
         estimated_wait_new = (
-            avg_wait + (in_queue * queue_mult) if avg_wait > 0 else default_wait
+            avg_wait + (in_queue * queue_mult)
+            if avg_wait > 0
+            else default_wait
         )
 
         # Calculate service uptime (time since first event today)
@@ -1508,7 +1628,9 @@ class StatusWebServer:
 
         # Get alert thresholds from configuration
         queue_warn = self.svc.get_queue_warning_threshold() if self.svc else 10
-        queue_crit = self.svc.get_queue_critical_threshold() if self.svc else 20
+        queue_crit = (
+            self.svc.get_queue_critical_threshold() if self.svc else 20
+        )
 
         # Queue length alerts
         if in_queue > queue_warn:
@@ -1537,14 +1659,18 @@ class StatusWebServer:
 
         if longest_wait > wait_warn:
             message = (
-                self.svc.get_alert_message("wait_warning", minutes=longest_wait)
+                self.svc.get_alert_message(
+                    "wait_warning", minutes=longest_wait
+                )
                 if self.svc
                 else f"⏱️ Longest wait: {longest_wait} min"
             )
             alerts.append({"level": "warning", "message": message})
         if longest_wait > wait_crit:
             message = (
-                self.svc.get_alert_message("wait_critical", minutes=longest_wait)
+                self.svc.get_alert_message(
+                    "wait_critical", minutes=longest_wait
+                )
                 if self.svc
                 else f"🚨 Critical wait time: {longest_wait} min"
             )
@@ -1556,9 +1682,13 @@ class StatusWebServer:
             )
 
         # Capacity alerts
-        capacity_crit = self.svc.get_capacity_critical_percent() if self.svc else 90
+        capacity_crit = (
+            self.svc.get_capacity_critical_percent() if self.svc else 90
+        )
         if capacity_utilization > capacity_crit:
-            alerts.append({"level": "info", "message": "⚡ Operating near capacity"})
+            alerts.append(
+                {"level": "info", "message": "⚡ Operating near capacity"}
+            )
 
         # Check for station inactivity (no events in last 10 minutes)
         cursor = self.db.conn.execute(
@@ -1572,13 +1702,19 @@ class StatusWebServer:
         row = cursor.fetchone()
         if row and row["last_event"]:
             last_event_dt = datetime.fromisoformat(row["last_event"])
-            minutes_since_last = int((now - last_event_dt).total_seconds() / 60)
+            minutes_since_last = int(
+                (now - last_event_dt).total_seconds() / 60
+            )
 
             inactivity_crit = (
-                self.svc.get_service_inactivity_critical_minutes() if self.svc else 10
+                self.svc.get_service_inactivity_critical_minutes()
+                if self.svc
+                else 10
             )
             inactivity_warn = (
-                self.svc.get_service_inactivity_warning_minutes() if self.svc else 5
+                self.svc.get_service_inactivity_warning_minutes()
+                if self.svc
+                else 5
             )
 
             if minutes_since_last > inactivity_crit and in_queue > 0:
@@ -1645,7 +1781,9 @@ class StatusWebServer:
                 )
 
         # Check for potential abandonments (people in queue > threshold hours)
-        stuck_hours = self.svc.get_stuck_cards_threshold_hours() if self.svc else 2
+        stuck_hours = (
+            self.svc.get_stuck_cards_threshold_hours() if self.svc else 2
+        )
         # Use SQLite concatenation to safely build time offset from parameter
         cursor = self.db.conn.execute(
             """
@@ -2037,7 +2175,9 @@ class StatusWebServer:
 
             return {
                 "service_running": service_running,
-                "total_events": self.db.get_event_count(self.config.session_id),
+                "total_events": self.db.get_event_count(
+                    self.config.session_id
+                ),
                 "db_size": db_size,
                 "uptime": uptime,
             }
@@ -2123,7 +2263,10 @@ class StatusWebServer:
                     text=True,
                     timeout=30,
                 )
-                return {"success": True, "output": result.stdout + result.stderr}
+                return {
+                    "success": True,
+                    "output": result.stdout + result.stderr,
+                }
 
             elif command == "verify-deployment":
                 script_path = os.path.join(
@@ -2137,7 +2280,10 @@ class StatusWebServer:
                     text=True,
                     timeout=30,
                 )
-                return {"success": True, "output": result.stdout + result.stderr}
+                return {
+                    "success": True,
+                    "output": result.stdout + result.stderr,
+                }
 
             elif command == "health-check":
                 script_path = os.path.join(
@@ -2151,7 +2297,10 @@ class StatusWebServer:
                     text=True,
                     timeout=10,
                 )
-                return {"success": True, "output": result.stdout + result.stderr}
+                return {
+                    "success": True,
+                    "output": result.stdout + result.stderr,
+                }
 
             elif command == "i2c-detect":
                 result = subprocess.run(
@@ -2175,7 +2324,10 @@ class StatusWebServer:
                     text=True,
                     timeout=30,
                 )
-                return {"success": True, "output": result.stdout + result.stderr}
+                return {
+                    "success": True,
+                    "output": result.stdout + result.stderr,
+                }
 
             elif command == "backup-database":
                 # Create backup
@@ -2184,7 +2336,9 @@ class StatusWebServer:
                 )
                 ensure_dir(backup_dir)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_path = os.path.join(backup_dir, f"events_{timestamp}.db")
+                backup_path = os.path.join(
+                    backup_dir, f"events_{timestamp}.db"
+                )
                 shutil.copy2(self.config.database_path, backup_path)
                 return {
                     "success": True,
@@ -2205,7 +2359,9 @@ class StatusWebServer:
                 output += f"=" * 80 + "\n"
                 output += f"Total events (all sessions): {total}\n"
                 output += f"Events in current session:   {session_total}\n"
-                output += f"Session ID:                  {self.config.session_id}\n"
+                output += (
+                    f"Session ID:                  {self.config.session_id}\n"
+                )
                 return {"success": True, "output": output}
 
             # System control
@@ -2256,7 +2412,10 @@ class StatusWebServer:
                     text=True,
                     timeout=10,
                 )
-                return {"success": True, "output": result.stdout + result.stderr}
+                return {
+                    "success": True,
+                    "output": result.stdout + result.stderr,
+                }
 
             elif command == "test-read-card":
                 # Test reading an NFC card
@@ -2305,7 +2464,10 @@ class StatusWebServer:
                     timeout=60,
                     cwd=os.path.dirname(os.path.dirname(__file__)),
                 )
-                return {"success": True, "output": result.stdout + result.stderr}
+                return {
+                    "success": True,
+                    "output": result.stdout + result.stderr,
+                }
 
             elif command == "git-status":
                 result = subprocess.run(
@@ -2318,7 +2480,10 @@ class StatusWebServer:
                 return {"success": True, "output": result.stdout}
 
             else:
-                return {"success": False, "error": f"Unknown command: {command}"}
+                return {
+                    "success": False,
+                    "error": f"Unknown command: {command}",
+                }
 
         except subprocess.TimeoutExpired:
             return {"success": False, "error": "Command timed out"}
@@ -2611,8 +2776,12 @@ class StatusWebServer:
                         journey["service_start_time"]
                     )
 
-                    queue_wait = (service_start_dt - queue_dt).total_seconds() / 60
-                    service_time = (exit_dt - service_start_dt).total_seconds() / 60
+                    queue_wait = (
+                        service_start_dt - queue_dt
+                    ).total_seconds() / 60
+                    service_time = (
+                        exit_dt - service_start_dt
+                    ).total_seconds() / 60
 
                     # Only include if times are reasonable (positive and < 24 hours)
                     if 0 <= queue_wait < 1440 and 0 <= service_time < 1440:
@@ -2624,13 +2793,19 @@ class StatusWebServer:
 
             return {
                 "avg_queue_wait_minutes": (
-                    int(sum(queue_waits) / len(queue_waits)) if queue_waits else 0
+                    int(sum(queue_waits) / len(queue_waits))
+                    if queue_waits
+                    else 0
                 ),
                 "avg_service_time_minutes": (
-                    int(sum(service_times) / len(service_times)) if service_times else 0
+                    int(sum(service_times) / len(service_times))
+                    if service_times
+                    else 0
                 ),
                 "avg_total_time_minutes": (
-                    int(sum(total_times) / len(total_times)) if total_times else 0
+                    int(sum(total_times) / len(total_times))
+                    if total_times
+                    else 0
                 ),
                 "has_3stage_data": has_3stage,
                 "journeys_analyzed": len(journeys),
@@ -2839,7 +3014,9 @@ class StatusWebServer:
 
                 time_in_stage = int((now - stage_dt).total_seconds() / 60)
             except Exception as e:
-                logger.warning(f"Could not parse timestamp for card {token_id}: {e}")
+                logger.warning(
+                    f"Could not parse timestamp for card {token_id}: {e}"
+                )
                 time_in_stage = 0
 
             # Build journey timeline
@@ -2999,13 +3176,19 @@ class StatusWebServer:
                 wait_sample_size = (
                     self.svc.get_wait_time_sample_size() if self.svc else 20
                 )
-                overall_avg = self._calculate_avg_wait_time(limit=wait_sample_size)
+                overall_avg = self._calculate_avg_wait_time(
+                    limit=wait_sample_size
+                )
                 queue_mult = self.svc.get_queue_multiplier() if self.svc else 2
-                default_wait = self.svc.get_default_wait_estimate() if self.svc else 20
+                default_wait = (
+                    self.svc.get_default_wait_estimate() if self.svc else 20
+                )
                 if overall_avg > 0:
                     estimated_wait = overall_avg + (queue_length * queue_mult)
                     method = "overall_avg"
-                    reasoning = f"Using overall average ({queue_length} in queue)"
+                    reasoning = (
+                        f"Using overall average ({queue_length} in queue)"
+                    )
                 else:
                     # No data, use default estimate
                     estimated_wait = default_wait if queue_length > 0 else 0
@@ -3062,14 +3245,21 @@ class StatusWebServer:
         import os
         import subprocess
 
-        status = {"timestamp": datetime.now(timezone.utc).isoformat(), "components": {}}
+        status = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "components": {},
+        }
 
         # I2C Status
         try:
-            i2c_exists = os.path.exists("/dev/i2c-1") or os.path.exists("/dev/i2c-0")
+            i2c_exists = os.path.exists("/dev/i2c-1") or os.path.exists(
+                "/dev/i2c-0"
+            )
             status["components"]["i2c"] = {
                 "status": "ok" if i2c_exists else "error",
-                "message": "I2C bus available" if i2c_exists else "I2C not found",
+                "message": (
+                    "I2C bus available" if i2c_exists else "I2C not found"
+                ),
                 "critical": True,
             }
         except:
@@ -3122,7 +3312,10 @@ class StatusWebServer:
         try:
             if os.path.exists("/dev/rtc0") or os.path.exists("/dev/rtc1"):
                 result = subprocess.run(
-                    ["sudo", "hwclock", "-r"], capture_output=True, text=True, timeout=2
+                    ["sudo", "hwclock", "-r"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
                 )
                 if result.returncode == 0:
                     status["components"]["rtc"] = {
@@ -3153,13 +3346,20 @@ class StatusWebServer:
         # Temperature
         try:
             result = subprocess.run(
-                ["vcgencmd", "measure_temp"], capture_output=True, text=True, timeout=2
+                ["vcgencmd", "measure_temp"],
+                capture_output=True,
+                text=True,
+                timeout=2,
             )
             if result.returncode == 0:
-                temp_str = result.stdout.strip().split("=")[1].replace("'C", "")
+                temp_str = (
+                    result.stdout.strip().split("=")[1].replace("'C", "")
+                )
                 temp = float(temp_str)
                 temp_status = (
-                    "ok" if temp < 70 else ("warning" if temp < 80 else "error")
+                    "ok"
+                    if temp < 70
+                    else ("warning" if temp < 80 else "error")
                 )
                 status["components"]["temperature"] = {
                     "status": temp_status,
@@ -3183,7 +3383,10 @@ class StatusWebServer:
         # Under-voltage check
         try:
             result = subprocess.run(
-                ["vcgencmd", "get_throttled"], capture_output=True, text=True, timeout=2
+                ["vcgencmd", "get_throttled"],
+                capture_output=True,
+                text=True,
+                timeout=2,
             )
             if result.returncode == 0:
                 throttled = result.stdout.strip().split("=")[1]
@@ -3191,7 +3394,9 @@ class StatusWebServer:
                 status["components"]["power"] = {
                     "status": "error" if is_throttled else "ok",
                     "message": (
-                        "Under-voltage detected!" if is_throttled else "Power OK"
+                        "Under-voltage detected!"
+                        if is_throttled
+                        else "Power OK"
                     ),
                     "throttled_hex": throttled,
                     "critical": is_throttled,
@@ -3236,21 +3441,21 @@ class StatusWebServer:
             }
 
         return status
-    
+
     def _calculate_event_summary(self, session_id: str) -> dict:
         """
         Calculate comprehensive event summary statistics
-        
+
         Args:
             session_id: Session ID for the event
-            
+
         Returns:
             Dictionary with event summary data
         """
         from datetime import datetime
-        
+
         now = datetime.now(timezone.utc)
-        
+
         # Get all completed journeys
         cursor = self.db.conn.execute(
             """
@@ -3273,21 +3478,39 @@ class StatusWebServer:
                 AND datetime(e.timestamp) > datetime(j.timestamp)
             ORDER BY j.timestamp ASC
         """,
-            (session_id,)
+            (session_id,),
         )
-        
+
         journeys = cursor.fetchall()
         total_served = len(journeys)
-        
+
         # Calculate wait time statistics
-        wait_times = [j["total_minutes"] for j in journeys if j["total_minutes"] > 0]
-        service_times = [j["service_minutes"] for j in journeys if j["service_minutes"] and j["service_minutes"] > 0]
-        
-        avg_wait_min = int(sum(wait_times) / len(wait_times)) if wait_times else 0
-        median_wait_min = int(sorted(wait_times)[len(wait_times) // 2]) if wait_times else 0
-        avg_service_min = int(sum(service_times) / len(service_times)) if service_times else 0
-        p90_service_min = int(sorted(service_times)[int(len(service_times) * 0.9)]) if len(service_times) > 10 else avg_service_min
-        
+        wait_times = [
+            j["total_minutes"] for j in journeys if j["total_minutes"] > 0
+        ]
+        service_times = [
+            j["service_minutes"]
+            for j in journeys
+            if j["service_minutes"] and j["service_minutes"] > 0
+        ]
+
+        avg_wait_min = (
+            int(sum(wait_times) / len(wait_times)) if wait_times else 0
+        )
+        median_wait_min = (
+            int(sorted(wait_times)[len(wait_times) // 2]) if wait_times else 0
+        )
+        avg_service_min = (
+            int(sum(service_times) / len(service_times))
+            if service_times
+            else 0
+        )
+        p90_service_min = (
+            int(sorted(service_times)[int(len(service_times) * 0.9)])
+            if len(service_times) > 10
+            else avg_service_min
+        )
+
         # Calculate peak queue
         cursor = self.db.conn.execute(
             """
@@ -3309,27 +3532,35 @@ class StatusWebServer:
             ORDER BY queue_length DESC
             LIMIT 1
         """,
-            (session_id, session_id)
+            (session_id, session_id),
         )
-        
+
         peak_row = cursor.fetchone()
         peak_queue = peak_row["queue_length"] if peak_row else 0
-        peak_time = peak_row["time"].split()[1][:5] if peak_row and peak_row["time"] else "N/A"
-        
+        peak_time = (
+            peak_row["time"].split()[1][:5]
+            if peak_row and peak_row["time"]
+            else "N/A"
+        )
+
         # Calculate service hours and throughput
         cursor = self.db.conn.execute(
             "SELECT MIN(timestamp) as first_event, MAX(timestamp) as last_event FROM events WHERE session_id = ?",
-            (session_id,)
+            (session_id,),
         )
         time_row = cursor.fetchone()
         service_hours = 0
         if time_row and time_row["first_event"] and time_row["last_event"]:
             first_dt = datetime.fromisoformat(time_row["first_event"])
             last_dt = datetime.fromisoformat(time_row["last_event"])
-            service_hours = round((last_dt - first_dt).total_seconds() / 3600, 1)
-        
-        throughput = int(total_served / service_hours) if service_hours > 0 else 0
-        
+            service_hours = round(
+                (last_dt - first_dt).total_seconds() / 3600, 1
+            )
+
+        throughput = (
+            int(total_served / service_hours) if service_hours > 0 else 0
+        )
+
         # Calculate abandonment rate
         cursor = self.db.conn.execute(
             """
@@ -3342,21 +3573,27 @@ class StatusWebServer:
                 AND q.session_id = ?
                 AND e.id IS NULL
         """,
-            (session_id,)
+            (session_id,),
         )
         abandoned_count = cursor.fetchone()["abandoned"]
         total_joined = total_served + abandoned_count
-        abandonment_rate = int((abandoned_count / total_joined) * 100) if total_joined > 0 else 0
-        
+        abandonment_rate = (
+            int((abandoned_count / total_joined) * 100)
+            if total_joined > 0
+            else 0
+        )
+
         # Get anomalies summary
         anomalies = self.db.get_anomalies(session_id)
         anomalies_summary = {
-            "total_anomalies": anomalies.get("summary", {}).get("total_anomalies", 0),
+            "total_anomalies": anomalies.get("summary", {}).get(
+                "total_anomalies", 0
+            ),
             "forgotten_exits": len(anomalies.get("forgotten_exit_taps", [])),
             "stuck_in_service": len(anomalies.get("stuck_in_service", [])),
             "rapid_fire_taps": len(anomalies.get("rapid_fire_taps", [])),
         }
-        
+
         # Calculate busiest period (hour with most completions)
         cursor = self.db.conn.execute(
             """
@@ -3369,12 +3606,12 @@ class StatusWebServer:
             ORDER BY count DESC
             LIMIT 1
         """,
-            (session_id,)
+            (session_id,),
         )
         busiest_row = cursor.fetchone()
         busiest_period = busiest_row["hour"] if busiest_row else "N/A"
         busiest_count = busiest_row["count"] if busiest_row else 0
-        
+
         # Quality assessment
         if avg_wait_min < 10:
             quality_assessment = "Excellent - average wait under 10 minutes"
@@ -3383,16 +3620,20 @@ class StatusWebServer:
         elif avg_wait_min < 30:
             quality_assessment = "Fair - average wait 20-30 minutes"
         else:
-            quality_assessment = "Needs improvement - average wait exceeds 30 minutes"
-        
+            quality_assessment = (
+                "Needs improvement - average wait exceeds 30 minutes"
+            )
+
         # Capacity assessment
         if peak_queue < 10:
-            capacity_assessment = "Well-managed - peak queue stayed under 10 people"
+            capacity_assessment = (
+                "Well-managed - peak queue stayed under 10 people"
+            )
         elif peak_queue < 20:
             capacity_assessment = "Adequate - peak queue reached 10-20 people"
         else:
             capacity_assessment = f"Strained - peak queue reached {peak_queue} people, consider adding capacity"
-        
+
         # Sample goals (in production, these would come from config or database)
         goals = [
             {
@@ -3401,32 +3642,96 @@ class StatusWebServer:
                 "actual": total_served,
                 "unit": "people",
                 "progress_percent": min(100, int((total_served / 150) * 100)),
-                "status_class": "goal-achieved" if total_served >= 150 else ("goal-partial" if total_served >= 100 else "goal-missed"),
-                "status_text": "✓ Achieved" if total_served >= 150 else (f"{int((total_served / 150) * 100)}% Complete" if total_served >= 100 else "Not Met"),
-                "progress_class": "" if total_served >= 150 else ("warning" if total_served >= 100 else "danger")
+                "status_class": (
+                    "goal-achieved"
+                    if total_served >= 150
+                    else (
+                        "goal-partial"
+                        if total_served >= 100
+                        else "goal-missed"
+                    )
+                ),
+                "status_text": (
+                    "✓ Achieved"
+                    if total_served >= 150
+                    else (
+                        f"{int((total_served / 150) * 100)}% Complete"
+                        if total_served >= 100
+                        else "Not Met"
+                    )
+                ),
+                "progress_class": (
+                    ""
+                    if total_served >= 150
+                    else ("warning" if total_served >= 100 else "danger")
+                ),
             },
             {
                 "name": "Average Wait <15 Minutes",
                 "target": 15,
                 "actual": avg_wait_min,
                 "unit": "min avg",
-                "progress_percent": min(100, int((15 / max(avg_wait_min, 1)) * 100)),
-                "status_class": "goal-achieved" if avg_wait_min <= 15 else ("goal-partial" if avg_wait_min <= 25 else "goal-missed"),
-                "status_text": "✓ Achieved" if avg_wait_min <= 15 else (f"{avg_wait_min} min" if avg_wait_min <= 25 else "Not Met"),
-                "progress_class": "" if avg_wait_min <= 15 else ("warning" if avg_wait_min <= 25 else "danger")
+                "progress_percent": min(
+                    100, int((15 / max(avg_wait_min, 1)) * 100)
+                ),
+                "status_class": (
+                    "goal-achieved"
+                    if avg_wait_min <= 15
+                    else (
+                        "goal-partial" if avg_wait_min <= 25 else "goal-missed"
+                    )
+                ),
+                "status_text": (
+                    "✓ Achieved"
+                    if avg_wait_min <= 15
+                    else (
+                        f"{avg_wait_min} min"
+                        if avg_wait_min <= 25
+                        else "Not Met"
+                    )
+                ),
+                "progress_class": (
+                    ""
+                    if avg_wait_min <= 15
+                    else ("warning" if avg_wait_min <= 25 else "danger")
+                ),
             },
             {
                 "name": "Abandonment Rate <10%",
                 "target": 10,
                 "actual": abandonment_rate,
                 "unit": "%",
-                "progress_percent": min(100, int((10 / max(abandonment_rate, 1)) * 100)) if abandonment_rate > 0 else 100,
-                "status_class": "goal-achieved" if abandonment_rate <= 10 else ("goal-partial" if abandonment_rate <= 20 else "goal-missed"),
-                "status_text": "✓ Achieved" if abandonment_rate <= 10 else (f"{abandonment_rate}%" if abandonment_rate <= 20 else "Not Met"),
-                "progress_class": "" if abandonment_rate <= 10 else ("warning" if abandonment_rate <= 20 else "danger")
-            }
+                "progress_percent": (
+                    min(100, int((10 / max(abandonment_rate, 1)) * 100))
+                    if abandonment_rate > 0
+                    else 100
+                ),
+                "status_class": (
+                    "goal-achieved"
+                    if abandonment_rate <= 10
+                    else (
+                        "goal-partial"
+                        if abandonment_rate <= 20
+                        else "goal-missed"
+                    )
+                ),
+                "status_text": (
+                    "✓ Achieved"
+                    if abandonment_rate <= 10
+                    else (
+                        f"{abandonment_rate}%"
+                        if abandonment_rate <= 20
+                        else "Not Met"
+                    )
+                ),
+                "progress_class": (
+                    ""
+                    if abandonment_rate <= 10
+                    else ("warning" if abandonment_rate <= 20 else "danger")
+                ),
+            },
         ]
-        
+
         return {
             "session_id": session_id,
             "event_date": datetime.now().strftime("%B %d, %Y"),
@@ -3447,7 +3752,9 @@ class StatusWebServer:
             "busiest_count": busiest_count,
             "quality_assessment": quality_assessment,
             "capacity_assessment": capacity_assessment,
-            "session_timeout_minutes": self.app.config.get('ADMIN_SESSION_TIMEOUT_MINUTES', 60)
+            "session_timeout_minutes": self.app.config.get(
+                "ADMIN_SESSION_TIMEOUT_MINUTES", 60
+            ),
         }
 
 
@@ -3476,9 +3783,13 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Status Web Server")
-    parser.add_argument("--config", default="config.yaml", help="Config file path")
+    parser.add_argument(
+        "--config", default="config.yaml", help="Config file path"
+    )
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=8080, help="Port to listen on")
+    parser.add_argument(
+        "--port", type=int, default=8080, help="Port to listen on"
+    )
 
     args = parser.parse_args()
 

@@ -6,10 +6,9 @@ constants used throughout the application. By centralizing these definitions,
 we eliminate hardcoded values and make it easier to modify workflows.
 """
 
-from typing import Dict, List, Set, Optional
 from dataclasses import dataclass
 from enum import Enum
-
+from typing import Dict, List, Optional, Set
 
 # =============================================================================
 # Delivery Status (used by webhooks and integrations)
@@ -81,7 +80,12 @@ class WorkflowStages:
             return cls.QUEUE_JOIN
         if lowered in {"exit", "queue_exit", "queue-exit", "queue exit"}:
             return cls.EXIT
-        if lowered in {"service_start", "service-start", "service start", "start"}:
+        if lowered in {
+            "service_start",
+            "service-start",
+            "service start",
+            "start",
+        }:
             return cls.SERVICE_START
         if lowered in {"substance_returned", "substance-returned", "returned"}:
             return cls.SUBSTANCE_RETURNED
@@ -256,7 +260,9 @@ DEFAULT_STAGE_LABELS: Dict[str, str] = {
 }
 
 
-def get_stage_label(stage_id: str, labels: Optional[Dict[str, str]] = None) -> str:
+def get_stage_label(
+    stage_id: str, labels: Optional[Dict[str, str]] = None
+) -> str:
     """
     Get display label for a stage.
 
@@ -280,8 +286,12 @@ def get_stage_label(stage_id: str, labels: Optional[Dict[str, str]] = None) -> s
 class DatabaseDefaults:
     """Default values for database operations"""
 
-    GRACE_PERIOD_MINUTES = 5  # Minutes before considering a tap a true duplicate
-    STUCK_THRESHOLD_MINUTES = 30  # Minutes before flagging as potentially stuck
+    GRACE_PERIOD_MINUTES = (
+        5  # Minutes before considering a tap a true duplicate
+    )
+    STUCK_THRESHOLD_MINUTES = (
+        30  # Minutes before flagging as potentially stuck
+    )
     ANOMALY_HIGH_THRESHOLD_MINUTES = 120  # Minutes for high severity anomaly
 
 

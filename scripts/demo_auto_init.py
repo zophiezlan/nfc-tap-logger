@@ -8,13 +8,14 @@ This script simulates the auto-init feature by:
 3. Showing how sequential token IDs are assigned
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import tempfile
+
 from tap_station.database import Database
 
 
@@ -87,15 +88,27 @@ def demo_auto_init():
 
         mixed_cards = [
             ("08E76BF6A59324", "050", "Pre-initialized card #050", False),
-            ("09F87CA7B60435", "09F87CA7", "Blank card (will auto-init)", True),
+            (
+                "09F87CA7B60435",
+                "09F87CA7",
+                "Blank card (will auto-init)",
+                True,
+            ),
             ("0AA98DA8C71546", "025", "Pre-initialized card #025", False),
-            ("0BB09EA9D82657", "0BB09EA9", "Blank card (will auto-init)", True),
+            (
+                "0BB09EA9D82657",
+                "0BB09EA9",
+                "Blank card (will auto-init)",
+                True,
+            ),
         ]
 
         # Start auto-init from 100 to avoid conflicts
         auto_init_counter = 100
 
-        for i, (uid, token_id, description, is_blank) in enumerate(mixed_cards, 1):
+        for i, (uid, token_id, description, is_blank) in enumerate(
+            mixed_cards, 1
+        ):
             if is_blank:
                 # Auto-assign
                 _, new_token_id = db.get_next_auto_init_token_id(
@@ -138,7 +151,9 @@ def demo_auto_init():
         print("Benefits:")
         print("  ✅ No need to pre-initialize hundreds of cards")
         print("  ✅ Can mix pre-initialized and blank cards")
-        print("  ✅ Sequential numbering continues even if cards are lost/stolen")
+        print(
+            "  ✅ Sequential numbering continues even if cards are lost/stolen"
+        )
         print("  ✅ Each session maintains independent counter")
         print()
 

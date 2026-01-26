@@ -4,13 +4,15 @@ Debug script to understand pn532pi write function signatures
 Run this on the Raspberry Pi to help diagnose the write issue
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import inspect
+
 from pn532pi import Pn532, Pn532I2c
+
 from tap_station.nfc_cleanup import cleanup_before_nfc_access
 
 print("=" * 70)
@@ -107,7 +109,9 @@ try:
         ),
         (
             "bytearray",
-            lambda: pn532.mifareultralight_WritePage(test_page, bytearray(test_data)),
+            lambda: pn532.mifareultralight_WritePage(
+                test_page, bytearray(test_data)
+            ),
         ),
         (
             "list of ints",
@@ -130,7 +134,11 @@ try:
         (
             "comma-separated ints",
             lambda: pn532.mifareultralight_WritePage(
-                test_page, test_data[0], test_data[1], test_data[2], test_data[3]
+                test_page,
+                test_data[0],
+                test_data[1],
+                test_data[2],
+                test_data[3],
             ),
         ),
     ]

@@ -14,12 +14,12 @@ This is the high-level coordinator for smooth on-site operation.
 import logging
 from typing import Optional
 
-from .wifi_manager import WiFiManager
+from .failover_manager import FailoverManager
 from .mdns_service import MDNSService, setup_mdns
 from .peer_monitor import PeerMonitor
 from .status_leds import StatusLEDManager
+from .wifi_manager import WiFiManager
 from .wifi_setup_button import WiFiSetupButton
-from .failover_manager import FailoverManager
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,10 @@ class OnSiteManager:
         """Initialize status LED manager"""
         try:
             self.status_leds = StatusLEDManager(
-                enabled=True, gpio_green=27, gpio_red=22, gpio_blue=None  # Optional
+                enabled=True,
+                gpio_green=27,
+                gpio_red=22,
+                gpio_blue=None,  # Optional
             )
             logger.info("Status LEDs initialized")
         except Exception as e:
@@ -114,7 +117,9 @@ class OnSiteManager:
             self.mdns_service = setup_mdns(self.device_id, self.web_port)
 
             if self.mdns_service:
-                logger.info(f"mDNS initialized: {self.mdns_service.get_access_url()}")
+                logger.info(
+                    f"mDNS initialized: {self.mdns_service.get_access_url()}"
+                )
             else:
                 logger.warning("mDNS setup failed (avahi not available)")
 
@@ -146,7 +151,9 @@ class OnSiteManager:
                 on_peer_up=self._on_peer_up,
             )
 
-            logger.info(f"Peer monitoring initialized for {self.peer_hostname}")
+            logger.info(
+                f"Peer monitoring initialized for {self.peer_hostname}"
+            )
 
         except Exception as e:
             logger.warning(f"Failed to initialize peer monitoring: {e}")
@@ -164,7 +171,9 @@ class OnSiteManager:
         # Simple 2-stage workflow: QUEUE_JOIN <-> EXIT
         if "QUEUE" in primary_stage.upper() or "JOIN" in primary_stage.upper():
             return ["EXIT"]
-        elif "EXIT" in primary_stage.upper() or "LEAVE" in primary_stage.upper():
+        elif (
+            "EXIT" in primary_stage.upper() or "LEAVE" in primary_stage.upper()
+        ):
             return ["QUEUE_JOIN"]
 
         # 4-stage workflow fallbacks

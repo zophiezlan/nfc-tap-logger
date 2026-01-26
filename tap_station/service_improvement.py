@@ -19,11 +19,11 @@ Service Design Principles Applied:
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
-from enum import Enum
 import sqlite3
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from .datetime_utils import utc_now
 
@@ -173,7 +173,9 @@ class ServiceImprovementEngine:
         if analysis_window_hours is not None:
             self._analysis_window = analysis_window_hours
 
-    def analyze_and_recommend(self, session_id: str) -> List[ImprovementRecommendation]:
+    def analyze_and_recommend(
+        self, session_id: str
+    ) -> List[ImprovementRecommendation]:
         """
         Run full analysis and generate recommendations.
 
@@ -229,7 +231,8 @@ class ServiceImprovementEngine:
         quick_wins = [
             r
             for r in all_recs
-            if r.priority in (ImprovementPriority.CRITICAL, ImprovementPriority.HIGH)
+            if r.priority
+            in (ImprovementPriority.CRITICAL, ImprovementPriority.HIGH)
             and len(r.suggested_actions) <= 3
         ]
 
@@ -281,7 +284,9 @@ class ServiceImprovementEngine:
                     if r.priority == ImprovementPriority.LOW
                 ],
             },
-            "summary": self._generate_summary(metrics, patterns, recommendations),
+            "summary": self._generate_summary(
+                metrics, patterns, recommendations
+            ),
         }
 
     def acknowledge_recommendation(self, recommendation_id: str) -> bool:
@@ -293,7 +298,9 @@ class ServiceImprovementEngine:
             return True
         return False
 
-    def dismiss_recommendation(self, recommendation_id: str, reason: str = "") -> bool:
+    def dismiss_recommendation(
+        self, recommendation_id: str, reason: str = ""
+    ) -> bool:
         """Dismiss a recommendation with optional reason"""
         if recommendation_id in self._recommendations:
             self._recommendations[recommendation_id].status = (
@@ -309,7 +316,9 @@ class ServiceImprovementEngine:
     # Analysis Methods
     # =========================================================================
 
-    def _analyze_wait_times(self, session_id: str) -> List[ImprovementRecommendation]:
+    def _analyze_wait_times(
+        self, session_id: str
+    ) -> List[ImprovementRecommendation]:
         """Analyze wait time patterns and generate recommendations"""
         recommendations = []
 
@@ -345,7 +354,9 @@ class ServiceImprovementEngine:
             if row and row["sample_size"] and row["sample_size"] > 0:
                 avg_wait = row["avg_wait"] or 0
                 max_wait = row["max_wait"] or 0
-                over_target_pct = (row["over_target"] / row["sample_size"]) * 100
+                over_target_pct = (
+                    row["over_target"] / row["sample_size"]
+                ) * 100
 
                 # High average wait time
                 if avg_wait > self._target_wait:
@@ -415,7 +426,9 @@ class ServiceImprovementEngine:
 
         return recommendations
 
-    def _analyze_throughput(self, session_id: str) -> List[ImprovementRecommendation]:
+    def _analyze_throughput(
+        self, session_id: str
+    ) -> List[ImprovementRecommendation]:
         """Analyze throughput patterns"""
         recommendations = []
 
@@ -487,7 +500,10 @@ class ServiceImprovementEngine:
                 # High variability in throughput
                 if row["max_hourly"] and row["min_hourly"]:
                     variability = row["max_hourly"] - row["min_hourly"]
-                    if variability > avg_hourly * 0.5 and row["hours_active"] >= 3:
+                    if (
+                        variability > avg_hourly * 0.5
+                        and row["hours_active"] >= 3
+                    ):
                         recommendations.append(
                             self._create_recommendation(
                                 category=ImprovementCategory.STAFFING,
@@ -606,7 +622,10 @@ class ServiceImprovementEngine:
                                 "Communicate wait expectations at queue join",
                             ],
                             expected_impact="Reducing abandonment ensures participants who want service receive it",
-                            metrics_affected=["abandonment_rate", "completion_rate"],
+                            metrics_affected=[
+                                "abandonment_rate",
+                                "completion_rate",
+                            ],
                             evidence={
                                 "abandoned_count": abandoned,
                                 "abandonment_rate": abandonment_rate,
@@ -659,7 +678,9 @@ class ServiceImprovementEngine:
                 min_time = row["min_time"]
 
                 # Calculate coefficient of variation estimate
-                range_ratio = (max_time - min_time) / avg_time if avg_time > 0 else 0
+                range_ratio = (
+                    (max_time - min_time) / avg_time if avg_time > 0 else 0
+                )
 
                 # High service time variability
                 if range_ratio > 2:
@@ -754,7 +775,9 @@ class ServiceImprovementEngine:
 
         return recommendations
 
-    def _analyze_peak_periods(self, session_id: str) -> List[ImprovementRecommendation]:
+    def _analyze_peak_periods(
+        self, session_id: str
+    ) -> List[ImprovementRecommendation]:
         """Analyze demand patterns by hour"""
         recommendations = []
 
@@ -796,7 +819,10 @@ class ServiceImprovementEngine:
                                 "Plan queue management strategies for peak periods",
                             ],
                             expected_impact="Proactive staffing for peaks reduces wait times during high demand",
-                            metrics_affected=["staffing_efficiency", "peak_wait_times"],
+                            metrics_affected=[
+                                "staffing_efficiency",
+                                "peak_wait_times",
+                            ],
                             evidence={
                                 "peak_hours": peak_hours,
                                 "peak_demand": peak_demand,
@@ -810,7 +836,9 @@ class ServiceImprovementEngine:
 
         return recommendations
 
-    def _analyze_data_quality(self, session_id: str) -> List[ImprovementRecommendation]:
+    def _analyze_data_quality(
+        self, session_id: str
+    ) -> List[ImprovementRecommendation]:
         """Analyze data quality issues"""
         recommendations = []
 
@@ -947,11 +975,13 @@ class ServiceImprovementEngine:
                     ServicePattern(
                         pattern_type="recurring_high_demand",
                         description="Multiple hours with high queue joins detected",
-                        frequency=row["hours_with_high_queue"] / self._analysis_window,
+                        frequency=row["hours_with_high_queue"]
+                        / self._analysis_window,
                         impact_score=75.0,
                         trend="stable",
                         data_points=row["hours_with_high_queue"],
-                        first_seen=now - timedelta(hours=self._analysis_window),
+                        first_seen=now
+                        - timedelta(hours=self._analysis_window),
                         last_seen=now,
                     )
                 )
@@ -1020,17 +1050,23 @@ class ServiceImprovementEngine:
         return metrics
 
     def _calculate_health_score(
-        self, metrics: Dict[str, Any], recommendations: List[ImprovementRecommendation]
+        self,
+        metrics: Dict[str, Any],
+        recommendations: List[ImprovementRecommendation],
     ) -> float:
         """Calculate overall health score (0-100)"""
         score = 100.0
 
         # Deduct for critical/high recommendations
         critical_count = sum(
-            1 for r in recommendations if r.priority == ImprovementPriority.CRITICAL
+            1
+            for r in recommendations
+            if r.priority == ImprovementPriority.CRITICAL
         )
         high_count = sum(
-            1 for r in recommendations if r.priority == ImprovementPriority.HIGH
+            1
+            for r in recommendations
+            if r.priority == ImprovementPriority.HIGH
         )
 
         score -= critical_count * 15
@@ -1040,7 +1076,9 @@ class ServiceImprovementEngine:
         if metrics["avg_wait_time"] > self._target_wait:
             score -= min(
                 20,
-                (metrics["avg_wait_time"] - self._target_wait) / self._target_wait * 20,
+                (metrics["avg_wait_time"] - self._target_wait)
+                / self._target_wait
+                * 20,
             )
 
         if metrics["queue_size"] > 15:
@@ -1069,10 +1107,14 @@ class ServiceImprovementEngine:
     ) -> str:
         """Generate a human-readable summary"""
         critical_count = sum(
-            1 for r in recommendations if r.priority == ImprovementPriority.CRITICAL
+            1
+            for r in recommendations
+            if r.priority == ImprovementPriority.CRITICAL
         )
         high_count = sum(
-            1 for r in recommendations if r.priority == ImprovementPriority.HIGH
+            1
+            for r in recommendations
+            if r.priority == ImprovementPriority.HIGH
         )
 
         parts = []
@@ -1082,7 +1124,9 @@ class ServiceImprovementEngine:
                 f"{critical_count} critical issue(s) require immediate attention"
             )
         if high_count > 0:
-            parts.append(f"{high_count} high-priority improvement(s) recommended")
+            parts.append(
+                f"{high_count} high-priority improvement(s) recommended"
+            )
 
         if metrics["queue_size"] > 10:
             parts.append(f"Queue currently has {metrics['queue_size']} people")
@@ -1093,7 +1137,9 @@ class ServiceImprovementEngine:
             )
 
         if not parts:
-            return "Service is operating well with no critical issues identified."
+            return (
+                "Service is operating well with no critical issues identified."
+            )
 
         return ". ".join(parts) + "."
 
@@ -1105,7 +1151,9 @@ class ServiceImprovementEngine:
 _improvement_engine: Optional[ServiceImprovementEngine] = None
 
 
-def get_improvement_engine(conn: sqlite3.Connection) -> ServiceImprovementEngine:
+def get_improvement_engine(
+    conn: sqlite3.Connection,
+) -> ServiceImprovementEngine:
     """Get or create the service improvement engine"""
     global _improvement_engine
     if _improvement_engine is None:
@@ -1113,7 +1161,9 @@ def get_improvement_engine(conn: sqlite3.Connection) -> ServiceImprovementEngine
     return _improvement_engine
 
 
-def analyze_service(conn: sqlite3.Connection, session_id: str) -> Dict[str, Any]:
+def analyze_service(
+    conn: sqlite3.Connection, session_id: str
+) -> Dict[str, Any]:
     """Convenience function to run analysis and get health report"""
     engine = get_improvement_engine(conn)
     return engine.get_service_health_report(session_id)

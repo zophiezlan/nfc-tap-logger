@@ -166,7 +166,7 @@ workflow:
       label: "Substance Returned"
       description: "Confirmed handback to participant"
       order: 3
-      required: true  # Make this required!
+      required: true # Make this required!
       visible_to_public: true
       duration_estimate: 1
       icon: "🤝"
@@ -184,8 +184,8 @@ Add alerts for unreturned substances:
 ```yaml
 alerts:
   unreturned_substances:
-    warning_minutes: 15   # Alert after 15 min
-    critical_minutes: 30  # Critical after 30 min
+    warning_minutes: 15 # Alert after 15 min
+    critical_minutes: 30 # Critical after 30 min
 
   messages:
     unreturned_substance_warning: "⚠️ Substance not returned: Token {token} ({minutes} min)"
@@ -265,18 +265,18 @@ When SUBSTANCE_RETURNED stage is enabled:
   In Queue: 5 people
   Being Served: 3 people
   Awaiting Return: 2 people ⚠️
-  
+
   Alerts:
   🟡 Token #042 - Substance unreturned (18 min)
   🔴 Token #067 - Substance unreturned (35 min) URGENT
-  
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Today's Stats
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Substances Received: 87
   Substances Returned: 85
   Return Rate: 97.7%
-  
+
   Avg Return Time: 2.3 min ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -423,7 +423,7 @@ When SUBSTANCE_RETURNED stage is enabled:
 3. Is station configured correctly?
 
    ```yaml
-   stage: "SUBSTANCE_RETURNED"  # Must be exact
+   stage: "SUBSTANCE_RETURNED" # Must be exact
    ```
 
 ### Alerts not triggering
@@ -439,7 +439,7 @@ When SUBSTANCE_RETURNED stage is enabled:
 ```yaml
 alerts:
   unreturned_substances:
-    warning_minutes: 5  # Lower for testing
+    warning_minutes: 5 # Lower for testing
     critical_minutes: 10
 ```
 

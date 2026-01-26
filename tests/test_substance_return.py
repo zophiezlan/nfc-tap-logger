@@ -1,9 +1,11 @@
 """Tests for substance return confirmation functionality"""
 
-import pytest
-import tempfile
 import os
-from datetime import datetime, timezone, timedelta
+import tempfile
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
 from tap_station.database import Database
 
 
@@ -85,7 +87,12 @@ def test_substance_return_workflow(test_db):
 
     # Verify stages in correct order
     stages = [event["stage"] for event in reversed(events)]
-    assert stages == ["QUEUE_JOIN", "SERVICE_START", "SUBSTANCE_RETURNED", "EXIT"]
+    assert stages == [
+        "QUEUE_JOIN",
+        "SERVICE_START",
+        "SUBSTANCE_RETURNED",
+        "EXIT",
+    ]
 
 
 def test_substance_return_duplicate_prevention(test_db):
@@ -174,7 +181,9 @@ def test_multiple_participants_substance_return(test_db):
     assert len(events) == 12
 
     # Count SUBSTANCE_RETURNED events
-    returned_count = len([e for e in events if e["stage"] == "SUBSTANCE_RETURNED"])
+    returned_count = len(
+        [e for e in events if e["stage"] == "SUBSTANCE_RETURNED"]
+    )
     assert returned_count == 3
 
 
@@ -361,7 +370,9 @@ def test_session_isolation_substance_return(test_db):
         device_id="station3",
         session_id="session-2",
     )
-    assert result["success"] is True  # Should succeed because different session
+    assert (
+        result["success"] is True
+    )  # Should succeed because different session
 
     # Verify both events exist
     events = test_db.get_recent_events(limit=10)

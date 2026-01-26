@@ -5,9 +5,9 @@ Service Manager
 Helper script for managing the tap-station systemd service.
 """
 
-import sys
-import subprocess
 import argparse
+import subprocess
+import sys
 
 
 def run_command(cmd, check=True):
@@ -60,7 +60,9 @@ def enable_service():
     """Enable service to start on boot"""
     print("Enabling tap-station service...")
 
-    success, out, err = run_command("sudo systemctl enable tap-station", check=False)
+    success, out, err = run_command(
+        "sudo systemctl enable tap-station", check=False
+    )
 
     if success:
         print("✓ Service enabled (will start on boot)")
@@ -74,7 +76,9 @@ def disable_service():
     """Disable service from starting on boot"""
     print("Disabling tap-station service...")
 
-    success, out, err = run_command("sudo systemctl disable tap-station", check=False)
+    success, out, err = run_command(
+        "sudo systemctl disable tap-station", check=False
+    )
 
     if success:
         print("✓ Service disabled (will not start on boot)")
@@ -88,7 +92,9 @@ def start_service():
     """Start the service"""
     print("Starting tap-station service...")
 
-    success, out, err = run_command("sudo systemctl start tap-station", check=False)
+    success, out, err = run_command(
+        "sudo systemctl start tap-station", check=False
+    )
 
     if success:
         print("✓ Service started")
@@ -102,7 +108,9 @@ def stop_service():
     """Stop the service"""
     print("Stopping tap-station service...")
 
-    success, out, err = run_command("sudo systemctl stop tap-station", check=False)
+    success, out, err = run_command(
+        "sudo systemctl stop tap-station", check=False
+    )
 
     if success:
         print("✓ Service stopped")
@@ -116,7 +124,9 @@ def restart_service():
     """Restart the service"""
     print("Restarting tap-station service...")
 
-    success, out, err = run_command("sudo systemctl restart tap-station", check=False)
+    success, out, err = run_command(
+        "sudo systemctl restart tap-station", check=False
+    )
 
     if success:
         print("✓ Service restarted")
@@ -131,7 +141,9 @@ def status_service():
     print("tap-station service status:")
     print("=" * 60)
 
-    success, out, err = run_command("systemctl status tap-station", check=False)
+    success, out, err = run_command(
+        "systemctl status tap-station", check=False
+    )
     print(out)
 
     if not success:
@@ -160,16 +172,22 @@ def logs_service(lines=50, follow=False):
 
 def main():
     """Entry point"""
-    parser = argparse.ArgumentParser(description="Manage tap-station systemd service")
+    parser = argparse.ArgumentParser(
+        description="Manage tap-station systemd service"
+    )
 
-    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    subparsers = parser.add_subparsers(
+        dest="command", help="Command to execute"
+    )
 
     # Install command
     subparsers.add_parser("install", help="Install systemd service")
 
     # Enable/disable commands
     subparsers.add_parser("enable", help="Enable service to start on boot")
-    subparsers.add_parser("disable", help="Disable service from starting on boot")
+    subparsers.add_parser(
+        "disable", help="Disable service from starting on boot"
+    )
 
     # Start/stop/restart commands
     subparsers.add_parser("start", help="Start the service")
@@ -204,7 +222,9 @@ def main():
         "restart": restart_service,
         "status": status_service,
         "logs": lambda: (
-            logs_service(args.lines, args.follow) if args.command == "logs" else None
+            logs_service(args.lines, args.follow)
+            if args.command == "logs"
+            else None
         ),
     }
 

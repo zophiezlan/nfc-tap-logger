@@ -1,12 +1,10 @@
 import json
+import os
 import tempfile
 from pathlib import Path
 
 from scripts.ingest_mobile_batch import _load_events, ingest_events
 from tap_station.database import Database
-
-
-import os
 
 
 def _temp_db_path():

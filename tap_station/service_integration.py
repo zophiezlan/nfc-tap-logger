@@ -10,10 +10,10 @@ The integration layer ensures that:
 3. The interface is consistent and easy to use
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,9 @@ sys.path.insert(0, str(parent_dir))
 
 try:
     from service_config_loader import (
-        get_service_config,
         ServiceConfig,
         WorkflowStage,
+        get_service_config,
     )
 
     SERVICE_CONFIG_AVAILABLE = True
@@ -158,7 +158,9 @@ class ServiceIntegration:
     def get_stage_labels_map(self) -> Dict[str, str]:
         """Get a mapping of stage IDs to display labels"""
         if self._config:
-            return {stage.id: stage.label for stage in self._config.workflow_stages}
+            return {
+                stage.id: stage.label for stage in self._config.workflow_stages
+            }
         return self._DEFAULT_LABELS.copy()
 
     def has_service_start_stage(self) -> bool:
@@ -350,7 +352,9 @@ if __name__ == "__main__":
     )
     if integration.has_service_start_stage():
         svc_stage = integration.get_service_start_stage()
-        print(f"  Service: {svc_stage} ({integration.get_stage_label(svc_stage)})")
+        print(
+            f"  Service: {svc_stage} ({integration.get_stage_label(svc_stage)})"
+        )
     print(
         f"  Last: {integration.get_last_stage()} ({integration.get_stage_label(integration.get_last_stage())})"
     )

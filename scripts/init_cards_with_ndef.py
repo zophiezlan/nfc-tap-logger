@@ -6,18 +6,19 @@ Writes sequential token IDs (001-100) to NTAG215 cards with NDEF URLs.
 Cards can be read by NFC Tools app for status checking.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import time
 import argparse
+import time
 from pathlib import Path
-from tap_station.nfc_reader import NFCReader, MockNFCReader
-from tap_station.ndef_writer import NDEFWriter, MockNDEFWriter
+
+from tap_station.ndef_writer import MockNDEFWriter, NDEFWriter
 from tap_station.nfc_cleanup import cleanup_before_nfc_access
+from tap_station.nfc_reader import MockNFCReader, NFCReader
 
 
 class NFCCardInitializer:
@@ -94,7 +95,9 @@ class NFCCardInitializer:
             print(f"Warning: Could not load existing cards: {e}")
 
         if existing:
-            print(f"Loaded {len(existing)} existing card(s) from {self.mapping_file}")
+            print(
+                f"Loaded {len(existing)} existing card(s) from {self.mapping_file}"
+            )
 
         return existing
 
@@ -160,7 +163,9 @@ class NFCCardInitializer:
         # Check for duplicates
         if uid in self.existing_cards:
             existing_token = self.existing_cards[uid]["token_id"]
-            print(f"  ⚠ DUPLICATE! This card is already token ID {existing_token}")
+            print(
+                f"  ⚠ DUPLICATE! This card is already token ID {existing_token}"
+            )
             self.duplicate_cards.append(
                 {
                     "new_token_id": token_id,
@@ -327,8 +332,13 @@ def main():
 
     # Validate URL if provided
     if args.url:
-        if not (args.url.startswith("http://") or args.url.startswith("https://")):
-            print("Error: URL must start with http:// or https://", file=sys.stderr)
+        if not (
+            args.url.startswith("http://") or args.url.startswith("https://")
+        ):
+            print(
+                "Error: URL must start with http:// or https://",
+                file=sys.stderr,
+            )
             return 1
 
     # Perform automatic cleanup (unless in mock mode)
@@ -349,7 +359,9 @@ def main():
             print("\n⚠️  Could not prepare NFC reader for use")
             print("   Some issues may require manual intervention.")
             print()
-            response = input("Attempt to continue anyway? [y/N]: ").strip().lower()
+            response = (
+                input("Attempt to continue anyway? [y/N]: ").strip().lower()
+            )
             if response not in ("y", "yes"):
                 print("\nAborting. Please resolve the issues above.")
                 print("For help, see docs/TROUBLESHOOTING.md")
@@ -359,7 +371,10 @@ def main():
 
     try:
         initializer = NFCCardInitializer(
-            start_id=args.start, end_id=args.end, base_url=args.url, mock=args.mock
+            start_id=args.start,
+            end_id=args.end,
+            base_url=args.url,
+            mock=args.mock,
         )
         initializer.run()
         return 0

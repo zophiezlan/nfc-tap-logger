@@ -10,12 +10,12 @@ Provides:
 """
 
 import logging
+import os
+import re
 import subprocess
 import time
-import re
-import os
-from typing import List, Dict, Optional
 from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,11 @@ class WiFiManager:
                     priority = int(parts[2].strip()) if len(parts) >= 3 else 99
 
                     self.networks.append(
-                        {"ssid": ssid, "password": password, "priority": priority}
+                        {
+                            "ssid": ssid,
+                            "password": password,
+                            "priority": priority,
+                        }
                     )
 
             # Sort by priority (lower number = higher priority)
@@ -135,7 +139,9 @@ class WiFiManager:
             return None
 
         except (subprocess.TimeoutExpired, FileNotFoundError):
-            logger.debug("Could not get current network (iwgetid not available)")
+            logger.debug(
+                "Could not get current network (iwgetid not available)"
+            )
             return None
 
     def is_connected(self) -> bool:
@@ -183,7 +189,9 @@ class WiFiManager:
             logger.error(f"Error scanning networks: {e}")
             return []
 
-    def connect_to_network(self, ssid: str, password: str, timeout: int = 30) -> bool:
+    def connect_to_network(
+        self, ssid: str, password: str, timeout: int = 30
+    ) -> bool:
         """
         Connect to a specific WiFi network using wpa_supplicant
 
@@ -299,7 +307,9 @@ network={{
                 continue
 
             # Try connecting
-            logger.info(f"Trying network '{ssid}' (priority {network['priority']})")
+            logger.info(
+                f"Trying network '{ssid}' (priority {network['priority']})"
+            )
 
             for attempt in range(max_attempts):
                 if self.connect_to_network(ssid, network["password"]):
@@ -312,7 +322,9 @@ network={{
         logger.warning("Could not connect to any configured network")
         return False
 
-    def add_network(self, ssid: str, password: str, priority: int = 99) -> bool:
+    def add_network(
+        self, ssid: str, password: str, priority: int = 99
+    ) -> bool:
         """
         Add a new WiFi network to configuration
 
@@ -432,7 +444,9 @@ network={{
             logger.info("Disabling AP mode")
             # Stop hostapd service
             subprocess.run(
-                ["sudo", "systemctl", "stop", "hostapd"], capture_output=True, timeout=5
+                ["sudo", "systemctl", "stop", "hostapd"],
+                capture_output=True,
+                timeout=5,
             )
 
             self.ap_mode_active = False

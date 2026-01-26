@@ -8,24 +8,24 @@ Tests cover:
 - Threshold checking
 """
 
-import pytest
-from datetime import datetime, time
-
 import sys
+from datetime import datetime, time
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tap_station.adaptive_thresholds import (
     AdaptiveThresholdManager,
-    ThresholdChecker,
-    ThresholdType,
-    ThresholdAdjustment,
-    ThresholdRule,
-    TimeWindow,
     AdjustmentReason,
-    get_threshold_manager,
+    ThresholdAdjustment,
+    ThresholdChecker,
+    ThresholdRule,
+    ThresholdType,
+    TimeWindow,
     get_threshold_checker,
+    get_threshold_manager,
 )
 
 
@@ -46,14 +46,18 @@ class TestTimeWindow:
 
     def test_contains_within_window(self):
         """Test time within window"""
-        window = TimeWindow(start=time(10, 0), end=time(18, 0), days=list(range(7)))
+        window = TimeWindow(
+            start=time(10, 0), end=time(18, 0), days=list(range(7))
+        )
         # 2pm on a Monday (weekday 0)
         dt = datetime(2024, 1, 8, 14, 0)  # Monday
         assert window.contains(dt) is True
 
     def test_contains_outside_window(self):
         """Test time outside window"""
-        window = TimeWindow(start=time(10, 0), end=time(18, 0), days=list(range(7)))
+        window = TimeWindow(
+            start=time(10, 0), end=time(18, 0), days=list(range(7))
+        )
         # 9am
         dt = datetime(2024, 1, 8, 9, 0)
         assert window.contains(dt) is False
@@ -61,7 +65,9 @@ class TestTimeWindow:
     def test_contains_wrong_day(self):
         """Test excluded day of week"""
         window = TimeWindow(
-            start=time(10, 0), end=time(18, 0), days=[0, 1, 2, 3, 4]  # Weekdays only
+            start=time(10, 0),
+            end=time(18, 0),
+            days=[0, 1, 2, 3, 4],  # Weekdays only
         )
         # Saturday (weekday 5)
         dt = datetime(2024, 1, 6, 14, 0)  # Saturday
@@ -69,7 +75,9 @@ class TestTimeWindow:
 
     def test_window_crossing_midnight(self):
         """Test window that crosses midnight"""
-        window = TimeWindow(start=time(22, 0), end=time(2, 0), days=list(range(7)))
+        window = TimeWindow(
+            start=time(22, 0), end=time(2, 0), days=list(range(7))
+        )
         # 11pm should be in window
         dt = datetime(2024, 1, 8, 23, 0)
         assert window.contains(dt) is True
@@ -185,21 +193,25 @@ class TestAdaptiveThresholdManager:
 
     def test_get_threshold_explanation(self, manager):
         """Test threshold explanation"""
-        explanation = manager.get_threshold_explanation(ThresholdType.QUEUE_WARNING)
+        explanation = manager.get_threshold_explanation(
+            ThresholdType.QUEUE_WARNING
+        )
         assert isinstance(explanation, str)
         assert len(explanation) > 0
 
     def test_check_threshold_not_exceeded(self, manager):
         """Test threshold check when not exceeded"""
         result = manager.check_threshold(
-            ThresholdType.QUEUE_WARNING, current_value=5  # Below default threshold
+            ThresholdType.QUEUE_WARNING,
+            current_value=5,  # Below default threshold
         )
         assert result["exceeded"] is False
 
     def test_check_threshold_exceeded(self, manager):
         """Test threshold check when exceeded"""
         result = manager.check_threshold(
-            ThresholdType.QUEUE_WARNING, current_value=100  # Well above threshold
+            ThresholdType.QUEUE_WARNING,
+            current_value=100,  # Well above threshold
         )
         assert result["exceeded"] is True
 

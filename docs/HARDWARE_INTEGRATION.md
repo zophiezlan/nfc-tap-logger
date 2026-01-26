@@ -248,25 +248,25 @@ curl http://localhost:5000/api/control/hardware-status
 ```yaml
 feedback:
   gpio:
-    buzzer: 17      # PWM-capable pin for audio
-    led_green: 27   # Success indicator
-    led_red: 22     # Error/duplicate indicator
+    buzzer: 17 # PWM-capable pin for audio
+    led_green: 27 # Success indicator
+    led_red: 22 # Error/duplicate indicator
 ```
 
 ### I2C Configuration
 
 ```yaml
 nfc:
-  i2c_bus: 1        # I2C bus number (usually 1 on Pi Zero 2)
-  address: 0x24     # PN532 default address
+  i2c_bus: 1 # I2C bus number (usually 1 on Pi Zero 2)
+  address: 0x24 # PN532 default address
 ```
 
 ### Enable/Disable Hardware
 
 ```yaml
 feedback:
-  buzzer_enabled: true   # Set to false to disable buzzer
-  led_enabled: true      # Set to false to disable LEDs
+  buzzer_enabled: true # Set to false to disable buzzer
+  led_enabled: true # Set to false to disable LEDs
 ```
 
 ## Wiring Schematic

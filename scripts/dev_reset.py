@@ -9,9 +9,9 @@ NOTE: As of v2.2.2+, most scripts now automatically handle cleanup!
 """
 
 import os
-import sys
-import subprocess
 import signal
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -54,7 +54,9 @@ def kill_process_by_name(pattern):
                 except ProcessLookupError:
                     pass
                 except PermissionError:
-                    print_warning(f"No permission to kill PID {pid} (use sudo)")
+                    print_warning(
+                        f"No permission to kill PID {pid} (use sudo)"
+                    )
 
             # Wait for processes to die
             time.sleep(0.5)

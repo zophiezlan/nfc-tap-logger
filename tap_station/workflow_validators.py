@@ -21,11 +21,11 @@ Service Design Principles:
 
 import logging
 import sqlite3
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Callable, Tuple
-from dataclasses import dataclass, field
-from enum import Enum
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .datetime_utils import utc_now
 
@@ -158,7 +158,9 @@ class StageValidator(ABC):
             "name": self.name,
             "description": self.description,
             "stages": self.stages,
-            "actions": [a.value for a in self.actions] if self.actions else None,
+            "actions": (
+                [a.value for a in self.actions] if self.actions else None
+            ),
             "enabled": self.enabled,
             "severity": self.severity.value,
         }
@@ -172,7 +174,9 @@ class StageValidator(ABC):
 class MinimumWaitTimeValidator(StageValidator):
     """Validates that minimum wait time has elapsed"""
 
-    def __init__(self, min_wait_seconds: int = 30, stages: Optional[List[str]] = None):
+    def __init__(
+        self, min_wait_seconds: int = 30, stages: Optional[List[str]] = None
+    ):
         super().__init__(
             validator_id="min_wait_time",
             name="Minimum Wait Time",
@@ -223,7 +227,9 @@ class MinimumWaitTimeValidator(StageValidator):
 class MaximumWaitTimeValidator(StageValidator):
     """Validates that maximum wait time hasn't been exceeded"""
 
-    def __init__(self, max_wait_minutes: int = 180, stages: Optional[List[str]] = None):
+    def __init__(
+        self, max_wait_minutes: int = 180, stages: Optional[List[str]] = None
+    ):
         super().__init__(
             validator_id="max_wait_time",
             name="Maximum Wait Time",
@@ -237,7 +243,12 @@ class MaximumWaitTimeValidator(StageValidator):
     def validate(self, context: ValidationContext) -> ValidationResult:
         # Find queue join event
         queue_join = next(
-            (e for e in context.journey_history if e.get("stage") == "QUEUE_JOIN"), None
+            (
+                e
+                for e in context.journey_history
+                if e.get("stage") == "QUEUE_JOIN"
+            ),
+            None,
         )
 
         if not queue_join:
@@ -279,7 +290,9 @@ class DuplicateStageValidator(StageValidator):
     """Validates that a stage isn't being repeated"""
 
     def __init__(
-        self, allow_repeat_after_minutes: int = 60, stages: Optional[List[str]] = None
+        self,
+        allow_repeat_after_minutes: int = 60,
+        stages: Optional[List[str]] = None,
     ):
         super().__init__(
             validator_id="duplicate_stage",
@@ -325,7 +338,9 @@ class QueueCapacityValidator(StageValidator):
     """Validates queue capacity limits"""
 
     def __init__(
-        self, max_queue_size: int = 50, conn: Optional[sqlite3.Connection] = None
+        self,
+        max_queue_size: int = 50,
+        conn: Optional[sqlite3.Connection] = None,
     ):
         super().__init__(
             validator_id="queue_capacity",
@@ -373,7 +388,10 @@ class QueueCapacityValidator(StageValidator):
                     message=f"Queue is at capacity ({queue_size}/{self.max_queue_size})",
                     code="CAP002",
                     suggestion="Consider directing to another service point",
-                    data={"queue_size": queue_size, "max_size": self.max_queue_size},
+                    data={
+                        "queue_size": queue_size,
+                        "max_size": self.max_queue_size,
+                    },
                     validator_id=self.validator_id,
                 )
 
@@ -382,7 +400,10 @@ class QueueCapacityValidator(StageValidator):
                 severity=ValidationSeverity.INFO,
                 message=f"Queue capacity OK ({queue_size}/{self.max_queue_size})",
                 code="CAP003",
-                data={"queue_size": queue_size, "max_size": self.max_queue_size},
+                data={
+                    "queue_size": queue_size,
+                    "max_size": self.max_queue_size,
+                },
                 validator_id=self.validator_id,
             )
 
@@ -401,7 +422,10 @@ class ServiceHoursValidator(StageValidator):
     """Validates operations are within service hours"""
 
     def __init__(
-        self, start_hour: int = 10, end_hour: int = 23, allow_outside_hours: bool = True
+        self,
+        start_hour: int = 10,
+        end_hour: int = 23,
+        allow_outside_hours: bool = True,
     ):
         super().__init__(
             validator_id="service_hours",
@@ -450,7 +474,9 @@ class ConcurrentServiceValidator(StageValidator):
     """Validates concurrent service limits"""
 
     def __init__(
-        self, max_concurrent: int = 5, conn: Optional[sqlite3.Connection] = None
+        self,
+        max_concurrent: int = 5,
+        conn: Optional[sqlite3.Connection] = None,
     ):
         super().__init__(
             validator_id="concurrent_service",
@@ -510,7 +536,10 @@ class ConcurrentServiceValidator(StageValidator):
                 severity=ValidationSeverity.INFO,
                 message=f"Concurrent services OK ({in_service}/{self.max_concurrent})",
                 code="CONC003",
-                data={"in_service": in_service, "max_concurrent": self.max_concurrent},
+                data={
+                    "in_service": in_service,
+                    "max_concurrent": self.max_concurrent,
+                },
                 validator_id=self.validator_id,
             )
 
@@ -549,7 +578,8 @@ class SubstanceReturnValidator(StageValidator):
             e.get("stage") == "SERVICE_START" for e in context.journey_history
         )
         has_return = any(
-            e.get("stage") == "SUBSTANCE_RETURNED" for e in context.journey_history
+            e.get("stage") == "SUBSTANCE_RETURNED"
+            for e in context.journey_history
         )
 
         if has_service and not has_return:
@@ -559,7 +589,10 @@ class SubstanceReturnValidator(StageValidator):
                 message="Substance not marked as returned",
                 code="SUB001",
                 suggestion="Confirm substance was returned to participant",
-                data={"service_started": has_service, "substance_returned": has_return},
+                data={
+                    "service_started": has_service,
+                    "substance_returned": has_return,
+                },
                 validator_id=self.validator_id,
             )
 
@@ -763,7 +796,9 @@ class WorkflowValidationManager:
                     result = validator.validate(context)
                     results.append(result)
                 except Exception as e:
-                    logger.error(f"Validator {validator.validator_id} error: {e}")
+                    logger.error(
+                        f"Validator {validator.validator_id} error: {e}"
+                    )
                     results.append(
                         ValidationResult(
                             valid=True,
@@ -796,7 +831,9 @@ class WorkflowValidationManager:
 
         return overall_valid, results
 
-    def list_validators(self, enabled_only: bool = False) -> List[Dict[str, Any]]:
+    def list_validators(
+        self, enabled_only: bool = False
+    ) -> List[Dict[str, Any]]:
         """List all validators"""
         validators = self._validators.values()
         if enabled_only:
@@ -841,7 +878,9 @@ def load_validators_from_config(
                 validator.enabled = v_config["enabled"]
             if "severity" in v_config:
                 try:
-                    validator.severity = ValidationSeverity(v_config["severity"])
+                    validator.severity = ValidationSeverity(
+                        v_config["severity"]
+                    )
                 except ValueError:
                     logger.warning(
                         "Invalid validation severity %r for validator %r; keeping existing severity.",

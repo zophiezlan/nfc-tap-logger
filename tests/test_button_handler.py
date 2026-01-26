@@ -1,9 +1,9 @@
 """Tests for button handler module"""
 
-import unittest
-from unittest.mock import patch, MagicMock
-import time
 import sys
+import time
+import unittest
+from unittest.mock import MagicMock, patch
 
 # Mock RPi.GPIO before importing button_handler
 mock_gpio = MagicMock()
@@ -57,7 +57,10 @@ class TestButtonHandler(unittest.TestCase):
             callback_called.append(True)
 
         handler = ButtonHandler(
-            enabled=True, gpio_pin=26, hold_time=10.0, shutdown_callback=test_callback
+            enabled=True,
+            gpio_pin=26,
+            hold_time=10.0,
+            shutdown_callback=test_callback,
         )
 
         # Stop the monitoring thread before testing _trigger_shutdown directly
@@ -84,7 +87,13 @@ class TestButtonHandler(unittest.TestCase):
     def test_button_press_short_release(self, mock_time, mock_subprocess):
         """Test short button press (released before hold time)"""
         # Mock time.time() to simulate button hold
-        time_values = [0, 0, 0.5, 0.5, 1.0]  # Button pressed then released at 0.5s
+        time_values = [
+            0,
+            0,
+            0.5,
+            0.5,
+            1.0,
+        ]  # Button pressed then released at 0.5s
         mock_time.time.side_effect = time_values
         mock_time.sleep = time.sleep  # Use real sleep
 

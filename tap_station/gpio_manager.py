@@ -6,7 +6,7 @@ duplicate setup code across modules and providing consistent error handling.
 """
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,9 @@ class GPIOManager:
             logger.info("GPIO initialized in BCM mode")
 
         except ImportError:
-            logger.warning("RPi.GPIO not installed - GPIO operations will be disabled")
+            logger.warning(
+                "RPi.GPIO not installed - GPIO operations will be disabled"
+            )
             GPIOManager._GPIO = None
 
         except RuntimeError as e:
@@ -79,12 +81,20 @@ class GPIOManager:
             True if successful, False if GPIO unavailable
         """
         if not self.available:
-            logger.debug(f"GPIO unavailable, skipping output setup for pin {pin}")
+            logger.debug(
+                f"GPIO unavailable, skipping output setup for pin {pin}"
+            )
             return False
 
         try:
-            initial = GPIOManager._GPIO.HIGH if initial_state else GPIOManager._GPIO.LOW
-            GPIOManager._GPIO.setup(pin, GPIOManager._GPIO.OUT, initial=initial)
+            initial = (
+                GPIOManager._GPIO.HIGH
+                if initial_state
+                else GPIOManager._GPIO.LOW
+            )
+            GPIOManager._GPIO.setup(
+                pin, GPIOManager._GPIO.OUT, initial=initial
+            )
             GPIOManager._configured_pins[pin] = "OUT"
             logger.debug(
                 f"Configured GPIO {pin} as OUTPUT (initial: {'HIGH' if initial_state else 'LOW'})"
@@ -110,7 +120,9 @@ class GPIOManager:
             True if successful, False if GPIO unavailable
         """
         if not self.available:
-            logger.debug(f"GPIO unavailable, skipping input setup for pin {pin}")
+            logger.debug(
+                f"GPIO unavailable, skipping input setup for pin {pin}"
+            )
             return False
 
         try:
@@ -120,7 +132,9 @@ class GPIOManager:
             elif pull_down:
                 pud = GPIOManager._GPIO.PUD_DOWN
 
-            GPIOManager._GPIO.setup(pin, GPIOManager._GPIO.IN, pull_up_down=pud)
+            GPIOManager._GPIO.setup(
+                pin, GPIOManager._GPIO.IN, pull_up_down=pud
+            )
             GPIOManager._configured_pins[pin] = "IN"
             logger.debug(
                 f"Configured GPIO {pin} as INPUT (pull_up={pull_up}, pull_down={pull_down})"

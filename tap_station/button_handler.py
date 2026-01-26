@@ -1,9 +1,9 @@
 """Shutdown button handler for safe system shutdown"""
 
-import time
 import logging
-import threading
 import subprocess
+import threading
+import time
 
 from .gpio_manager import get_gpio_manager
 
@@ -66,7 +66,9 @@ class ButtonHandler:
                 f"(hold for {self.hold_time}s)"
             )
         else:
-            logger.warning("Failed to setup button GPIO - button monitoring disabled")
+            logger.warning(
+                "Failed to setup button GPIO - button monitoring disabled"
+            )
             self.enabled = False
 
     def _start_monitoring(self):
@@ -76,7 +78,9 @@ class ButtonHandler:
 
         self.running = True
         # Use daemon thread - main service has signal handlers for proper shutdown
-        self.monitor_thread = threading.Thread(target=self._monitor_button, daemon=True)
+        self.monitor_thread = threading.Thread(
+            target=self._monitor_button, daemon=True
+        )
         self.monitor_thread.start()
         logger.info("Button monitoring started")
 
@@ -86,7 +90,9 @@ class ButtonHandler:
             try:
                 # Check if button is pressed (LOW = pressed due to pull-up)
                 if self._gpio.is_low(self.gpio_pin):
-                    logger.info("Shutdown button pressed, checking hold time...")
+                    logger.info(
+                        "Shutdown button pressed, checking hold time..."
+                    )
 
                     # Immediate feedback on button press
                     if self.feedback:

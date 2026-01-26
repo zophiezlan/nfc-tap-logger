@@ -144,14 +144,17 @@ Participant taps at wrong station → Realizes mistake within 5 min
 
 ```javascript
 // Auto-refresh every 5 minutes
-setInterval(async () => {
-  const res = await fetch('/api/control/anomalies');
-  const data = await res.json();
-  
-  if (data.summary.high_severity > 0) {
-    alert(`⚠️ ${data.summary.high_severity} critical issues!`);
-  }
-}, 5 * 60 * 1000);
+setInterval(
+  async () => {
+    const res = await fetch("/api/control/anomalies")
+    const data = await res.json()
+
+    if (data.summary.high_severity > 0) {
+      alert(`⚠️ ${data.summary.high_severity} critical issues!`)
+    }
+  },
+  5 * 60 * 1000
+)
 ```
 
 ---

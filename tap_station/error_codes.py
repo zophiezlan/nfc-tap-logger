@@ -5,8 +5,8 @@ This module provides a centralized error code system with user-friendly messages
 and actionable troubleshooting guidance for all stakeholder groups.
 """
 
-from typing import Dict, Optional
 from dataclasses import dataclass
+from typing import Dict, Optional
 
 
 @dataclass
@@ -198,7 +198,9 @@ def get_error_info(error_code: str) -> Optional[ErrorInfo]:
     return ERROR_CATALOG.get(error_code)
 
 
-def format_error_message(error_code: str, context: Optional[str] = None) -> str:
+def format_error_message(
+    error_code: str, context: Optional[str] = None
+) -> str:
     """
     Format a user-friendly error message with code and suggestion.
 
@@ -212,9 +214,7 @@ def format_error_message(error_code: str, context: Optional[str] = None) -> str:
     error_info = get_error_info(error_code)
 
     if not error_info:
-        return (
-            f"Error {error_code}: An unexpected error occurred. Please contact support."
-        )
+        return f"Error {error_code}: An unexpected error occurred. Please contact support."
 
     message = f"{error_info.code}: {error_info.title}\n\n"
     message += f"{error_info.message}\n\n"
@@ -227,7 +227,9 @@ def format_error_message(error_code: str, context: Optional[str] = None) -> str:
     return message
 
 
-def get_error_dict(error_code: str, context: Optional[str] = None) -> Dict[str, str]:
+def get_error_dict(
+    error_code: str, context: Optional[str] = None
+) -> Dict[str, str]:
     """
     Get error information as a dictionary for JSON responses.
 

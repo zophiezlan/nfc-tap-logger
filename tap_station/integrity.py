@@ -16,12 +16,12 @@ import hmac
 import json
 import logging
 import sqlite3
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
-from .datetime_utils import utc_now, to_iso
+from .datetime_utils import to_iso, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,9 @@ class ChecksumCalculator:
         "blake2b": hashlib.blake2b,
     }
 
-    def __init__(self, algorithm: str = "sha256", secret_key: Optional[str] = None):
+    def __init__(
+        self, algorithm: str = "sha256", secret_key: Optional[str] = None
+    ):
         """
         Initialize checksum calculator.
 
@@ -106,7 +108,9 @@ class ChecksumCalculator:
 
         if self._secret_key:
             # Use HMAC for keyed checksum
-            return hmac.new(self._secret_key, data_bytes, self._hash_func).hexdigest()
+            return hmac.new(
+                self._secret_key, data_bytes, self._hash_func
+            ).hexdigest()
         else:
             # Use simple hash
             return self._hash_func(data_bytes).hexdigest()
@@ -188,8 +192,7 @@ class IntegrityManager:
 
     def _ensure_tables(self) -> None:
         """Create integrity-related tables if needed"""
-        self._conn.execute(
-            """
+        self._conn.execute("""
             CREATE TABLE IF NOT EXISTS event_checksums (
                 event_id INTEGER PRIMARY KEY,
                 checksum TEXT NOT NULL,
@@ -197,11 +200,9 @@ class IntegrityManager:
                 created_at TEXT NOT NULL,
                 previous_checksum TEXT
             )
-        """
-        )
+        """)
 
-        self._conn.execute(
-            """
+        self._conn.execute("""
             CREATE TABLE IF NOT EXISTS integrity_checks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 check_type TEXT NOT NULL,
@@ -210,8 +211,7 @@ class IntegrityManager:
                 details TEXT,
                 issues_json TEXT
             )
-        """
-        )
+        """)
 
         self._conn.commit()
 
@@ -248,12 +248,10 @@ class IntegrityManager:
         # Get previous checksum for chaining
         previous = None
         if chain:
-            cursor = self._conn.execute(
-                """
+            cursor = self._conn.execute("""
                 SELECT checksum FROM event_checksums
                 ORDER BY event_id DESC LIMIT 1
-            """
-            )
+            """)
             row = cursor.fetchone()
             if row:
                 previous = row[0]
@@ -325,7 +323,9 @@ class IntegrityManager:
                 calculated = self.calculate_event_checksum(event)
 
             if calculated != stored_checksum:
-                issues.append("Checksum mismatch - data may have been modified")
+                issues.append(
+                    "Checksum mismatch - data may have been modified"
+                )
                 return IntegrityCheckResult(
                     status=IntegrityStatus.INVALID,
                     checked_at=utc_now(),
@@ -348,7 +348,9 @@ class IntegrityManager:
         except Exception as e:
             logger.error(f"Error verifying event {event_id}: {e}")
             return IntegrityCheckResult(
-                status=IntegrityStatus.ERROR, checked_at=utc_now(), details=str(e)
+                status=IntegrityStatus.ERROR,
+                checked_at=utc_now(),
+                details=str(e),
             )
 
     def verify_chain(
@@ -396,7 +398,10 @@ class IntegrityManager:
                     continue
 
                 # Verify chain link
-                if expected_previous and expected_previous != previous_checksum:
+                if (
+                    expected_previous
+                    and expected_previous != previous_checksum
+                ):
                     issues.append(
                         f"Chain break at event {event['id']}: "
                         f"expected previous {expected_previous}, got {previous_checksum}"
@@ -404,7 +409,10 @@ class IntegrityManager:
 
                 # Verify checksum
                 if expected_previous:
-                    chain_data = {"event": event, "previous": expected_previous}
+                    chain_data = {
+                        "event": event,
+                        "previous": expected_previous,
+                    }
                     calculated = self._calculator.calculate(chain_data)
                 else:
                     calculated = self.calculate_event_checksum(event)
@@ -434,7 +442,9 @@ class IntegrityManager:
         except Exception as e:
             logger.error(f"Error verifying chain: {e}")
             return IntegrityCheckResult(
-                status=IntegrityStatus.ERROR, checked_at=utc_now(), details=str(e)
+                status=IntegrityStatus.ERROR,
+                checked_at=utc_now(),
+                details=str(e),
             )
 
     def verify_database(self) -> IntegrityCheckResult:
@@ -454,36 +464,30 @@ class IntegrityManager:
                 issues.append(f"SQLite integrity check failed: {result}")
 
             # Check for orphaned checksums
-            cursor = self._conn.execute(
-                """
+            cursor = self._conn.execute("""
                 SELECT COUNT(*) FROM event_checksums
                 WHERE event_id NOT IN (SELECT id FROM events)
-            """
-            )
+            """)
             orphaned = cursor.fetchone()[0]
             if orphaned > 0:
                 issues.append(f"Found {orphaned} orphaned checksum records")
 
             # Check for missing checksums
-            cursor = self._conn.execute(
-                """
+            cursor = self._conn.execute("""
                 SELECT COUNT(*) FROM events
                 WHERE id NOT IN (SELECT event_id FROM event_checksums)
-            """
-            )
+            """)
             missing = cursor.fetchone()[0]
             if missing > 0:
                 issues.append(f"Found {missing} events without checksums")
 
             # Check for duplicate tokens in same stage/session
-            cursor = self._conn.execute(
-                """
+            cursor = self._conn.execute("""
                 SELECT token_id, stage, session_id, COUNT(*) as cnt
                 FROM events
                 GROUP BY token_id, stage, session_id
                 HAVING cnt > 1
-            """
-            )
+            """)
             duplicates = cursor.fetchall()
             if duplicates:
                 for dup in duplicates[:5]:  # Limit to first 5
@@ -491,7 +495,11 @@ class IntegrityManager:
                         f"Duplicate: token={dup[0]}, stage={dup[1]}, count={dup[3]}"
                     )
 
-            status = IntegrityStatus.VALID if not issues else IntegrityStatus.INVALID
+            status = (
+                IntegrityStatus.VALID
+                if not issues
+                else IntegrityStatus.INVALID
+            )
             return IntegrityCheckResult(
                 status=status,
                 checked_at=utc_now(),
@@ -502,10 +510,14 @@ class IntegrityManager:
         except Exception as e:
             logger.error(f"Error checking database integrity: {e}")
             return IntegrityCheckResult(
-                status=IntegrityStatus.ERROR, checked_at=utc_now(), details=str(e)
+                status=IntegrityStatus.ERROR,
+                checked_at=utc_now(),
+                details=str(e),
             )
 
-    def log_check_result(self, check_type: str, result: IntegrityCheckResult) -> None:
+    def log_check_result(
+        self, check_type: str, result: IntegrityCheckResult
+    ) -> None:
         """
         Log an integrity check result to the database.
 

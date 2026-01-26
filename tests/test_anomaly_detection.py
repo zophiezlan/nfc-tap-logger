@@ -1,9 +1,11 @@
 """Tests for anomaly detection features"""
 
-import pytest
-import tempfile
 import os
-from datetime import datetime, timezone, timedelta
+import tempfile
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
 from tap_station.database import Database
 
 
@@ -45,7 +47,9 @@ def test_forgotten_exit_taps(test_db):
 
     # Should detect as incomplete journey (which includes forgotten exits)
     assert len(anomalies["incomplete_journeys"]) >= 1
-    incomplete = [a for a in anomalies["incomplete_journeys"] if a["token_id"] == "001"]
+    incomplete = [
+        a for a in anomalies["incomplete_journeys"] if a["token_id"] == "001"
+    ]
     assert len(incomplete) == 1
     assert incomplete[0]["token_id"] == "001"
 
@@ -74,7 +78,9 @@ def test_stuck_in_service(test_db):
     # Note: The separate stuck_in_service detection requires more complex SQL
     # and incomplete_journeys already covers this case effectively
     assert len(anomalies["incomplete_journeys"]) >= 1
-    incomplete = [a for a in anomalies["incomplete_journeys"] if a["token_id"] == "002"]
+    incomplete = [
+        a for a in anomalies["incomplete_journeys"] if a["token_id"] == "002"
+    ]
     assert len(incomplete) == 1
 
 
@@ -118,7 +124,9 @@ def test_incomplete_journeys(test_db):
     anomalies = test_db.get_anomalies("test-session")
 
     # Should detect incomplete journey for token 003 but not 004
-    incomplete = [a for a in anomalies["incomplete_journeys"] if a["token_id"] == "003"]
+    incomplete = [
+        a for a in anomalies["incomplete_journeys"] if a["token_id"] == "003"
+    ]
     assert len(incomplete) == 1
     assert "EXIT" not in incomplete[0]["journey"]
 

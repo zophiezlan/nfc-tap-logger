@@ -1,8 +1,10 @@
-import pytest
 import json
 from unittest.mock import MagicMock
-from tap_station.web_server import StatusWebServer
+
+import pytest
+
 from tap_station.config import Config
+from tap_station.web_server import StatusWebServer
 
 
 @pytest.fixture
@@ -41,9 +43,13 @@ def test_health_check(client):
 
 
 def test_api_ingest_success(client, mock_db):
-    payload = [{"token_id": "001", "uid": "AABB", "timestamp_ms": 1700000000000}]
+    payload = [
+        {"token_id": "001", "uid": "AABB", "timestamp_ms": 1700000000000}
+    ]
     response = client.post(
-        "/api/ingest", data=json.dumps(payload), content_type="application/json"
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
     )
 
     assert response.status_code == 200
@@ -75,7 +81,9 @@ def test_api_ingest_duplicate_counting(client, mock_db):
 
     payload = [{"token_id": "001"}]
     response = client.post(
-        "/api/ingest", data=json.dumps(payload), content_type="application/json"
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
     )
 
     data = response.get_json()
@@ -87,7 +95,9 @@ def test_api_ingest_payload_too_large(client):
     """Test that payloads over 1000 events are rejected"""
     payload = [{"token_id": f"{i:03d}"} for i in range(1001)]
     response = client.post(
-        "/api/ingest", data=json.dumps(payload), content_type="application/json"
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
     )
 
     assert response.status_code == 413
@@ -99,7 +109,9 @@ def test_api_ingest_empty_payload(client):
     """Test that empty payloads are rejected"""
     payload = []
     response = client.post(
-        "/api/ingest", data=json.dumps(payload), content_type="application/json"
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
     )
 
     assert response.status_code == 400
@@ -111,7 +123,9 @@ def test_api_ingest_invalid_event_type(client, mock_db):
     """Test that non-dict events are counted as errors"""
     payload = ["not a dict", 123, None]
     response = client.post(
-        "/api/ingest", data=json.dumps(payload), content_type="application/json"
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
     )
 
     assert response.status_code == 200
@@ -124,7 +138,9 @@ def test_api_ingest_field_length_validation(client, mock_db):
     """Test that overly long fields are rejected"""
     payload = [{"token_id": "A" * 101, "uid": "test"}]  # Token ID too long
     response = client.post(
-        "/api/ingest", data=json.dumps(payload), content_type="application/json"
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
     )
 
     assert response.status_code == 200
@@ -157,8 +173,9 @@ def test_login_with_valid_password(client, mock_config):
     mock_config.admin_session_timeout_minutes = 60
 
     # Recreate server with updated config
-    from tap_station.web_server import StatusWebServer
     from unittest.mock import MagicMock
+
+    from tap_station.web_server import StatusWebServer
 
     mock_db = MagicMock()
     server = StatusWebServer(mock_config, mock_db)
@@ -190,8 +207,9 @@ def test_logout_clears_session(client, mock_config):
     mock_config.admin_password = "testpass123"
     mock_config.admin_session_timeout_minutes = 60
 
-    from tap_station.web_server import StatusWebServer
     from unittest.mock import MagicMock
+
+    from tap_station.web_server import StatusWebServer
 
     mock_db = MagicMock()
     server = StatusWebServer(mock_config, mock_db)
@@ -233,7 +251,9 @@ def test_control_api_endpoints_require_auth(client):
             )
 
         # Should redirect to login
-        assert response.status_code == 302, f"Endpoint {endpoint} should require auth"
+        assert (
+            response.status_code == 302
+        ), f"Endpoint {endpoint} should require auth"
         assert "/login" in response.location
 
 
@@ -242,8 +262,9 @@ def test_authenticated_control_api_access(client, mock_config):
     mock_config.admin_password = "testpass123"
     mock_config.admin_session_timeout_minutes = 60
 
-    from tap_station.web_server import StatusWebServer
     from unittest.mock import MagicMock
+
+    from tap_station.web_server import StatusWebServer
 
     mock_db = MagicMock()
     mock_db.get_event_count.return_value = 100

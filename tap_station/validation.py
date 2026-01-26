@@ -5,11 +5,11 @@ This module provides centralized validation logic for API requests,
 event data, and other input validation needs.
 """
 
-import re
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+import re
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .constants import APIDefaults, WorkflowStages
 from .datetime_utils import parse_timestamp
@@ -82,7 +82,8 @@ class EventValidator:
         if not isinstance(events, list):
             return (
                 ValidationResult(
-                    valid=False, error="Invalid format: expected list of events"
+                    valid=False,
+                    error="Invalid format: expected list of events",
                 ),
                 [],
             )
@@ -124,12 +125,16 @@ class EventValidator:
 
         if not valid_events:
             return (
-                ValidationResult(valid=False, error="No valid events in payload"),
+                ValidationResult(
+                    valid=False, error="No valid events in payload"
+                ),
                 [],
             )
 
         return (
-            ValidationResult(valid=True, warnings=warnings if warnings else None),
+            ValidationResult(
+                valid=True, warnings=warnings if warnings else None
+            ),
             valid_events,
         )
 
@@ -147,14 +152,17 @@ class EventValidator:
 
         # Must be a dictionary
         if not isinstance(event, dict):
-            return ValidationResult(valid=False, error="Event must be an object")
+            return ValidationResult(
+                valid=False, error="Event must be an object"
+            )
 
         # Required fields
         required_fields = ["token_id", "stage"]
         missing = [f for f in required_fields if f not in event]
         if missing:
             return ValidationResult(
-                valid=False, error=f"Missing required fields: {', '.join(missing)}"
+                valid=False,
+                error=f"Missing required fields: {', '.join(missing)}",
             )
 
         # Validate token_id
@@ -179,7 +187,9 @@ class EventValidator:
 
         # Validate stage
         stage = event.get("stage")
-        if not self._validate_string_field(stage, "stage", self.max_stage_length):
+        if not self._validate_string_field(
+            stage, "stage", self.max_stage_length
+        ):
             return ValidationResult(
                 valid=False,
                 error=f"Invalid stage: must be non-empty string <= {self.max_stage_length} chars",
@@ -195,9 +205,13 @@ class EventValidator:
         if timestamp is not None:
             timestamp_result = self._validate_timestamp(timestamp)
             if not timestamp_result.valid:
-                warnings.append(f"Invalid timestamp format: {timestamp_result.error}")
+                warnings.append(
+                    f"Invalid timestamp format: {timestamp_result.error}"
+                )
 
-        return ValidationResult(valid=True, warnings=warnings if warnings else None)
+        return ValidationResult(
+            valid=True, warnings=warnings if warnings else None
+        )
 
     def _validate_string_field(
         self, value: Any, field_name: str, max_length: int
@@ -243,7 +257,8 @@ class EventValidator:
             )
 
         return ValidationResult(
-            valid=True, warnings=timestamp_warnings if timestamp_warnings else None
+            valid=True,
+            warnings=timestamp_warnings if timestamp_warnings else None,
         )
 
     def normalize_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
@@ -257,11 +272,17 @@ class EventValidator:
             Normalized event dictionary
         """
         # Get values with fallbacks
-        token_id = str(event.get("token_id") or event.get("tokenId") or "UNKNOWN")
+        token_id = str(
+            event.get("token_id") or event.get("tokenId") or "UNKNOWN"
+        )
         uid = str(event.get("uid") or event.get("serial") or token_id)
         stage = WorkflowStages.normalize(str(event.get("stage") or "UNKNOWN"))
-        session_id = str(event.get("session_id") or event.get("sessionId") or "UNKNOWN")
-        device_id = str(event.get("device_id") or event.get("deviceId") or "mobile")
+        session_id = str(
+            event.get("session_id") or event.get("sessionId") or "UNKNOWN"
+        )
+        device_id = str(
+            event.get("device_id") or event.get("deviceId") or "mobile"
+        )
 
         # Handle timestamp
         ts_value = (
@@ -342,7 +363,9 @@ class TokenValidator:
         Returns:
             True if the card should be auto-initialized
         """
-        return cls.looks_like_uid(token_id) and not cls.is_valid_token_id(token_id)
+        return cls.looks_like_uid(token_id) and not cls.is_valid_token_id(
+            token_id
+        )
 
 
 class StageNameValidator:

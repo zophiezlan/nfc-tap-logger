@@ -8,23 +8,23 @@ Tests cover:
 - Configuration loading
 """
 
-import pytest
 import sqlite3
-from datetime import datetime, timedelta
-
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tap_station.custom_slo import (
-    CustomSLOManager,
     CustomSLODefinition,
-    SLOTarget,
-    SLOResult,
+    CustomSLOManager,
     SLOBudget,
     SLOMetricType,
+    SLOResult,
     SLOStatus,
+    SLOTarget,
     get_slo_manager,
     load_slos_from_config,
 )
@@ -35,8 +35,7 @@ def db_connection():
     """Create an in-memory database with test schema"""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE events (
             id INTEGER PRIMARY KEY,
             token_id TEXT,
@@ -44,8 +43,7 @@ def db_connection():
             stage TEXT,
             timestamp TEXT
         )
-    """
-    )
+    """)
     conn.commit()
     return conn
 
@@ -60,15 +58,27 @@ def populated_db(db_connection):
     for i in range(20):
         token_id = f"token_{i:03d}"
         join_time = now - timedelta(hours=2, minutes=i * 3)
-        service_time = join_time + timedelta(minutes=10 + i)  # Wait varies 10-29 min
+        service_time = join_time + timedelta(
+            minutes=10 + i
+        )  # Wait varies 10-29 min
         return_time = service_time + timedelta(minutes=3)
         exit_time = return_time + timedelta(minutes=2)
 
         events.extend(
             [
                 (token_id, "session1", "QUEUE_JOIN", join_time.isoformat()),
-                (token_id, "session1", "SERVICE_START", service_time.isoformat()),
-                (token_id, "session1", "SUBSTANCE_RETURNED", return_time.isoformat()),
+                (
+                    token_id,
+                    "session1",
+                    "SERVICE_START",
+                    service_time.isoformat(),
+                ),
+                (
+                    token_id,
+                    "session1",
+                    "SUBSTANCE_RETURNED",
+                    return_time.isoformat(),
+                ),
                 (token_id, "session1", "EXIT", exit_time.isoformat()),
             ]
         )
@@ -77,7 +87,9 @@ def populated_db(db_connection):
     for i in range(3):
         token_id = f"incomplete_{i:03d}"
         join_time = now - timedelta(hours=1, minutes=i * 5)
-        events.append((token_id, "session1", "QUEUE_JOIN", join_time.isoformat()))
+        events.append(
+            (token_id, "session1", "QUEUE_JOIN", join_time.isoformat())
+        )
 
     db_connection.executemany(
         "INSERT INTO events (token_id, session_id, stage, timestamp) VALUES (?, ?, ?, ?)",
@@ -282,7 +294,9 @@ class TestCustomSLOManager:
     def test_calculate_error_budget(self, populated_db):
         """Test error budget calculation"""
         manager = CustomSLOManager(populated_db)
-        budget = manager.calculate_error_budget("completion_rate_slo", "session1")
+        budget = manager.calculate_error_budget(
+            "completion_rate_slo", "session1"
+        )
 
         assert budget is not None
         assert isinstance(budget, SLOBudget)
