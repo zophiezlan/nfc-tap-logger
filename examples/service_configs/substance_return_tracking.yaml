@@ -22,7 +22,7 @@ service:
   hours:
     display: true
     schedule: "12:00 PM - 2:00 AM"
-    timezone: "UTC"
+    timezone: "AEDT"
 
 # 4-stage workflow with substance return confirmation
 workflow:

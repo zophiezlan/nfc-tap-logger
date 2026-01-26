@@ -25,7 +25,7 @@ service:
   hours:
     display: true
     schedule: "Friday 6PM - Monday 6AM (continuous)"
-    timezone: "UTC"
+    timezone: "AEDT"
 
 # Standard three-stage workflow
 workflow:

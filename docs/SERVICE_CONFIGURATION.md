@@ -80,7 +80,7 @@ service:
   hours:
     display: true
     schedule: "2:00 PM - 10:00 PM"
-    timezone: "UTC"
+    timezone: "AEDT"
 ```
 
 **Customization tips:**

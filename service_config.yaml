@@ -22,7 +22,7 @@ service:
   hours:
     display: true
     schedule: "12:00 PM - 11:00 PM"
-    timezone: "UTC"
+    timezone: "AEDT"
 
 # ----------------------------------------------------------------------------
 # WORKFLOW STAGES CONFIGURATION

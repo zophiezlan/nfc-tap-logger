@@ -23,7 +23,7 @@ service:
   hours:
     display: true
     schedule: "12:00 PM - 4:00 AM"
-    timezone: "UTC"
+    timezone: "AEDT"
 
 # Multi-stage workflow with detailed tracking
 workflow:
