@@ -1,7 +1,7 @@
 """
 Plugin and Extension Architecture
 
-This module provides a flexible extension system for customizing the NFC Tap Logger.
+This module provides a flexible extension system for customizing the FlowState.
 It enables:
 - Plugin discovery and loading
 - Hook-based event system

@@ -1,6 +1,6 @@
-# Contributing to NFC Tap Logger
+# Contributing to FlowState
 
-Thank you for your interest in improving NFC Tap Logger!
+Thank you for your interest in improving FlowState!
 
 ## Quick Links
 
@@ -649,4 +649,4 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ## Acknowledgments
 
-Thank you for contributing to NFC Tap Logger! Your efforts help make this project better for everyone.
+Thank you for contributing to FlowState! Your efforts help make this project better for everyone.

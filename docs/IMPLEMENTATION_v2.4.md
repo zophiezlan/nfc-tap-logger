@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation adds two major improvements to the NFC Tap Logger system:
+This implementation adds two major improvements to the FlowState system:
 
 1. **Auto-Initialize Cards on First Tap** - Eliminates the need to pre-initialize cards before events
 2. **Enhanced Wait Time Metrics Documentation** - Clarifies the distinction between queue wait time and service time

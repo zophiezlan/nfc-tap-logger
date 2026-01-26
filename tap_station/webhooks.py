@@ -559,7 +559,7 @@ class WebhookManager:
             id=f"test_{int(time.time())}",
             event_type=WebhookEventType.TEST,
             timestamp=utc_now(),
-            data={"message": "Test webhook from NFC Tap Logger"},
+            data={"message": "Test webhook from FlowState"},
             metadata={"test": True},
         )
 

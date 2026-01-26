@@ -15,7 +15,7 @@ COLOR_RED='\033[0;31m'
 COLOR_BLUE='\033[0;34m'
 
 echo -e "${COLOR_BLUE}=============================================="
-echo "NFC Tap Logger - Development Reset"
+echo "FlowState - Development Reset"
 echo -e "==============================================${COLOR_RESET}\n"
 
 # Check if running with sudo for service operations

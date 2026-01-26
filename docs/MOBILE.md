@@ -188,7 +188,7 @@ On the phone:
 **Installation steps:**
 
 1. Open `http://<laptop-ip>:8000` in Chrome
-2. Chrome prompts: "Add NFC Tap Logger to Home screen?"
+2. Chrome prompts: "Add FlowState to Home screen?"
 3. Tap "Add"
 4. Icon appears on home screen
 5. Launch from home screen for offline use

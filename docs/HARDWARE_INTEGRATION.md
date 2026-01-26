@@ -2,7 +2,7 @@
 
 ## Overview
 
-The NFC Tap Logger system integrates several hardware components to provide real-time operational feedback and monitoring capabilities. This guide explains how each component is utilized and monitored.
+The FlowState system integrates several hardware components to provide real-time operational feedback and monitoring capabilities. This guide explains how each component is utilized and monitored.
 
 ## Hardware Components
 

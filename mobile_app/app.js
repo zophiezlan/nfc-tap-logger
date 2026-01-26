@@ -148,7 +148,7 @@ async function loadStagesFromAPI() {
     const config = await response.json();
 
     // Update page title with service name
-    const serviceName = config.service_name || "NFC Tap Logger";
+    const serviceName = config.service_name || "FlowState";
     document.querySelector("h1").textContent = `${serviceName} (Mobile)`;
 
     // Populate stage dropdown dynamically

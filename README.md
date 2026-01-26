@@ -1,4 +1,4 @@
-# NFC Tap Logger
+# FlowState
 
 **A simple, reliable system for tracking wait times at festival harm reduction services using NFC tap stations.**
 

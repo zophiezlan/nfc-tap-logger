@@ -2,7 +2,7 @@
 Integration Hooks System
 
 This module provides a flexible event-driven integration system that allows
-the NFC Tap Logger to connect with external systems through:
+the FlowState to connect with external systems through:
 - Webhooks (HTTP callbacks)
 - Event streaming
 - Custom handlers
@@ -776,7 +776,7 @@ class IntegrationHooksManager:
             timestamp=utc_now(),
             payload={
                 "test": True,
-                "message": "Test event from NFC Tap Logger",
+                "message": "Test event from FlowState",
             },
         )
 

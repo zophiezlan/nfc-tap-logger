@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🎨 Formatting NFC Tap Logger Project..."
+echo "🎨 Formatting FlowState Project..."
 echo ""
 
 # Get project root (parent of scripts directory)

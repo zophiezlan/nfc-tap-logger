@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 ALL_PASSED=true
 
 echo "=============================================="
-echo "NFC Tap Logger - Deployment Verification"
+echo "FlowState - Deployment Verification"
 echo "=============================================="
 echo ""
 

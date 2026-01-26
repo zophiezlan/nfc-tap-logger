@@ -2,7 +2,7 @@
 # Format all code in the project
 # Run from project root: .\scripts\format.ps1
 
-Write-Host "🎨 Formatting NFC Tap Logger Project..." -ForegroundColor Cyan
+Write-Host "🎨 Formatting FlowState Project..." -ForegroundColor Cyan
 Write-Host ""
 
 $ErrorActionPreference = "Continue"

@@ -431,7 +431,7 @@ def check_database():
 def main():
     """Run all hardware verification checks"""
     print("\n" + "=" * 60)
-    print("NFC Tap Logger - Hardware Verification")
+    print("FlowState - Hardware Verification")
     print("=" * 60)
 
     results = {}

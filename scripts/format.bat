@@ -2,7 +2,7 @@
 REM Format all code in the project
 REM Run from project root: scripts\format.bat
 
-echo 🎨 Formatting NFC Tap Logger Project...
+echo 🎨 Formatting FlowState Project...
 echo.
 
 cd /d "%~dp0\.."

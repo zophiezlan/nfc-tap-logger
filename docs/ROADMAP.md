@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines potential enhancements to the NFC Tap Logger system. Each section is rated by complexity and value.
+This document outlines potential enhancements to the FlowState system. Each section is rated by complexity and value.
 
 ## Quick Wins (Low Effort, High Value)
 

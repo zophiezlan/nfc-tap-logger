@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-Complete troubleshooting guide for NFC Tap Logger system issues.
+Complete troubleshooting guide for FlowState system issues.
 
 ---
 

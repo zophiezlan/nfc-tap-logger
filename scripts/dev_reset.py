@@ -96,7 +96,7 @@ def check_i2c_device():
 
 def main():
     print("\033[0;34m==============================================")
-    print("NFC Tap Logger - Quick Dev Reset")
+    print("FlowState - Quick Dev Reset")
     print("==============================================\033[0m")
 
     # Check service status

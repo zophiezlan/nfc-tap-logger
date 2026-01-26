@@ -2,7 +2,7 @@
 """
 Health Check Dashboard
 
-Quick system status check for NFC Tap Logger.
+Quick system status check for FlowState.
 Shows hardware status, service status, disk space, and recent activity.
 """
 
@@ -412,7 +412,7 @@ class HealthCheck:
 
     def run(self, quick=False):
         """Run all health checks"""
-        self.print_header("NFC Tap Logger - Health Check")
+        self.print_header("FlowState - Health Check")
         print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
         self.check_config()

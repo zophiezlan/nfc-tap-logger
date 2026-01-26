@@ -2,7 +2,7 @@
 """
 Setup Wizard
 
-Interactive first-run configuration for NFC Tap Logger.
+Interactive first-run configuration for FlowState.
 Guides user through device setup, tests hardware, and creates config.
 """
 
@@ -196,9 +196,9 @@ def create_config(device_id, stage, session_id, buzzer_enabled):
 
 def main():
     """Run setup wizard"""
-    print_header("NFC Tap Logger - Setup Wizard")
+    print_header("FlowState - Setup Wizard")
 
-    print("Welcome! This wizard will help you set up your NFC Tap Logger.")
+    print("Welcome! This wizard will help you set up your FlowState.")
     print("\nWhat we'll do:")
     print("  1. Configure device settings")
     print("  2. Test NFC reader")
@@ -325,7 +325,7 @@ def main():
     print_header("Setup Complete!")
 
     if nfc_ok and dirs_ok:
-        print("✓ Your NFC Tap Logger is ready to use!")
+        print("✓ Your FlowState is ready to use!")
     else:
         print("⚠ Setup completed with warnings. Review errors above.")
 

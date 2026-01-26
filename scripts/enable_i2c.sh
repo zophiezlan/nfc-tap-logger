@@ -12,7 +12,7 @@
 set -e
 
 echo "=============================================="
-echo "NFC Tap Logger - I2C Setup & Troubleshooting"
+echo "FlowState - I2C Setup & Troubleshooting"
 echo "=============================================="
 echo ""
 

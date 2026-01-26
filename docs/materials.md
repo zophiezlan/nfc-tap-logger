@@ -1,4 +1,4 @@
-# NFC Tap Logger Upgrade – Bill of Materials (BOM)
+# FlowState Upgrade – Bill of Materials (BOM)
 
 This list covers the proposed upgrades and all supporting hardware to make the Pi-based station robust for field use. Quantities are for one station.
 

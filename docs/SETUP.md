@@ -1,6 +1,6 @@
 # Setup Guide
 
-Complete guide for deploying NFC Tap Logger on Raspberry Pi hardware.
+Complete guide for deploying FlowState on Raspberry Pi hardware.
 
 ## Quick Reference
 

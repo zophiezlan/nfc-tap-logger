@@ -1,4 +1,4 @@
-# NFC Tap Logger Upgrade – Wiring Schematics and Pin Mapping
+# FlowState Upgrade – Wiring Schematics and Pin Mapping
 
 All I2C devices (PN532, DS3231 RTC, SSD1306 OLED) share the same bus lines (SDA/SCL) and 3.3V/GND. Feedback devices (LEDs, buzzer) use individual GPIO pins as defined in the project’s `config.yaml`.
 

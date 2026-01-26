@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Installation script for NFC Tap Logger on Raspberry Pi
+# Installation script for FlowState on Raspberry Pi
 #
 # This script:
 # - Installs system dependencies (Python, i2c-tools, git, etc.)
@@ -22,7 +22,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo "======================================"
-echo "NFC Tap Logger - Installation Script"
+echo "FlowState - Installation Script"
 echo "======================================"
 echo ""
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The NFC Tap Logger tracks two distinct time periods during a participant's journey through your service:
+The FlowState tracks two distinct time periods during a participant's journey through your service:
 
 1. **Queue Wait Time** - Time spent waiting to be served
 2. **Service Time** - Time spent actively being served

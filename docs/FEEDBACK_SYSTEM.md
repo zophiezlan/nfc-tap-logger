@@ -2,7 +2,7 @@
 
 ## Overview
 
-The NFC Tap Logger uses a comprehensive feedback system combining LEDs and buzzer to provide clear visual and audio feedback for all system events. The system is designed to minimize confusion by using **solid states** for system status and **flashing patterns** for events.
+The FlowState uses a comprehensive feedback system combining LEDs and buzzer to provide clear visual and audio feedback for all system events. The system is designed to minimize confusion by using **solid states** for system status and **flashing patterns** for events.
 
 ## Core Design Philosophy
 

@@ -1,4 +1,4 @@
-# NFC Tap Logger Dependencies
+# FlowState Dependencies
 # Python 3.9+ required
 
 # NFC Reader
