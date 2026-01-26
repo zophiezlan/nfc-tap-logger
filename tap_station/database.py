@@ -13,8 +13,9 @@ from .constants import (
     get_workflow_transitions,
 )
 from .datetime_utils import utc_now, from_iso, to_iso, minutes_since
-from .validation import TokenValidator, StageValidator
+from .validation import TokenValidator, StageNameValidator
 from .anomaly_detector import AnomalyDetector
+from .path_utils import ensure_parent_dir
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,8 @@ class Database:
         """
         self.db_path = db_path
 
-        # Ensure directory exists
-        db_dir = os.path.dirname(db_path)
-        if db_dir:
-            os.makedirs(db_dir, exist_ok=True)
+        # Ensure directory exists (uses centralized path utility)
+        ensure_parent_dir(db_path)
 
         # Create database and enable WAL mode
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
@@ -175,7 +174,7 @@ class Database:
             
             # Validate and normalize stage
             try:
-                stage = StageValidator.validate_stage_or_raise(stage)
+                stage = StageNameValidator.validate_stage_or_raise(stage)
             except ValueError as e:
                 logger.error(f"Invalid stage: {e}")
                 result["warning"] = str(e)

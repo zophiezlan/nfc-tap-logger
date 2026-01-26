@@ -24,6 +24,7 @@ from datetime import datetime, timezone, timedelta
 
 # Import utilities
 from .datetime_utils import parse_timestamp, from_iso
+from .path_utils import ensure_dir
 
 # Import service configuration integration
 try:
@@ -2182,7 +2183,7 @@ class StatusWebServer:
                 backup_dir = os.path.join(
                     os.path.dirname(os.path.dirname(__file__)), "backups"
                 )
-                os.makedirs(backup_dir, exist_ok=True)
+                ensure_dir(backup_dir)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 backup_path = os.path.join(backup_dir, f"events_{timestamp}.db")
                 shutil.copy2(self.config.database_path, backup_path)
