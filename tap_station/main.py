@@ -14,6 +14,7 @@ from tap_station.nfc_reader import NFCReader, MockNFCReader
 from tap_station.feedback import FeedbackController
 from tap_station.validation import TokenValidator
 from tap_station.path_utils import ensure_parent_dir
+from tap_station.onsite_manager import OnSiteManager
 
 
 class TapStation:
@@ -116,6 +117,22 @@ class TapStation:
             except Exception as e:
                 self.logger.error(f"Failed to start web server: {e}", exc_info=True)
 
+        # Initialize on-site manager (WiFi, mDNS, failover, etc.)
+        self.onsite_manager = None
+        if self.config.onsite_enabled:
+            try:
+                self.onsite_manager = OnSiteManager(
+                    device_id=self.config.device_id,
+                    stage=self.config.stage,
+                    web_port=self.config.web_server_port,
+                    peer_hostname=self.config.onsite_failover_peer_hostname,
+                    wifi_enabled=self.config.onsite_wifi_enabled,
+                    failover_enabled=self.config.onsite_failover_enabled
+                )
+                self.logger.info("On-site manager initialized")
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize on-site manager: {e}")
+
         # State
         self.running = False
 
@@ -166,6 +183,13 @@ class TapStation:
         """Main service loop"""
         self.running = True
 
+        # Start on-site manager (WiFi, mDNS, peer monitoring, etc.)
+        if self.onsite_manager:
+            try:
+                self.onsite_manager.startup()
+            except Exception as e:
+                self.logger.error(f"On-site manager startup failed: {e}", exc_info=True)
+
         # Startup feedback
         self.feedback.startup()
         self.logger.info("Station ready - waiting for cards...")
@@ -201,6 +225,34 @@ class TapStation:
         """
         self.logger.info(f"Card tapped: UID={uid}, Token={token_id}")
 
+        # Determine stage (may be overridden in failover mode)
+        stage = self.config.stage
+        use_alternate_beep = False
+
+        # Check if in failover mode and determine appropriate stage
+        if self.onsite_manager and self.onsite_manager.failover_manager:
+            failover_mgr = self.onsite_manager.failover_manager
+            
+            if failover_mgr.failover_active:
+                # Get participant's tap count to determine stage alternation
+                tap_count = self.db.get_participant_tap_count(
+                    token_id=token_id,
+                    session_id=self.config.session_id
+                )
+                
+                # Next tap will be tap_count + 1 (since we're about to log it)
+                next_tap_number = tap_count + 1
+                
+                # Get the appropriate stage for this tap based on alternation logic
+                stage = failover_mgr.get_stage_for_tap_number(next_tap_number)
+                
+                use_alternate_beep = True
+                self.logger.info(
+                    f"FAILOVER MODE: tap #{next_tap_number} → stage {stage} "
+                    f"(alternating between {failover_mgr.primary_stage} and "
+                    f"{failover_mgr.fallback_stages})"
+                )
+
         # Check if auto-initialization is enabled and card appears uninitialized
         # Uninitialized cards will have token_id that looks like a UID (8+ hex chars)
         if self.config.auto_init_cards and self._is_uninitialized_card(token_id):
@@ -233,11 +285,11 @@ class TapStation:
 
             token_id = new_token_id
 
-        # Log to database
+        # Log to database - use the determined stage (which may be from failover logic)
         result = self.db.log_event(
             token_id=token_id,
             uid=uid,
-            stage=self.config.stage,
+            stage=stage,  # Use failover-determined stage, not self.config.stage
             device_id=self.config.device_id,
             session_id=self.config.session_id,
         )
@@ -253,8 +305,13 @@ class TapStation:
                 )
             else:
                 # Success with no issues
-                self.feedback.success()
-                self.logger.info("Event logged successfully")
+                # Use alternate beep pattern in failover mode
+                if use_alternate_beep:
+                    self.feedback.duplicate()  # Different pattern for failover
+                    self.logger.info("Event logged successfully (FAILOVER MODE)")
+                else:
+                    self.feedback.success()
+                    self.logger.info("Event logged successfully")
         elif result["duplicate"]:
             # Duplicate tap
             self.feedback.duplicate()
@@ -265,6 +322,10 @@ class TapStation:
             self.logger.error(
                 f"Failed to log event: {result.get('warning', 'Unknown error')}"
             )
+
+        # Record tap in failover manager
+        if self.onsite_manager and self.onsite_manager.failover_manager:
+            self.onsite_manager.failover_manager.record_tap(stage)
 
     def _is_uninitialized_card(self, token_id: str) -> bool:
         """
@@ -282,6 +343,10 @@ class TapStation:
     def shutdown(self):
         """Cleanup and shutdown"""
         self.logger.info("Shutting down...")
+
+        # Stop on-site manager
+        if self.onsite_manager:
+            self.onsite_manager.shutdown()
 
         # Stop button handler
         if self.button_handler:
@@ -306,13 +371,19 @@ class TapStation:
 
     def get_stats(self) -> dict:
         """Get current station statistics"""
-        return {
+        stats = {
             "device_id": self.config.device_id,
             "stage": self.config.stage,
             "session_id": self.config.session_id,
             "total_events": self.db.get_event_count(self.config.session_id),
             "recent_events": self.db.get_recent_events(5),
         }
+
+        # Add on-site manager status if available
+        if self.onsite_manager:
+            stats["onsite"] = self.onsite_manager.get_status()
+
+        return stats
 
 
 def main():
