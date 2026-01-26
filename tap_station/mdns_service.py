@@ -102,26 +102,21 @@ class MDNSService:
             logger.warning("Avahi not available, skipping mDNS registration")
             return False
 
-        # Set system hostname if we have permission
+        # Check current hostname (but don't change it - that should be done once during setup)
         try:
             current_hostname = socket.gethostname()
-
+            
             if current_hostname != self.hostname:
-                logger.info(f"Attempting to set hostname to {self.hostname}")
-
-                # Try to set hostname (requires root/sudo)
-                try:
-                    subprocess.run(
-                        ["sudo", "hostnamectl", "set-hostname", self.hostname],
-                        check=True,
-                        timeout=5
-                    )
-                    logger.info(f"System hostname set to {self.hostname}")
-                except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-                    logger.info(f"Could not set system hostname (OK if not root): {e}")
-                    logger.info(f"Station will use existing hostname: {current_hostname}")
+                logger.info(
+                    f"System hostname is '{current_hostname}' but config expects '{self.hostname}'. "
+                    f"Station will be accessible via {current_hostname}.local"
+                )
+                logger.info(
+                    "To change hostname, run the install script or manually set it with: "
+                    f"sudo hostnamectl set-hostname {self.hostname}"
+                )
             else:
-                logger.info(f"Hostname already set to {self.hostname}")
+                logger.info(f"Hostname matches config: {self.hostname}")
 
         except Exception as e:
             logger.warning(f"Error checking hostname: {e}")

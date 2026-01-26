@@ -13,12 +13,11 @@ This is the high-level coordinator for smooth on-site operation.
 
 import logging
 from typing import Optional
-from pathlib import Path
 
 from .wifi_manager import WiFiManager
 from .mdns_service import MDNSService, setup_mdns
 from .peer_monitor import PeerMonitor
-from .status_leds import StatusLEDManager, LEDPattern
+from .status_leds import StatusLEDManager
 from .wifi_setup_button import WiFiSetupButton
 from .failover_manager import FailoverManager
 

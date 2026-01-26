@@ -144,8 +144,18 @@ Backup-Hotspot       | backup789     | 3        ← Finally this
 
 ### Adding New Networks On-Site
 
-**Method 1: Physical Button** (No SSH Required!)
+**Method 1: Physical Button** (Requires Manual Setup)
 
+> **Note**: The WiFi setup button (GPIO 23) currently provides WiFi rescan functionality. 
+> Full captive portal AP mode requires additional system-level configuration of hostapd 
+> and dnsmasq. See the [Raspberry Pi documentation on wireless access points](https://www.raspberrypi.com/documentation/computers/configuration.html#setting-up-a-routed-wireless-access-point) 
+> for setup instructions.
+
+Current functionality:
+1. **Short press**: Enter WiFi setup mode (prepares for config file method)
+2. **Hold 3 seconds**: Force WiFi rescan to reconnect to known networks
+
+For full captive portal functionality in a future release:
 1. Press WiFi Setup button (GPIO 23)
 2. Pi creates hotspot: `TapStation-<device_id>`
 3. Connect to hotspot with phone (password: `tapstation123`)
@@ -154,7 +164,7 @@ Backup-Hotspot       | backup789     | 3        ← Finally this
 6. Pi saves credentials and reboots
 7. Automatically connects to new network
 
-**Method 2: Config File** (SSH Required)
+**Method 2: Config File** (SSH Required - Recommended)
 
 ```bash
 # Edit WiFi config

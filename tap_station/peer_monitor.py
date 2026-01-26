@@ -10,7 +10,7 @@ import threading
 import time
 import requests
 from typing import Optional, Callable, Dict
-from datetime import datetime, timedelta
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -162,10 +162,15 @@ class PeerMonitor:
             self.peer_healthy = True
 
             if self.on_peer_up:
-                try:
-                    self.on_peer_up()
-                except Exception as e:
-                    logger.error(f"Error in peer_up callback: {e}")
+                # Execute callback in separate thread to avoid blocking monitor loop
+                def _run_callback():
+                    try:
+                        self.on_peer_up()
+                    except Exception as e:
+                        logger.error(f"Error in peer_up callback: {e}")
+                
+                peer_up_thread = threading.Thread(target=_run_callback, daemon=True)
+                peer_up_thread.start()
 
     def _handle_failure(self):
         """Handle failed health check"""
@@ -186,10 +191,15 @@ class PeerMonitor:
                 self.peer_healthy = False
 
                 if self.on_peer_down:
-                    try:
-                        self.on_peer_down()
-                    except Exception as e:
-                        logger.error(f"Error in peer_down callback: {e}")
+                    # Execute callback in separate thread to avoid blocking monitor loop
+                    def _run_callback():
+                        try:
+                            self.on_peer_down()
+                        except Exception as e:
+                            logger.error(f"Error in peer_down callback: {e}")
+                    
+                    peer_down_thread = threading.Thread(target=_run_callback, daemon=True)
+                    peer_down_thread.start()
 
     def get_status(self) -> Dict:
         """

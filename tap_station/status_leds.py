@@ -78,6 +78,7 @@ class StatusLEDManager:
         self._pattern_thread: Optional[threading.Thread] = None
         self._running = False
         self._current_pattern: Optional[LEDPattern] = None
+        self._pattern_lock = threading.Lock()  # Prevent race conditions
 
         if self.enabled:
             self._setup_leds()
@@ -114,18 +115,20 @@ class StatusLEDManager:
         if not self.enabled:
             return
 
-        # Stop current pattern
-        self.stop_pattern()
+        # Use lock to prevent race condition when switching patterns
+        with self._pattern_lock:
+            # Stop current pattern and wait for thread to fully stop
+            self.stop_pattern()
 
-        # Start new pattern
-        self._current_pattern = pattern
-        self._running = True
-        self._pattern_thread = threading.Thread(
-            target=self._run_pattern,
-            args=(pattern,),
-            daemon=True
-        )
-        self._pattern_thread.start()
+            # Start new pattern
+            self._current_pattern = pattern
+            self._running = True
+            self._pattern_thread = threading.Thread(
+                target=self._run_pattern,
+                args=(pattern,),
+                daemon=True
+            )
+            self._pattern_thread.start()
 
         logger.debug(f"LED pattern set to: {pattern.value}")
 
