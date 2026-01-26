@@ -220,54 +220,6 @@ class Config:
 
         return value
     
-    def get_required(self, key_path: str) -> Any:
-        """
-        Get a required configuration value with better error message.
-        
-        Args:
-            key_path: Dot-separated path (e.g., "station.device_id")
-            
-        Returns:
-            Configuration value
-            
-        Raises:
-            ConfigurationError: If the required value is missing
-        """
-        value = self.get(key_path)
-        
-        if value is None or value == "":
-            error_msg = (
-                f"Required configuration field '{key_path}' is missing or empty.\n"
-                f"Please add it to your config.yaml file. Example:\n"
-                f"  {self._format_example(key_path)}"
-            )
-            raise ConfigurationError(error_msg, config_key=key_path)
-        
-        return value
-    
-    def _format_example(self, key_path: str) -> str:
-        """
-        Format an example configuration snippet for a given key path.
-        
-        Args:
-            key_path: Dot-separated path
-            
-        Returns:
-            Formatted YAML example
-        """
-        keys = key_path.split(".")
-        indent = "  "
-        
-        # Build nested YAML structure
-        lines = []
-        for i, key in enumerate(keys):
-            if i == len(keys) - 1:
-                lines.append(f"{indent * i}{key}: <your-value-here>")
-            else:
-                lines.append(f"{indent * i}{key}:")
-        
-        return "\n  ".join(lines)
-
     def __getattr__(self, name: str) -> Any:
         """
         Dynamic attribute access for configuration values.
