@@ -45,10 +45,11 @@ class ServiceIntegration:
     """
 
     # Default values (used as fallbacks)
-    _DEFAULT_STAGES = ["QUEUE_JOIN", "SERVICE_START", "EXIT"]
+    _DEFAULT_STAGES = ["QUEUE_JOIN", "SERVICE_START", "SUBSTANCE_RETURNED", "EXIT"]
     _DEFAULT_LABELS = {
         "QUEUE_JOIN": "In Queue",
         "SERVICE_START": "Being Served",
+        "SUBSTANCE_RETURNED": "Substance Returned",
         "EXIT": "Completed",
     }
     _DEFAULT_UI_LABELS = {
@@ -134,14 +135,22 @@ class ServiceIntegration:
         return "EXIT"
 
     def get_service_start_stage(self) -> Optional[str]:
-        """Get the ID of the service start stage, if it exists"""
+        """
+        Get the ID of the service start stage, if it exists.
+
+        Returns None if:
+        - No config is loaded
+        - The workflow doesn't include a SERVICE_START stage
+
+        Note: This specifically looks for a stage named "SERVICE_START".
+        Services with custom stage names should use get_intermediate_stages()
+        or check their workflow configuration directly.
+        """
         if self._config:
             for stage in self._config.workflow_stages:
                 if stage.id == "SERVICE_START":
                     return stage.id
-            if len(self._config.workflow_stages) > 2:
-                return self._config.workflow_stages[1].id
-        return "SERVICE_START"
+        return None  # Don't assume - return None if not found
 
     def get_all_stage_ids(self) -> List[str]:
         """Get all stage IDs in workflow order"""
@@ -164,10 +173,79 @@ class ServiceIntegration:
         return self._DEFAULT_LABELS.copy()
 
     def has_service_start_stage(self) -> bool:
-        """Check if the workflow includes a service start stage"""
+        """
+        Check if the workflow includes a SERVICE_START stage.
+
+        Returns False if no config is loaded - we don't assume any stages exist.
+        """
         if self._config:
-            return len(self._config.workflow_stages) > 2
-        return True
+            return any(
+                stage.id == "SERVICE_START" for stage in self._config.workflow_stages
+            )
+        return False  # Don't assume - no config means we don't know
+
+    def has_substance_returned_stage(self) -> bool:
+        """Check if the workflow includes a SUBSTANCE_RETURNED stage"""
+        if self._config:
+            return any(
+                stage.id == "SUBSTANCE_RETURNED"
+                for stage in self._config.workflow_stages
+            )
+        return False  # Not in default 3-stage workflow
+
+    def get_substance_returned_stage(self) -> Optional[str]:
+        """Get the ID of the substance returned stage, if it exists"""
+        if self._config:
+            for stage in self._config.workflow_stages:
+                if stage.id == "SUBSTANCE_RETURNED":
+                    return stage.id
+        return None
+
+    def has_stage(self, stage_id: str) -> bool:
+        """Check if a specific stage exists in the workflow"""
+        if self._config:
+            return any(
+                stage.id == stage_id for stage in self._config.workflow_stages
+            )
+        return stage_id in self._DEFAULT_STAGES
+
+    def is_valid_stage(self, stage_id: str) -> bool:
+        """Check if a stage ID is valid for this service configuration"""
+        return self.has_stage(stage_id)
+
+    def get_intermediate_stages(self) -> List[str]:
+        """
+        Get all stages between first and last (exclusive).
+
+        For a workflow like: QUEUE_JOIN → SERVICE_START → SUBSTANCE_RETURNED → EXIT
+        This returns: ["SERVICE_START", "SUBSTANCE_RETURNED"]
+
+        For a 2-stage workflow: QUEUE_JOIN → EXIT
+        This returns: []
+
+        Useful for services with custom stage names that don't use
+        standard names like SERVICE_START or SUBSTANCE_RETURNED.
+        """
+        if self._config and len(self._config.workflow_stages) > 2:
+            return [
+                stage.id for stage in self._config.workflow_stages[1:-1]
+            ]
+        return []
+
+    def get_stage_count(self) -> int:
+        """Get the number of stages in the workflow"""
+        if self._config:
+            return len(self._config.workflow_stages)
+        return len(self._DEFAULT_STAGES)
+
+    def is_multi_stage_workflow(self) -> bool:
+        """
+        Check if this workflow has more than entry and exit stages.
+
+        Returns True for 3+ stage workflows (e.g., QUEUE_JOIN → SERVICE_START → EXIT)
+        Returns False for 2-stage workflows (e.g., QUEUE_JOIN → EXIT)
+        """
+        return self.get_stage_count() > 2
 
     # =========================================================================
     # Capacity & Throughput (using _get helper)
@@ -224,6 +302,12 @@ class ServiceIntegration:
 
     def get_disk_critical_percent(self) -> int:
         return self._get("disk_critical_percent", 90)
+
+    def get_unreturned_substance_warning_minutes(self) -> int:
+        return self._get("unreturned_substance_warning_minutes", 15)
+
+    def get_unreturned_substance_critical_minutes(self) -> int:
+        return self._get("unreturned_substance_critical_minutes", 30)
 
     # =========================================================================
     # UI Labels & Messages

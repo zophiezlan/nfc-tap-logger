@@ -231,8 +231,50 @@ class StatusWebServer:
             self.svc = None
             logger.warning("Service configuration not available")
 
+        # Cache stage IDs from service configuration for SQL queries
+        # This allows stage names to be configured rather than hardcoded
+        self._init_stage_ids()
+
         # Setup routes
         self._setup_routes()
+
+    def _init_stage_ids(self):
+        """
+        Initialize stage IDs from service configuration.
+
+        Required stages (always present):
+        - STAGE_QUEUE_JOIN: First stage in workflow (entry point)
+        - STAGE_EXIT: Last stage in workflow (completion)
+
+        Optional stages (may be None):
+        - STAGE_SERVICE_START: When service begins (for 3+ stage workflows)
+        - STAGE_SUBSTANCE_RETURNED: When substance is returned (for accountability)
+
+        Services can use any stage names they want. The system adapts to
+        whatever workflow is configured, from simple 2-stage queue tracking
+        to complex multi-stage accountability workflows.
+        """
+        if self.svc:
+            # Required stages - always exist
+            self.STAGE_QUEUE_JOIN = self.svc.get_first_stage()
+            self.STAGE_EXIT = self.svc.get_last_stage()
+            # Optional stages - may be None if not in workflow
+            self.STAGE_SERVICE_START = self.svc.get_service_start_stage()
+            self.STAGE_SUBSTANCE_RETURNED = self.svc.get_substance_returned_stage()
+            # Track workflow complexity
+            self._has_service_start = self.svc.has_service_start_stage()
+            self._has_substance_returned = self.svc.has_substance_returned_stage()
+            self._is_multi_stage = self.svc.is_multi_stage_workflow()
+        else:
+            # Minimal fallback - only assume required stages exist
+            self.STAGE_QUEUE_JOIN = "QUEUE_JOIN"
+            self.STAGE_EXIT = "EXIT"
+            # Don't assume optional stages exist
+            self.STAGE_SERVICE_START = None
+            self.STAGE_SUBSTANCE_RETURNED = None
+            self._has_service_start = False
+            self._has_substance_returned = False
+            self._is_multi_stage = False
 
     def _setup_routes(self):
         """Setup Flask routes"""
@@ -347,6 +389,17 @@ class StatusWebServer:
                             str(event.get("stage") or "").strip().upper()
                             or "UNKNOWN"
                         )
+
+                        # Validate stage against service configuration
+                        if self.svc and not self.svc.is_valid_stage(stage):
+                            logger.warning(
+                                f"Invalid stage '{stage}' in event for token "
+                                f"'{event.get('token_id')}'. Valid stages: "
+                                f"{self.svc.get_all_stage_ids()}"
+                            )
+                            # Continue processing - log event but flag it
+                            # This allows review of misconfigured stages later
+
                         session_id = str(
                             event.get("session_id")
                             or event.get("sessionId")
@@ -541,9 +594,14 @@ class StatusWebServer:
                                         "order": 2,
                                     },
                                     {
+                                        "id": "SUBSTANCE_RETURNED",
+                                        "label": "Substance Returned",
+                                        "order": 3,
+                                    },
+                                    {
                                         "id": "EXIT",
                                         "label": "Completed",
-                                        "order": 3,
+                                        "order": 4,
                                     },
                                 ],
                                 "ui_labels": {
@@ -1421,12 +1479,12 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
         in_queue = cursor.fetchone()["count"]
 
@@ -1438,12 +1496,12 @@ class StatusWebServer:
             JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-            WHERE q.stage = 'QUEUE_JOIN'
-                AND e.stage = 'EXIT'
+            WHERE q.stage = ?
+                AND e.stage = ?
                 AND q.session_id = ?
                 AND date(e.timestamp) = date('now')
         """,
-            (session_id,),
+            (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
         )
         completed_today = cursor.fetchone()["count"]
 
@@ -1473,6 +1531,9 @@ class StatusWebServer:
 
         # Smart wait estimate
         smart_estimate = self._calculate_smart_wait_estimate()
+
+        # Substance return tracking stats
+        substance_return_stats = self._get_substance_return_stats()
 
         return {
             "device_id": self.config.device_id,
@@ -1518,6 +1579,7 @@ class StatusWebServer:
                 "alerts": operational_metrics["alerts"],
                 "queue_health": operational_metrics["queue_health"],
             },
+            "substance_return": substance_return_stats,
             "queue_details": queue_details,
             "recent_completions": recent_completions,
             "hourly_activity": hourly_activity,
@@ -1544,14 +1606,14 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
             ORDER BY datetime(q.timestamp) ASC
             LIMIT 1
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
 
         longest_wait = 0
@@ -1569,12 +1631,12 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
         in_queue = cursor.fetchone()["count"]
         queue_mult = self.svc.get_queue_multiplier() if self.svc else 2
@@ -1609,12 +1671,12 @@ class StatusWebServer:
             JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-            WHERE q.stage = 'QUEUE_JOIN'
-                AND e.stage = 'EXIT'
+            WHERE q.stage = ?
+                AND e.stage = ?
                 AND q.session_id = ?
                 AND e.timestamp > datetime('now', '-1 hour')
         """,
-            (session_id,),
+            (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
         )
         completed_last_hour = cursor.fetchone()["completed"]
         # Get service capacity from configuration
@@ -1756,12 +1818,12 @@ class StatusWebServer:
             JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-            WHERE q.stage = 'QUEUE_JOIN'
-                AND e.stage = 'EXIT'
+            WHERE q.stage = ?
+                AND e.stage = ?
                 AND q.session_id = ?
                 AND e.timestamp > datetime('now', '-1 hour')
         """,
-            (session_id,),
+            (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
         )
         row = cursor.fetchone()
         if row and row["avg_time"] and row["max_time"]:
@@ -1792,13 +1854,13 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
                 AND q.timestamp < datetime('now', '-' || ? || ' hours')
         """,
-            (session_id, str(stuck_hours)),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id, str(stuck_hours)),
         )
         stuck_count = cursor.fetchone()["count"]
         if stuck_count > 0:
@@ -1808,6 +1870,80 @@ class StatusWebServer:
                     "message": f"⚠️ {stuck_count} people in queue >{stuck_hours} hours - possible abandonments or missed exits",
                 }
             )
+
+        # Check for unreturned substances (SUBSTANCE_RETURNED stage tracking)
+        if self.svc and self.svc.has_substance_returned_stage():
+            unreturned_warn = self.svc.get_unreturned_substance_warning_minutes()
+            unreturned_crit = self.svc.get_unreturned_substance_critical_minutes()
+
+            # Find people who have SERVICE_START but no SUBSTANCE_RETURNED
+            cursor = self.db.conn.execute(
+                """
+                SELECT
+                    s.token_id,
+                    s.timestamp as service_start_time,
+                    (julianday('now') - julianday(s.timestamp)) * 1440 as minutes_waiting
+                FROM events s
+                LEFT JOIN events r
+                    ON s.token_id = r.token_id
+                    AND s.session_id = r.session_id
+                    AND r.stage = ?
+                LEFT JOIN events e
+                    ON s.token_id = e.token_id
+                    AND s.session_id = e.session_id
+                    AND e.stage = ?
+                WHERE s.stage = ?
+                    AND s.session_id = ?
+                    AND r.id IS NULL
+                    AND e.id IS NULL
+                ORDER BY s.timestamp ASC
+                """,
+                (
+                    self.STAGE_SUBSTANCE_RETURNED,
+                    self.STAGE_EXIT,
+                    self.STAGE_SERVICE_START,
+                    session_id,
+                ),
+            )
+
+            unreturned = cursor.fetchall()
+            unreturned_warning_count = 0
+            unreturned_critical_count = 0
+            oldest_unreturned_minutes = 0
+
+            for row in unreturned:
+                minutes = int(row["minutes_waiting"]) if row["minutes_waiting"] else 0
+                if minutes > unreturned_crit:
+                    unreturned_critical_count += 1
+                    if minutes > oldest_unreturned_minutes:
+                        oldest_unreturned_minutes = minutes
+                elif minutes > unreturned_warn:
+                    unreturned_warning_count += 1
+
+            if unreturned_critical_count > 0:
+                message = (
+                    self.svc.get_alert_message(
+                        "unreturned_substance_critical",
+                        count=unreturned_critical_count,
+                        minutes=oldest_unreturned_minutes,
+                        token=unreturned[0]["token_id"] if unreturned else "unknown",
+                    )
+                    if self.svc
+                    else f"🚨 URGENT: {unreturned_critical_count} substances not returned for >{unreturned_crit} min"
+                )
+                alerts.append({"level": "critical", "message": message})
+            elif unreturned_warning_count > 0:
+                message = (
+                    self.svc.get_alert_message(
+                        "unreturned_substance_warning",
+                        count=unreturned_warning_count,
+                        minutes=unreturned_warn,
+                        token=unreturned[0]["token_id"] if unreturned else "unknown",
+                    )
+                    if self.svc
+                    else f"⚠️ {unreturned_warning_count} substances not returned for >{unreturned_warn} min"
+                )
+                alerts.append({"level": "warning", "message": message})
 
         # Queue health assessment (use same thresholds as alerts)
         if in_queue > queue_crit or longest_wait > wait_crit:
@@ -1847,13 +1983,13 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
             ORDER BY datetime(q.timestamp) ASC
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
 
         queue_details = []
@@ -1885,13 +2021,18 @@ class StatusWebServer:
                 JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                WHERE q.stage = 'QUEUE_JOIN'
-                    AND e.stage = 'EXIT'
+                WHERE q.stage = ?
+                    AND e.stage = ?
                     AND q.session_id = ?
                 ORDER BY e.timestamp DESC
                 LIMIT ?
             """,
-                (self.config.session_id, limit),
+                (
+                    self.STAGE_QUEUE_JOIN,
+                    self.STAGE_EXIT,
+                    self.config.session_id,
+                    limit,
+                ),
             )
 
             journeys = cursor.fetchall()
@@ -1925,13 +2066,18 @@ class StatusWebServer:
                 JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                WHERE q.stage = 'QUEUE_JOIN'
-                    AND e.stage = 'EXIT'
+                WHERE q.stage = ?
+                    AND e.stage = ?
                     AND q.session_id = ?
                 ORDER BY e.timestamp DESC
                 LIMIT ?
             """,
-                (self.config.session_id, limit),
+                (
+                    self.STAGE_QUEUE_JOIN,
+                    self.STAGE_EXIT,
+                    self.config.session_id,
+                    limit,
+                ),
             )
 
             completions = []
@@ -2056,12 +2202,12 @@ class StatusWebServer:
             stage = event["stage"]
             timestamp = event["timestamp"]
 
-            if stage == "QUEUE_JOIN":
+            if stage == self.STAGE_QUEUE_JOIN:
                 result["queue_join"] = timestamp
                 result["queue_join_time"] = self._format_time(timestamp)
                 result["status"] = "in_queue"
 
-            elif stage == "EXIT":
+            elif stage == self.STAGE_EXIT:
                 result["exit"] = timestamp
                 result["exit_time"] = self._format_time(timestamp)
                 result["status"] = "complete"
@@ -2105,13 +2251,13 @@ class StatusWebServer:
                 JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                WHERE q.stage = 'QUEUE_JOIN'
-                    AND e.stage = 'EXIT'
+                WHERE q.stage = ?
+                    AND e.stage = ?
                     AND q.session_id = ?
                 ORDER BY e.timestamp DESC
                 LIMIT 10
             """,
-                (self.config.session_id,),
+                (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, self.config.session_id),
             )
 
             journeys = cursor.fetchall()
@@ -2509,12 +2655,12 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
         queue_length = cursor.fetchone()["count"]
 
@@ -2537,12 +2683,12 @@ class StatusWebServer:
             JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-            WHERE q.stage = 'QUEUE_JOIN'
-                AND e.stage = 'EXIT'
+            WHERE q.stage = ?
+                AND e.stage = ?
                 AND q.session_id = ?
                 AND date(e.timestamp) = date('now')
         """,
-            (session_id,),
+            (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
         )
         completed_today = cursor.fetchone()["count"]
 
@@ -2586,12 +2732,12 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
         current_queue = cursor.fetchone()["count"]
 
@@ -2603,12 +2749,12 @@ class StatusWebServer:
             JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-            WHERE q.stage = 'QUEUE_JOIN'
-                AND e.stage = 'EXIT'
+            WHERE q.stage = ?
+                AND e.stage = ?
                 AND q.session_id = ?
                 AND e.timestamp > datetime('now', '-4 hours')
         """,
-            (session_id,),
+            (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
         )
         completed_shift = cursor.fetchone()["count"]
 
@@ -2621,12 +2767,12 @@ class StatusWebServer:
             JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-            WHERE q.stage = 'QUEUE_JOIN'
-                AND e.stage = 'EXIT'
+            WHERE q.stage = ?
+                AND e.stage = ?
                 AND q.session_id = ?
                 AND e.timestamp > datetime('now', '-4 hours')
         """,
-            (session_id,),
+            (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
         )
         row = cursor.fetchone()
         avg_wait_shift = int(row["avg_wait"]) if row["avg_wait"] else 0
@@ -2641,15 +2787,15 @@ class StatusWebServer:
             JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-            WHERE q.stage = 'QUEUE_JOIN'
-                AND e.stage = 'EXIT'
+            WHERE q.stage = ?
+                AND e.stage = ?
                 AND q.session_id = ?
                 AND e.timestamp > datetime('now', '-4 hours')
             GROUP BY hour
             ORDER BY count DESC
             LIMIT 1
         """,
-            (session_id,),
+            (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
         )
         busiest = cursor.fetchone()
         busiest_hour = busiest["hour"] if busiest else "N/A"
@@ -2680,12 +2826,12 @@ class StatusWebServer:
             LEFT JOIN events e
                 ON q.token_id = e.token_id
                 AND q.session_id = e.session_id
-                AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
         row = cursor.fetchone()
         longest_wait = 0
@@ -2707,16 +2853,27 @@ class StatusWebServer:
 
     def _calculate_3stage_metrics(self, limit=20) -> dict:
         """
-        Calculate separate metrics for 3-stage journey
+        Calculate separate metrics for 3-stage journey.
 
-        Stages:
-        - QUEUE_JOIN: Person enters queue
-        - SERVICE_START: Staff begins helping
-        - EXIT: Service complete
+        Only applicable for workflows with a SERVICE_START stage that allows
+        separating queue wait time from service time.
+
+        For 2-stage workflows, returns has_3stage_data=False.
 
         Returns:
             Dictionary with queue_wait_minutes, service_time_minutes, total_time_minutes
         """
+        # Guard: Only meaningful for workflows with SERVICE_START stage
+        if not self._has_service_start or self.STAGE_SERVICE_START is None:
+            return {
+                "avg_queue_wait_minutes": 0,
+                "avg_service_time_minutes": 0,
+                "avg_total_time_minutes": 0,
+                "has_3stage_data": False,
+                "journeys_analyzed": 0,
+                "three_stage_count": 0,
+            }
+
         session_id = self.config.session_id
 
         try:
@@ -2732,18 +2889,24 @@ class StatusWebServer:
                 LEFT JOIN events s
                     ON q.token_id = s.token_id
                     AND q.session_id = s.session_id
-                    AND s.stage = 'SERVICE_START'
+                    AND s.stage = ?
                 LEFT JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                    AND e.stage = 'EXIT'
-                WHERE q.stage = 'QUEUE_JOIN'
+                    AND e.stage = ?
+                WHERE q.stage = ?
                     AND q.session_id = ?
                     AND e.timestamp IS NOT NULL
                 ORDER BY e.timestamp DESC
                 LIMIT ?
             """,
-                (session_id, limit),
+                (
+                    self.STAGE_SERVICE_START,
+                    self.STAGE_EXIT,
+                    self.STAGE_QUEUE_JOIN,
+                    session_id,
+                    limit,
+                ),
             )
 
             journeys = cursor.fetchall()
@@ -2824,11 +2987,18 @@ class StatusWebServer:
 
     def _get_current_in_service(self) -> int:
         """
-        Get count of people currently being served (between SERVICE_START and EXIT)
+        Get count of people currently being served (between SERVICE_START and EXIT).
+
+        Only applicable for workflows with a SERVICE_START stage.
+        For 2-stage workflows (entry/exit only), returns 0.
 
         Returns:
-            Number of people currently in service
+            Number of people currently in service, or 0 if not applicable
         """
+        # Guard: Only meaningful for workflows with SERVICE_START stage
+        if not self._has_service_start or self.STAGE_SERVICE_START is None:
+            return 0
+
         session_id = self.config.session_id
 
         try:
@@ -2839,12 +3009,12 @@ class StatusWebServer:
                 LEFT JOIN events e
                     ON s.token_id = e.token_id
                     AND s.session_id = e.session_id
-                    AND e.stage = 'EXIT'
-                WHERE s.stage = 'SERVICE_START'
+                    AND e.stage = ?
+                WHERE s.stage = ?
                     AND s.session_id = ?
                     AND e.id IS NULL
             """,
-                (session_id,),
+                (self.STAGE_EXIT, self.STAGE_SERVICE_START, session_id),
             )
 
             return cursor.fetchone()["count"]
@@ -2852,6 +3022,95 @@ class StatusWebServer:
         except Exception as e:
             logger.warning(f"Failed to get in-service count: {e}")
             return 0
+
+    def _get_substance_return_stats(self) -> dict:
+        """
+        Get substance return tracking statistics
+
+        Returns:
+            Dictionary with substance return metrics
+        """
+        session_id = self.config.session_id
+
+        # Check if SUBSTANCE_RETURNED stage is configured
+        if not self.svc or not self.svc.has_substance_returned_stage():
+            return {
+                "enabled": False,
+                "pending_returns": 0,
+                "completed_returns": 0,
+                "return_rate_percent": 0,
+            }
+
+        try:
+            # Count people with SERVICE_START but no SUBSTANCE_RETURNED
+            cursor = self.db.conn.execute(
+                """
+                SELECT COUNT(DISTINCT s.token_id) as pending
+                FROM events s
+                LEFT JOIN events r
+                    ON s.token_id = r.token_id
+                    AND s.session_id = r.session_id
+                    AND r.stage = ?
+                LEFT JOIN events e
+                    ON s.token_id = e.token_id
+                    AND s.session_id = e.session_id
+                    AND e.stage = ?
+                WHERE s.stage = ?
+                    AND s.session_id = ?
+                    AND r.id IS NULL
+                    AND e.id IS NULL
+                """,
+                (
+                    self.STAGE_SUBSTANCE_RETURNED,
+                    self.STAGE_EXIT,
+                    self.STAGE_SERVICE_START,
+                    session_id,
+                ),
+            )
+            pending = cursor.fetchone()["pending"]
+
+            # Count completed substance returns
+            cursor = self.db.conn.execute(
+                """
+                SELECT COUNT(DISTINCT token_id) as completed
+                FROM events
+                WHERE stage = ?
+                    AND session_id = ?
+                """,
+                (self.STAGE_SUBSTANCE_RETURNED, session_id),
+            )
+            completed = cursor.fetchone()["completed"]
+
+            # Count total service starts
+            cursor = self.db.conn.execute(
+                """
+                SELECT COUNT(DISTINCT token_id) as total
+                FROM events
+                WHERE stage = ?
+                    AND session_id = ?
+                """,
+                (self.STAGE_SERVICE_START, session_id),
+            )
+            total = cursor.fetchone()["total"]
+
+            return_rate = int((completed / total * 100)) if total > 0 else 0
+
+            return {
+                "enabled": True,
+                "pending_returns": pending,
+                "completed_returns": completed,
+                "total_served": total,
+                "return_rate_percent": return_rate,
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to get substance return stats: {e}")
+            return {
+                "enabled": True,
+                "pending_returns": 0,
+                "completed_returns": 0,
+                "return_rate_percent": 0,
+            }
 
     def _get_stuck_cards(self) -> dict:
         """
@@ -2874,14 +3133,14 @@ class StatusWebServer:
                 LEFT JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                    AND e.stage = 'EXIT'
-                WHERE q.stage = 'QUEUE_JOIN'
+                    AND e.stage = ?
+                WHERE q.stage = ?
                     AND q.session_id = ?
                     AND e.id IS NULL
                     AND q.timestamp < datetime('now', '-2 hours')
                 ORDER BY q.timestamp ASC
             """,
-                (session_id,),
+                (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
             )
 
             stuck_cards = []
@@ -2932,7 +3191,7 @@ class StatusWebServer:
                     self.db.log_event(
                         token_id=token_id,
                         uid=f"FORCED_{token_id}",
-                        stage="EXIT",
+                        stage=self.STAGE_EXIT,
                         device_id="manual_force_exit",
                         session_id=session_id,
                         timestamp=now,
@@ -3030,17 +3289,27 @@ class StatusWebServer:
                     }
                 )
 
-            # Determine status message
+            # Determine status message - build dynamically from config
             status_map = {
-                "QUEUE_JOIN": "In Queue",
-                "SERVICE_START": "Being Served",
-                "EXIT": "Completed",
+                self.STAGE_QUEUE_JOIN: "In Queue",
+                self.STAGE_EXIT: "Completed",
             }
+            # Add SERVICE_START if this workflow uses it
+            if self._has_service_start and self.STAGE_SERVICE_START:
+                status_map[self.STAGE_SERVICE_START] = "Being Served"
+            # Add SUBSTANCE_RETURNED if this workflow uses it
+            if self._has_substance_returned and self.STAGE_SUBSTANCE_RETURNED:
+                status_map[self.STAGE_SUBSTANCE_RETURNED] = "Substance Returned"
+            # Override with display names from service config if available
+            if self.svc and self.svc._config:
+                for stage in self.svc._config.workflow_stages:
+                    if stage.id in status_map and stage.display_name:
+                        status_map[stage.id] = stage.display_name
             status = status_map.get(current_stage, current_stage)
 
             # Calculate total time if completed
             total_time = None
-            if current_stage == "EXIT" and len(events) > 1:
+            if current_stage == self.STAGE_EXIT and len(events) > 1:
                 try:
                     first_time = events[0]["timestamp"]
                     if first_time.endswith("Z"):
@@ -3105,12 +3374,12 @@ class StatusWebServer:
                 LEFT JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                    AND e.stage = 'EXIT'
-                WHERE q.stage = 'QUEUE_JOIN'
+                    AND e.stage = ?
+                WHERE q.stage = ?
                     AND q.session_id = ?
                     AND e.id IS NULL
             """,
-                (session_id,),
+                (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
             )
             queue_length = cursor.fetchone()["count"]
 
@@ -3123,12 +3392,12 @@ class StatusWebServer:
                 JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                WHERE q.stage = 'QUEUE_JOIN'
-                    AND e.stage = 'EXIT'
+                WHERE q.stage = ?
+                    AND e.stage = ?
                     AND q.session_id = ?
                     AND e.timestamp > datetime('now', '-30 minutes')
             """,
-                (session_id,),
+                (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
             )
 
             recent_data = cursor.fetchone()
@@ -3137,18 +3406,18 @@ class StatusWebServer:
             # Calculate average service time from recent completions
             cursor = self.db.conn.execute(
                 """
-                SELECT 
+                SELECT
                     AVG((julianday(e.timestamp) - julianday(q.timestamp)) * 1440) as avg_time
                 FROM events q
                 JOIN events e
                     ON q.token_id = e.token_id
                     AND q.session_id = e.session_id
-                WHERE q.stage = 'QUEUE_JOIN'
-                    AND e.stage = 'EXIT'
+                WHERE q.stage = ?
+                    AND e.stage = ?
                     AND q.session_id = ?
                     AND e.timestamp > datetime('now', '-30 minutes')
             """,
-                (session_id,),
+                (self.STAGE_QUEUE_JOIN, self.STAGE_EXIT, session_id),
             )
 
             avg_service_time = cursor.fetchone()["avg_time"] or 0
@@ -3467,18 +3736,23 @@ class StatusWebServer:
                 CAST((julianday(e.timestamp) - julianday(j.timestamp)) * 1440 AS INTEGER) as total_minutes,
                 CAST((julianday(e.timestamp) - julianday(COALESCE(s.timestamp, j.timestamp))) * 1440 AS INTEGER) as service_minutes
             FROM events j
-            JOIN events e ON j.token_id = e.token_id 
+            JOIN events e ON j.token_id = e.token_id
                         AND j.session_id = e.session_id
-                        AND e.stage = 'EXIT'
+                        AND e.stage = ?
             LEFT JOIN events s ON j.token_id = s.token_id
                              AND j.session_id = s.session_id
-                             AND s.stage = 'SERVICE_START'
-            WHERE j.stage = 'QUEUE_JOIN'
+                             AND s.stage = ?
+            WHERE j.stage = ?
                 AND j.session_id = ?
                 AND datetime(e.timestamp) > datetime(j.timestamp)
             ORDER BY j.timestamp ASC
         """,
-            (session_id,),
+            (
+                self.STAGE_EXIT,
+                self.STAGE_SERVICE_START,
+                self.STAGE_QUEUE_JOIN,
+                session_id,
+            ),
         )
 
         journeys = cursor.fetchall()
@@ -3514,15 +3788,15 @@ class StatusWebServer:
         # Calculate peak queue
         cursor = self.db.conn.execute(
             """
-            SELECT 
+            SELECT
                 datetime(timestamp) as time,
                 (SELECT COUNT(DISTINCT q.token_id)
                  FROM events q
                  LEFT JOIN events e ON q.token_id = e.token_id
                                     AND q.session_id = e.session_id
-                                    AND e.stage = 'EXIT'
+                                    AND e.stage = ?
                                     AND datetime(e.timestamp) <= datetime(events.timestamp)
-                 WHERE q.stage = 'QUEUE_JOIN'
+                 WHERE q.stage = ?
                    AND q.session_id = ?
                    AND datetime(q.timestamp) <= datetime(events.timestamp)
                    AND (e.id IS NULL OR datetime(e.timestamp) > datetime(events.timestamp))
@@ -3532,7 +3806,12 @@ class StatusWebServer:
             ORDER BY queue_length DESC
             LIMIT 1
         """,
-            (session_id, session_id),
+            (
+                self.STAGE_EXIT,
+                self.STAGE_QUEUE_JOIN,
+                session_id,
+                session_id,
+            ),
         )
 
         peak_row = cursor.fetchone()
@@ -3568,12 +3847,12 @@ class StatusWebServer:
             FROM events q
             LEFT JOIN events e ON q.token_id = e.token_id
                                AND q.session_id = e.session_id
-                               AND e.stage = 'EXIT'
-            WHERE q.stage = 'QUEUE_JOIN'
+                               AND e.stage = ?
+            WHERE q.stage = ?
                 AND q.session_id = ?
                 AND e.id IS NULL
         """,
-            (session_id,),
+            (self.STAGE_EXIT, self.STAGE_QUEUE_JOIN, session_id),
         )
         abandoned_count = cursor.fetchone()["abandoned"]
         total_joined = total_served + abandoned_count
@@ -3597,16 +3876,16 @@ class StatusWebServer:
         # Calculate busiest period (hour with most completions)
         cursor = self.db.conn.execute(
             """
-            SELECT 
+            SELECT
                 strftime('%H:00', timestamp) as hour,
                 COUNT(*) as count
             FROM events
-            WHERE session_id = ? AND stage = 'EXIT'
+            WHERE session_id = ? AND stage = ?
             GROUP BY hour
             ORDER BY count DESC
             LIMIT 1
         """,
-            (session_id,),
+            (session_id, self.STAGE_EXIT),
         )
         busiest_row = cursor.fetchone()
         busiest_period = busiest_row["hour"] if busiest_row else "N/A"
