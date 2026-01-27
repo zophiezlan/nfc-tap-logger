@@ -239,18 +239,42 @@ class StatusWebServer:
         self._setup_routes()
 
     def _init_stage_ids(self):
-        """Initialize stage IDs from service configuration"""
+        """
+        Initialize stage IDs from service configuration.
+
+        Required stages (always present):
+        - STAGE_QUEUE_JOIN: First stage in workflow (entry point)
+        - STAGE_EXIT: Last stage in workflow (completion)
+
+        Optional stages (may be None):
+        - STAGE_SERVICE_START: When service begins (for 3+ stage workflows)
+        - STAGE_SUBSTANCE_RETURNED: When substance is returned (for accountability)
+
+        Services can use any stage names they want. The system adapts to
+        whatever workflow is configured, from simple 2-stage queue tracking
+        to complex multi-stage accountability workflows.
+        """
         if self.svc:
+            # Required stages - always exist
             self.STAGE_QUEUE_JOIN = self.svc.get_first_stage()
             self.STAGE_EXIT = self.svc.get_last_stage()
+            # Optional stages - may be None if not in workflow
             self.STAGE_SERVICE_START = self.svc.get_service_start_stage()
             self.STAGE_SUBSTANCE_RETURNED = self.svc.get_substance_returned_stage()
+            # Track workflow complexity
+            self._has_service_start = self.svc.has_service_start_stage()
+            self._has_substance_returned = self.svc.has_substance_returned_stage()
+            self._is_multi_stage = self.svc.is_multi_stage_workflow()
         else:
-            # Fallback defaults
+            # Minimal fallback - only assume required stages exist
             self.STAGE_QUEUE_JOIN = "QUEUE_JOIN"
             self.STAGE_EXIT = "EXIT"
-            self.STAGE_SERVICE_START = "SERVICE_START"
-            self.STAGE_SUBSTANCE_RETURNED = "SUBSTANCE_RETURNED"
+            # Don't assume optional stages exist
+            self.STAGE_SERVICE_START = None
+            self.STAGE_SUBSTANCE_RETURNED = None
+            self._has_service_start = False
+            self._has_substance_returned = False
+            self._is_multi_stage = False
 
     def _setup_routes(self):
         """Setup Flask routes"""
@@ -2178,12 +2202,12 @@ class StatusWebServer:
             stage = event["stage"]
             timestamp = event["timestamp"]
 
-            if stage == "QUEUE_JOIN":
+            if stage == self.STAGE_QUEUE_JOIN:
                 result["queue_join"] = timestamp
                 result["queue_join_time"] = self._format_time(timestamp)
                 result["status"] = "in_queue"
 
-            elif stage == "EXIT":
+            elif stage == self.STAGE_EXIT:
                 result["exit"] = timestamp
                 result["exit_time"] = self._format_time(timestamp)
                 result["status"] = "complete"
@@ -2829,16 +2853,27 @@ class StatusWebServer:
 
     def _calculate_3stage_metrics(self, limit=20) -> dict:
         """
-        Calculate separate metrics for 3-stage journey
+        Calculate separate metrics for 3-stage journey.
 
-        Stages:
-        - QUEUE_JOIN: Person enters queue
-        - SERVICE_START: Staff begins helping
-        - EXIT: Service complete
+        Only applicable for workflows with a SERVICE_START stage that allows
+        separating queue wait time from service time.
+
+        For 2-stage workflows, returns has_3stage_data=False.
 
         Returns:
             Dictionary with queue_wait_minutes, service_time_minutes, total_time_minutes
         """
+        # Guard: Only meaningful for workflows with SERVICE_START stage
+        if not self._has_service_start or self.STAGE_SERVICE_START is None:
+            return {
+                "avg_queue_wait_minutes": 0,
+                "avg_service_time_minutes": 0,
+                "avg_total_time_minutes": 0,
+                "has_3stage_data": False,
+                "journeys_analyzed": 0,
+                "three_stage_count": 0,
+            }
+
         session_id = self.config.session_id
 
         try:
@@ -2952,11 +2987,18 @@ class StatusWebServer:
 
     def _get_current_in_service(self) -> int:
         """
-        Get count of people currently being served (between SERVICE_START and EXIT)
+        Get count of people currently being served (between SERVICE_START and EXIT).
+
+        Only applicable for workflows with a SERVICE_START stage.
+        For 2-stage workflows (entry/exit only), returns 0.
 
         Returns:
-            Number of people currently in service
+            Number of people currently in service, or 0 if not applicable
         """
+        # Guard: Only meaningful for workflows with SERVICE_START stage
+        if not self._has_service_start or self.STAGE_SERVICE_START is None:
+            return 0
+
         session_id = self.config.session_id
 
         try:
@@ -3149,7 +3191,7 @@ class StatusWebServer:
                     self.db.log_event(
                         token_id=token_id,
                         uid=f"FORCED_{token_id}",
-                        stage="EXIT",
+                        stage=self.STAGE_EXIT,
                         device_id="manual_force_exit",
                         session_id=session_id,
                         timestamp=now,
@@ -3247,17 +3289,27 @@ class StatusWebServer:
                     }
                 )
 
-            # Determine status message
+            # Determine status message - build dynamically from config
             status_map = {
-                "QUEUE_JOIN": "In Queue",
-                "SERVICE_START": "Being Served",
-                "EXIT": "Completed",
+                self.STAGE_QUEUE_JOIN: "In Queue",
+                self.STAGE_EXIT: "Completed",
             }
+            # Add SERVICE_START if this workflow uses it
+            if self._has_service_start and self.STAGE_SERVICE_START:
+                status_map[self.STAGE_SERVICE_START] = "Being Served"
+            # Add SUBSTANCE_RETURNED if this workflow uses it
+            if self._has_substance_returned and self.STAGE_SUBSTANCE_RETURNED:
+                status_map[self.STAGE_SUBSTANCE_RETURNED] = "Substance Returned"
+            # Override with display names from service config if available
+            if self.svc and self.svc._config:
+                for stage in self.svc._config.workflow_stages:
+                    if stage.id in status_map and stage.display_name:
+                        status_map[stage.id] = stage.display_name
             status = status_map.get(current_stage, current_stage)
 
             # Calculate total time if completed
             total_time = None
-            if current_stage == "EXIT" and len(events) > 1:
+            if current_stage == self.STAGE_EXIT and len(events) > 1:
                 try:
                     first_time = events[0]["timestamp"]
                     if first_time.endswith("Z"):
