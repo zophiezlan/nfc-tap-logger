@@ -1,5 +1,6 @@
-# FlowState Dependencies
+# FlowState Runtime Dependencies
 # Python 3.9+ required
+# For development dependencies, see requirements-dev.txt
 
 # NFC Reader
 pn532pi==1.7
@@ -10,19 +11,11 @@ PyYAML==6.0.1
 # GPIO for buzzer/LED (only needed on Pi)
 RPi.GPIO==0.7.1
 
-# Testing
-pytest==7.4.3
-pytest-cov==4.1.0
-
-# Web server (for status checking and health checks)
+# Web server (dashboards, API, control panel)
 Flask==3.0.0
 
-# HTTP requests (for peer monitoring)
+# HTTP requests (for peer station monitoring)
 requests==2.32.3
 
-# NDEF writing (for NFC Tools app integration)
+# NDEF writing (for NFC card initialization)
 ndeflib==0.3.3
-
-# Optional: for development
-black==23.12.1
-flake8==6.1.0
