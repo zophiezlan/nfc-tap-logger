@@ -48,40 +48,57 @@ pytest -v
 
 ```
 flowstate/
-├── tap_station/           # Core application
-│   ├── main.py           # Service entry point
-│   ├── config.py         # Configuration management
-│   ├── database.py       # SQLite operations
-│   ├── nfc_reader.py     # NFC reader wrapper
-│   ├── web_server.py     # Flask server (dashboards, API, control panel)
-│   ├── extension.py      # Extension base class & TapEvent protocol
-│   ├── registry.py       # Extension loader & hook dispatcher
-│   ├── feedback.py       # Buzzer/LED control
-│   ├── validation.py     # Event sequence validation
-│   ├── anomaly_detector.py # Anomaly detection
+├── tap_station/              # Core application (32 modules)
+│   ├── main.py              # Service entry point & TapStation class
+│   ├── config.py            # YAML configuration management
+│   ├── constants.py         # Workflow stages & database defaults
+│   ├── database.py          # SQLite operations (thread-safe, WAL mode)
+│   ├── nfc_reader.py        # PN532 NFC interface & MockNFCReader
+│   ├── ndef_writer.py       # NDEF tag writing for card initialization
+│   ├── nfc_cleanup.py       # NFC resource cleanup utilities
+│   ├── web_server.py        # Flask server (dashboards, API, control panel)
+│   ├── extension.py         # Extension base class & TapEvent protocol
+│   ├── registry.py          # Extension loader & hook dispatcher
+│   ├── feedback.py          # Buzzer/LED control
+│   ├── validation.py        # Event sequence & input validation
+│   ├── anomaly_detector.py  # Real-time anomaly detection
 │   ├── service_integration.py # Service workflow integration
-│   ├── health.py         # System health monitoring
-│   ├── failover_manager.py # Multi-station failover
-│   └── templates/        # 11 Jinja2 HTML templates
-├── extensions/            # Modular feature plugins (12 extensions)
-│   ├── anomalies/        # Real-time anomaly alerting
-│   ├── event_summary/    # End-of-day summary reports
-│   ├── export/           # CSV/JSON data export
-│   ├── hardware_monitor/ # Raspberry Pi hardware health
-│   ├── insights/         # Service quality metrics (SLI/SLO)
-│   ├── manual_corrections/ # Manual event add/remove
-│   ├── notes/            # Operational notes
-│   ├── shift_summary/    # Shift handoff reports
-│   ├── smart_estimates/  # Wait time prediction
-│   ├── stuck_cards/      # Stuck card detection & force-exit
-│   ├── substance_tracking/ # Substance return tracking
-│   └── three_stage/      # 3-stage queue/service tracking
-├── scripts/              # Utility & setup scripts
-├── mobile_app/           # Offline-first Android PWA
-├── tests/                # Pytest test suite
-├── examples/             # Example service configurations
-├── docs/                 # Documentation
-└── data/                 # SQLite database storage
+│   ├── service_config_loader.py # Service config YAML loader
+│   ├── health.py            # System health monitoring
+│   ├── failover_manager.py  # Multi-station failover
+│   ├── peer_monitor.py      # Peer station HTTP monitoring
+│   ├── onsite_manager.py    # Onsite event management (WiFi, mDNS, failover)
+│   ├── wifi_manager.py      # WiFi network management
+│   ├── mdns_service.py      # mDNS service discovery
+│   ├── button_handler.py    # Shutdown button GPIO handler
+│   ├── gpio_manager.py      # GPIO pin management
+│   ├── status_leds.py       # Status LED indicators
+│   ├── watchdog_runner.py   # Watchdog process runner
+│   ├── watchdog_service.py  # Watchdog health monitoring service
+│   ├── datetime_utils.py    # Timestamp parsing & formatting helpers
+│   ├── path_utils.py        # File path & directory utilities
+│   ├── exceptions.py        # Custom exception classes
+│   ├── error_codes.py       # Standardized error codes
+│   └── templates/           # 11 Jinja2 HTML templates
+├── extensions/               # Modular feature plugins (12 extensions)
+│   ├── anomalies/           # Real-time anomaly alerting
+│   ├── event_summary/       # End-of-day summary reports
+│   ├── export/              # CSV/JSON data export
+│   ├── hardware_monitor/    # Raspberry Pi hardware health
+│   ├── insights/            # Service quality metrics (SLI/SLO)
+│   ├── manual_corrections/  # Manual event add/remove
+│   ├── notes/               # Operational notes
+│   ├── shift_summary/       # Shift handoff reports
+│   ├── smart_estimates/     # Wait time prediction
+│   ├── stuck_cards/         # Stuck card detection & force-exit
+│   ├── substance_tracking/  # Substance return tracking
+│   └── three_stage/         # 3-stage queue/service tracking
+├── scripts/                  # Utility & setup scripts
+├── mobile_app/              # Offline-first Android PWA
+├── tests/                   # Pytest test suite (16 test modules)
+├── examples/                # Example service configurations
+├── docs/                    # Documentation (24 guides)
+└── data/                    # SQLite database storage
 ```
 
 See [docs/EXTENSIONS.md](docs/EXTENSIONS.md) for details on creating and configuring extensions.

@@ -64,7 +64,7 @@ FlowState is production-ready for festival drug checking service deployment. The
 
 ## Testing
 
-- [x] 15 test modules covering core, extensions, and integration
+- [x] 16 test modules covering core, extensions, and integration
 - [x] Mock NFC reader for testing without hardware
 - [x] CI via GitHub Actions
 

@@ -19,11 +19,11 @@ Drug checking services at festivals need data to optimize flow, measure impact, 
 ## Quick Links
 
 - **🚀 [Setup Guide](docs/SETUP.md)** - Hardware wiring & software installation
-- **⚙️ [Service Configuration Guide](docs/SERVICE_CONFIGURATION.md)** - **NEW!** Customize for your festival service
-- **🆔 [Auto-Initialize Cards](docs/AUTO_INIT_CARDS.md)** - **NEW!** Use fresh cards without pre-initialization
-- **⏱️ [Wait Time Metrics Guide](docs/WAIT_TIME_METRICS.md)** - **NEW!** Understanding queue wait vs. service time
-- **🤝 [Substance Return Confirmation](docs/SUBSTANCE_RETURN_CONFIRMATION.md)** - **NEW!** Accountability for substance handback
-- **🛡️ [Human Error Handling](docs/HUMAN_ERROR_HANDLING.md)** - **NEW!** Adapt to mistakes, forgotten taps, and operational errors
+- **⚙️ [Service Configuration Guide](docs/SERVICE_CONFIGURATION.md)** - Customize for your festival service
+- **🆔 [Auto-Initialize Cards](docs/AUTO_INIT_CARDS.md)** - Use fresh cards without pre-initialization
+- **⏱️ [Wait Time Metrics Guide](docs/WAIT_TIME_METRICS.md)** - Understanding queue wait vs. service time
+- **🤝 [Substance Return Confirmation](docs/SUBSTANCE_RETURN_CONFIRMATION.md)** - Accountability for substance handback
+- **🛡️ [Human Error Handling](docs/HUMAN_ERROR_HANDLING.md)** - Adapt to mistakes, forgotten taps, and operational errors
 - **📱 [Mobile App Guide](docs/MOBILE.md)** - Use Android phones instead of Raspberry Pis
 - **📋 [Operations Guide](docs/OPERATIONS.md)** - Day-of-event workflow, live monitoring & decision-making
 - **✅ [Pre-Deployment Checklist](docs/PRE_DEPLOYMENT_CHECKLIST.md)** - Ensure you're ready before your event
@@ -33,9 +33,18 @@ Drug checking services at festivals need data to optimize flow, measure impact, 
 - **🧩 [Extensions](docs/EXTENSIONS.md)** - Modular feature system & extension reference
 - **💻 [Contributing](CONTRIBUTING.md)** - For developers
 
-## What's New (v2.5+)
+## What's New (v2.6)
 
-**🔐 UI-First Admin Access (NEW!):**
+**🧩 Modular Extension System (v2.6):**
+
+- **Extension Architecture** - All optional features extracted into pluggable extensions
+- **Extension Registry** - Centralized loader with hook dispatch (`on_tap`, `on_startup`, `on_api_routes`, `on_dashboard_stats`, `on_shutdown`)
+- **12 Built-in Extensions** - anomalies, event_summary, export, hardware_monitor, insights, manual_corrections, notes, shift_summary, smart_estimates, stuck_cards, substance_tracking, three_stage
+- **Easy Customization** - Enable/disable extensions via `config.yaml`, create your own with simple base class
+
+See [Extension System Guide](docs/EXTENSIONS.md) for details.
+
+**🔐 UI-First Admin Access (v2.5):**
 
 - **Password-Protected Control Panel** - Secure admin authentication for control panel access
 - **No SSH During Shift** - All administrative functions accessible via web UI
@@ -103,7 +112,7 @@ See [Force-Exit & Export Guide](docs/FORCE_EXIT_AND_EXPORT.md) and [3-Stage Trac
 
 ## ⚙️ Configurable for Any Festival Service
 
-**NEW:** The system is now fully configurable for different festival-based community drug checking services!
+The system is fully configurable for different festival-based community drug checking services.
 
 Different services have different needs:
 
@@ -154,6 +163,8 @@ Different services have different needs:
 - **Modular extension system** - 12 pluggable feature modules
 - systemd service for auto-start/restart
 - Real-time operational analytics
+- On-site management (WiFi, mDNS discovery, multi-station failover)
+- Watchdog monitoring and graceful shutdown button support
 
 ## Quick Start (Raspberry Pi)
 
@@ -472,59 +483,80 @@ print(f"90th percentile: {pivoted['wait_time'].quantile(0.9)}")
 
 ```
 flowstate/
-├── tap_station/              # Core application
-│   ├── main.py              # Service entry point
-│   ├── config.py            # Configuration management
-│   ├── database.py          # SQLite operations
-│   ├── nfc_reader.py        # PN532 NFC interface
-│   ├── web_server.py        # Flask server (dashboards, API, control panel)
-│   ├── extension.py         # Extension base class & TapEvent protocol
-│   ├── registry.py          # Extension loader & hook dispatcher
-│   ├── feedback.py          # Buzzer/LED control
-│   ├── validation.py        # Event sequence validation
-│   ├── anomaly_detector.py  # Real-time anomaly detection
-│   ├── service_integration.py # Service workflow integration
-│   ├── health.py            # System health monitoring
-│   ├── failover_manager.py  # Multi-station failover
-│   ├── peer_monitor.py      # Peer station HTTP monitoring
-│   ├── onsite_manager.py    # Onsite event management
-│   └── templates/           # Web interface (11 templates)
-│       ├── dashboard.html   # Full analytics dashboard
-│       ├── monitor.html     # Simplified peer worker view
-│       ├── control.html     # System administration panel
-│       ├── public.html      # Public queue display
-│       ├── shift.html       # Shift handoff summary
-│       ├── event_summary.html # End-of-day summary
-│       ├── insights.html    # Service quality metrics (SLI/SLO)
-│       ├── login.html       # Admin authentication
-│       ├── index.html       # Landing page
-│       ├── status.html      # Participant status check
-│       └── error.html       # Error display
-├── extensions/               # Modular feature plugins
-│   ├── anomalies/           # Real-time anomaly alerting
-│   ├── event_summary/       # End-of-day summary reports
-│   ├── export/              # CSV/JSON data export
-│   ├── hardware_monitor/    # Raspberry Pi hardware health
-│   ├── insights/            # Service quality metrics (SLI/SLO)
-│   ├── manual_corrections/  # Manual event add/remove with audit trail
-│   ├── notes/               # Operational notes during shifts
-│   ├── shift_summary/       # Shift handoff reports
-│   ├── smart_estimates/     # Intelligent wait time prediction
-│   ├── stuck_cards/         # Stuck card detection & force-exit
-│   ├── substance_tracking/  # Substance return accountability
-│   └── three_stage/         # 3-stage tracking (queue vs service time)
-├── scripts/                  # Utility scripts
-├── mobile_app/              # Offline-first Android PWA
-├── tests/                   # Pytest test suite
-├── docs/                    # Documentation
-├── examples/                # Example service configurations
-├── data/                    # SQLite database files
-├── logs/                    # Rotating application logs
-├── backups/                 # Database backups
-├── config.yaml.example      # Configuration template
-├── pyproject.toml           # Python project configuration
-├── requirements.txt         # Python dependencies
-└── tap-station.service      # systemd service file
+├── tap_station/                  # Core application
+│   ├── main.py                  # Service entry point & TapStation class
+│   ├── config.py                # YAML configuration management
+│   ├── constants.py             # Workflow stages & database defaults
+│   ├── database.py              # SQLite operations (thread-safe, WAL mode)
+│   ├── nfc_reader.py            # PN532 NFC interface & MockNFCReader
+│   ├── ndef_writer.py           # NDEF tag writing for card initialization
+│   ├── nfc_cleanup.py           # NFC resource cleanup utilities
+│   ├── web_server.py            # Flask server (dashboards, API, control panel)
+│   ├── extension.py             # Extension base class & TapEvent protocol
+│   ├── registry.py              # Extension loader & hook dispatcher
+│   ├── feedback.py              # Buzzer/LED control
+│   ├── validation.py            # Event sequence & input validation
+│   ├── anomaly_detector.py      # Real-time anomaly detection
+│   ├── service_integration.py   # Service workflow integration
+│   ├── service_config_loader.py # Service config YAML loader
+│   ├── service_config.yaml      # Default service configuration
+│   ├── health.py                # System health monitoring
+│   ├── failover_manager.py      # Multi-station failover
+│   ├── peer_monitor.py          # Peer station HTTP monitoring
+│   ├── onsite_manager.py        # Onsite event management (WiFi, mDNS, failover)
+│   ├── wifi_manager.py          # WiFi network management
+│   ├── wifi_setup_button.py     # WiFi setup button handler
+│   ├── mdns_service.py          # mDNS service discovery
+│   ├── button_handler.py        # Shutdown button GPIO handler
+│   ├── gpio_manager.py          # GPIO pin management
+│   ├── status_leds.py           # Status LED indicators
+│   ├── watchdog_runner.py       # Watchdog process runner
+│   ├── watchdog_service.py      # Watchdog health monitoring service
+│   ├── datetime_utils.py        # Timestamp parsing & formatting helpers
+│   ├── path_utils.py            # File path & directory utilities
+│   ├── logging_config.py        # Logging configuration
+│   ├── exceptions.py            # Custom exception classes
+│   ├── error_codes.py           # Standardized error codes
+│   ├── help_text.py             # CLI help text
+│   ├── static/                  # Static web assets (JS)
+│   └── templates/               # Web interface (11 Jinja2 templates)
+│       ├── dashboard.html       # Full analytics dashboard
+│       ├── monitor.html         # Simplified peer worker view
+│       ├── control.html         # System administration panel
+│       ├── public.html          # Public queue display
+│       ├── shift.html           # Shift handoff summary
+│       ├── event_summary.html   # End-of-day summary
+│       ├── insights.html        # Service quality metrics (SLI/SLO)
+│       ├── login.html           # Admin authentication
+│       ├── index.html           # Landing page
+│       ├── status.html          # Participant status check
+│       └── error.html           # Error display
+├── extensions/                   # Modular feature plugins (12 extensions)
+│   ├── anomalies/               # Real-time anomaly alerting
+│   ├── event_summary/           # End-of-day summary reports
+│   ├── export/                  # CSV/JSON data export
+│   ├── hardware_monitor/        # Raspberry Pi hardware health
+│   ├── insights/                # Service quality metrics (SLI/SLO)
+│   ├── manual_corrections/      # Manual event add/remove with audit trail
+│   ├── notes/                   # Operational notes during shifts
+│   ├── shift_summary/           # Shift handoff reports
+│   ├── smart_estimates/         # Intelligent wait time prediction
+│   ├── stuck_cards/             # Stuck card detection & force-exit
+│   ├── substance_tracking/      # Substance return accountability
+│   └── three_stage/             # 3-stage tracking (queue vs service time)
+├── scripts/                      # Utility & setup scripts
+├── mobile_app/                  # Offline-first Android PWA
+├── tests/                       # Pytest test suite (16 test modules)
+├── docs/                        # Documentation (24 guides)
+├── examples/                    # Example service configurations
+├── data/                        # SQLite database files
+├── logs/                        # Rotating application logs
+├── backups/                     # Database backups
+├── config.yaml.example          # Configuration template
+├── pyproject.toml               # Python project configuration
+├── requirements.txt             # Runtime dependencies
+├── requirements-dev.txt         # Development dependencies
+└── tap-station.service          # systemd service file
 ```
 
 See [docs/EXTENSIONS.md](docs/EXTENSIONS.md) for details on the extension system.
@@ -541,8 +573,8 @@ Each Pi needs unique `device_id` and appropriate `stage`:
 station:
   device_id: "station1"
   stage: "QUEUE_JOIN"
-  session_id: "festival-2025-summer"
-````
+  session_id: "festival-2026-summer"
+```
 
 **Station 2 (Exit):**
 
@@ -550,7 +582,7 @@ station:
 station:
   device_id: "station2"
   stage: "EXIT"
-  session_id: "festival-2025-summer"
+  session_id: "festival-2026-summer"
 ```
 
 ### GPIO Configuration
@@ -634,40 +666,62 @@ sudo journalctl -u tap-station -n 50
 
 - [pn532pi](https://pypi.org/project/pn532pi/) - PN532 NFC library
 - [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) - GPIO control
-- [Flask](https://flask.palletsprojects.com/) - Web status server
-- [ndeflib](https://ndeflib.readthedocs.io/) - NDEF writing
+- [Flask](https://flask.palletsprojects.com/) - Web server (dashboards, API, control panel)
+- [ndeflib](https://ndeflib.readthedocs.io/) - NDEF tag writing
+- [PyYAML](https://pypi.org/project/PyYAML/) - Configuration parsing
+- [requests](https://pypi.org/project/requests/) - Peer station monitoring
 
 ---
 
 ## Version History
 
-**v2.6 (Current)**
+**v2.6 (Current)** - Extension system refactor
 
-- Modular extension system (12 pluggable feature modules)
+- Modular extension architecture with 12 pluggable feature modules
+- Extension registry with centralized hook dispatch
+- Codebase cleanup and improved module organization
+
+**v2.5** - Admin access & human error handling
+
 - Password-protected control panel with session management
-- Human error handling with sequence validation and adaptive recovery
-- Complete anomaly detection (6 types), rate limiting, input validation
-- Auto-initialize cards on first tap
-- Substance return confirmation tracking
+- Sequence validation and 5-minute grace period for corrections
+- Real-time anomaly detection (6 types), rate limiting, input validation
+- Manual event corrections with full audit trail
+
+**v2.4** - Auto-initialize & enhanced metrics
+
+- Auto-initialize cards on first tap (no pre-initialization needed)
+- Separate queue wait and service time metrics
+
+**v2.3** - Substance return confirmation
+
+- Substance return tracking with unreturned substance alerts
+- Complete audit trail for substance custody and handback
+
+**v2.2** - 3-stage tracking & quick wins
+
 - 3-stage service tracking (QUEUE_JOIN → SERVICE_START → EXIT)
-- Service quality metrics (SLI/SLO) and insights dashboard
-- Public queue display, shift summaries, event summaries
-- Force-exit tool and real-time CSV export
+- Force-exit tool and real-time CSV export from dashboard
 
-**v2.0**
+**v2.1** - Operational intelligence
 
-- Architecture improvements (WAL mode, optimization)
+- Public queue display, shift summaries, enhanced staff alerts
+- Activity monitoring for station failures and service anomalies
+
+**v2.0** - Architecture improvements
+
+- WAL mode, database optimization, improved error handling
 - Enhanced operational dashboards
-- Mobile Progressive Web App support
-- Web status server with health endpoints
 
-**v1.0**
+**v1.5** - Mobile PWA
 
-- Initial release
-- Dual-station tap logging
-- SQLite database
-- Buzzer/LED feedback
-- systemd service with auto-restart
+- Progressive Web App for Android phones
+- Offline support with service worker, batch sync
+
+**v1.0** - Initial release
+
+- Dual-station tap logging with SQLite database
+- Buzzer/LED feedback, systemd service with auto-restart
 
 ---
 
